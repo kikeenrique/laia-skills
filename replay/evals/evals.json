@@ -1,0 +1,26 @@
+{
+  "skill_name": "replay",
+  "evals": [
+    {
+      "id": 1,
+      "name": "add-replay-to-existing-test",
+      "prompt": "I have a Swift Testing suite `UserAPITests` with a test `fetchUser()` that calls `https://api.example.com/users/42` via `URLSession.shared` and decodes a `User`. I want to use Replay so it doesn't hit the network in CI. Show me what to change in Package.swift, where to put the fixture, what the test should look like, and how to record the HAR the first time. The test target is `UserAPITests` under `Tests/UserAPITests/`.",
+      "expected_output": "Should produce: (a) Package.swift edit adding Replay package dep + `resources: [.copy(\"Replays\")]` on the test target, (b) creation of `Tests/UserAPITests/Replays/` folder, (c) updated test using `@Suite(.playbackIsolated(replaysFrom: Bundle.module))` and `@Test(.replay(\"fetchUser\"))`, (d) the exact command `REPLAY_RECORD_MODE=once swift test --filter …` to record. Should mention that Replay must be on the test target only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "fix-matcher-mismatch",
+      "prompt": "My Replay test keeps failing with `No Matching Entry in Archive`. The endpoint is a search API: `GET https://api.example.com/search?q=swift&t=1739900000&cursor=abc123`. The HAR was recorded yesterday. I don't want to re-record every time. How do I fix this?",
+      "expected_output": "Should diagnose that `t` (timestamp) and `cursor` change between runs, and propose switching the matcher from the default `.url` to `[.method, .path]` (optionally adding `.query` only if `q` is meaningful). Should show the updated `@Test(.replay(\"…\", matching: [.method, .path]))` syntax. Should mention `swift package replay inspect` as a debugging step. Should NOT suggest re-recording as the primary fix.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "redact-secrets-before-commit",
+      "prompt": "I just recorded a HAR for a test that calls our internal billing API. The fixture has an `Authorization: Bearer eyJhbGc…` header on the request and a `Set-Cookie: session=…` header on the response. The response body also contains a customer email. What's the right way to handle this so I can commit the fixture safely, and how do I make sure future re-recordings stay clean?",
+      "expected_output": "Should recommend adding record-time `filters:` to the `.replay(...)` trait (`.headers(removing: [\"Authorization\", \"Set-Cookie\"])` plus body redaction via `.body(replacing:with:)` or `.body(decoding:transform:)` for the email). Should mention re-recording with `REPLAY_RECORD_MODE=rewrite` after adding filters. Should mention the `swift package replay filter` plugin for scrubbing the existing file in place. Should warn about browser-exported HARs if mentioned. Should include a commit-time review checklist.",
+      "files": []
+    }
+  ]
+}
