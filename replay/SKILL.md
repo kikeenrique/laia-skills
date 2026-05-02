@@ -59,6 +59,35 @@ Then create `Tests/YourTests/Replays/` to hold HAR files.
 
 Add the package under **File → Add Packages…**, attach `Replay` to the **test target only**, then add a `Replays/` group to the test target and confirm its files are members of the test bundle.
 
+**HAR file resolution in Xcode / xcodebuild / Tuist projects:** Replay has built-in logic that resolves archives relative to the test source file via `sourceLocation.fileID`. In many Xcode projects this works out of the box — try it first before adding workarounds.
+
+When the built-in resolution fails (e.g., Tuist-generated projects where source paths don't map cleanly, or when using `Bundle(for:)` which resolves into DerivedData), define a custom convenience whose `rootURL` is derived from `#filePath` — that's the source path at compile time, so both record and playback hit the source tree directly:
+
+```swift
+// Tests/YourTests/Support/ReplayTestSupport.swift
+import Foundation
+import Replay
+import Testing
+
+private let replaysRootURL: URL = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent()  // Support/
+    .deletingLastPathComponent()  // YourTests/
+    .appendingPathComponent("Replays", isDirectory: true)
+
+extension Trait where Self == ReplayTrait {
+    static func replayFromSource(
+        _ name: String,
+        matchers: [Matcher] = .default,
+        filters: [Filter] = [],
+        scope: ReplayScope = .global
+    ) -> Self {
+        ReplayTrait(name, matchers: matchers, filters: filters, rootURL: replaysRootURL, scope: scope)
+    }
+}
+```
+
+Adjust the number of `.deletingLastPathComponent()` hops to match where the support file sits relative to your `Replays/` directory. `#filePath` is evaluated at compile time, so the absolute path is whichever machine compiled the binary — CI compiles its own tests, so this is fine; the failure mode is only "cross-machine binary copy", which isn't a real flow.
+
 ### Why a test-only dependency
 
 Replay's `URLProtocol` interception and Swift Testing traits are only useful in tests, and shipping it in a release binary would pull in unused record/capture code. Keep it scoped.
@@ -108,6 +137,16 @@ The first run of a new test fails with "Replay Archive Missing". That is the sig
 ```bash
 REPLAY_RECORD_MODE=once swift test --filter YourSuite.fetchUser
 ```
+
+**xcodebuild / Xcode users:** xcodebuild strips environment variables from the test runner process. This is standard xcodebuild behavior (not Replay-specific) — prefix any env var with `TEST_RUNNER_` so xcodebuild forwards it with the prefix stripped:
+
+```bash
+TEST_RUNNER_REPLAY_RECORD_MODE=once xcodebuild test \
+  -workspace … -scheme … -destination … \
+  -only-testing:MyTests/MySuite/myTest
+```
+
+The test process receives `REPLAY_RECORD_MODE=once` and Replay reads it normally. The same applies to `TEST_RUNNER_REPLAY_PLAYBACK_MODE`. `swift test` passes env vars directly and doesn't need the prefix.
 
 Modes:
 
