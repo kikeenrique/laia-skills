@@ -138,7 +138,8 @@ The first run of a new test fails with "Replay Archive Missing". That is the sig
 REPLAY_RECORD_MODE=once swift test --filter YourSuite.fetchUser
 ```
 
-**xcodebuild / Xcode users:** xcodebuild strips environment variables from the test runner process. This is standard xcodebuild behavior (not Replay-specific) — prefix any env var with `TEST_RUNNER_` so xcodebuild forwards it with the prefix stripped:
+**xcodebuild / Xcode users:** do not rely on plain `REPLAY_RECORD_MODE=… xcodebuild test`.
+Apple documents `TEST_RUNNER_<VAR>` in `man xcodebuild`: xcodebuild passes those variables to every test runner process with the prefix stripped. This is standard xcodebuild behavior (not Replay-specific), so prefix Replay's env vars with `TEST_RUNNER_`:
 
 ```bash
 TEST_RUNNER_REPLAY_RECORD_MODE=once xcodebuild test \
@@ -146,7 +147,26 @@ TEST_RUNNER_REPLAY_RECORD_MODE=once xcodebuild test \
   -only-testing:MyTests/MySuite/myTest
 ```
 
-The test process receives `REPLAY_RECORD_MODE=once` and Replay reads it normally. The same applies to `TEST_RUNNER_REPLAY_PLAYBACK_MODE`. `swift test` passes env vars directly and doesn't need the prefix.
+The test process receives `REPLAY_RECORD_MODE=once` and Replay reads it normally. The same applies to `TEST_RUNNER_REPLAY_PLAYBACK_MODE`. `swift test` passes env vars directly and doesn't need the prefix. Avoid `build-for-testing` / `.xctestrun` editing just to pass Replay env vars; use those only when the project already needs a separate build/test split for other reasons.
+
+**Tuist / mise wrappers:** if a repo runs tests through Tuist or a task runner that ultimately invokes `xcodebuild test`, keep that guidance separate from plain `swift test` and raw `xcodebuild` examples. Prefer making the wrapper translate the developer-facing variables before invoking xcodebuild:
+
+```bash
+if [[ -n "${REPLAY_RECORD_MODE:-}" && -z "${TEST_RUNNER_REPLAY_RECORD_MODE:-}" ]]; then
+  export TEST_RUNNER_REPLAY_RECORD_MODE="$REPLAY_RECORD_MODE"
+fi
+
+if [[ -n "${REPLAY_PLAYBACK_MODE:-}" && -z "${TEST_RUNNER_REPLAY_PLAYBACK_MODE:-}" ]]; then
+  export TEST_RUNNER_REPLAY_PLAYBACK_MODE="$REPLAY_PLAYBACK_MODE"
+fi
+```
+
+That keeps commands ergonomic while still using Apple's documented xcodebuild mechanism:
+
+```bash
+REPLAY_RECORD_MODE=once mise run test MyScheme
+REPLAY_RECORD_MODE=once tuist test MyScheme
+```
 
 Modes:
 
