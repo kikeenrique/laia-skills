@@ -28,6 +28,56 @@ swift test --filter YourSuite.fetchUser           # passes from HAR
 git add Tests/YourTests/Replays/fetchUser.har
 ```
 
+## xcodebuild / Xcode projects
+
+For `xcodebuild test`, do **not** rely on plain `REPLAY_RECORD_MODE=once xcodebuild test …`.
+Apple documents a dedicated forwarding convention in `man xcodebuild`:
+
+```text
+TEST_RUNNER_<VAR>
+  Set an environment variable whose name is prefixed with TEST_RUNNER_
+  to have that variable passed, with its prefix stripped, to all test
+  runner processes launched during a test action.
+```
+
+So Replay recording should be invoked as:
+
+```bash
+TEST_RUNNER_REPLAY_RECORD_MODE=once xcodebuild test \
+  -workspace MyWorkspace.xcworkspace \
+  -scheme MyScheme \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+  -only-testing:MyTests/MySuite/myTest
+```
+
+Inside the test runner process, that becomes `REPLAY_RECORD_MODE=once`, which Replay reads from `ProcessInfo.processInfo.environment`.
+The playback equivalent is `TEST_RUNNER_REPLAY_PLAYBACK_MODE`.
+
+Avoid `build-for-testing` and manual `.xctestrun` edits solely to pass Replay env vars. They add extra moving parts and are unnecessary when `TEST_RUNNER_*` is available.
+
+## Tuist / mise wrappers
+
+If a repo runs tests through Tuist or a task runner that ultimately invokes `xcodebuild test`, treat that as a wrapper-specific concern rather than general `swift test` or raw `xcodebuild` usage.
+
+Translate the simpler developer-facing variables before invoking xcodebuild:
+
+```bash
+if [[ -n "${REPLAY_RECORD_MODE:-}" && -z "${TEST_RUNNER_REPLAY_RECORD_MODE:-}" ]]; then
+  export TEST_RUNNER_REPLAY_RECORD_MODE="$REPLAY_RECORD_MODE"
+fi
+
+if [[ -n "${REPLAY_PLAYBACK_MODE:-}" && -z "${TEST_RUNNER_REPLAY_PLAYBACK_MODE:-}" ]]; then
+  export TEST_RUNNER_REPLAY_PLAYBACK_MODE="$REPLAY_PLAYBACK_MODE"
+fi
+```
+
+Then developers can run:
+
+```bash
+REPLAY_RECORD_MODE=once mise run test MyScheme
+REPLAY_RECORD_MODE=once tuist test MyScheme
+```
+
 ## Re-recording after an API change
 
 Endpoint changed shape? Rewrite:
