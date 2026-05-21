@@ -1,8 +1,8 @@
 {
   "$schema": "https://code.claude.com/schemas/plugin.json",
   "name": "ios-simulator-ui-flow",
-  "version": "0.1.0",
-  "description": "Autonomous iOS Simulator UI verification flow: build, deploy, launch, capture logs, inspect and interact with UI via AXe CLI, screenshot, and verify.",
+  "version": "0.2.0",
+  "description": "Autonomous iOS Simulator UI verification flow verified against AXe v1.7.0: build, install, launch, inspect, tap, slider, swipe, drag, batch, screenshot, video, and verify.",
   "author": { "name": "Enrique Garcia" },
   "homepage": "https://github.com/kikeenrique/laia-skills",
   "repository": "https://github.com/kikeenrique/laia-skills",
