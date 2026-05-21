@@ -2,11 +2,13 @@
 # frozen_string_literal: true
 
 require "cgi"
+require "json"
 require "pathname"
 require "yaml"
 
 ROOT = File.expand_path("..", __dir__)
 STRICT_AGENT_NEUTRAL = ENV.fetch("STRICT_AGENT_NEUTRAL", "0") == "1"
+SEMVER_RE = /\A\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\z/
 
 CORE_FRONTMATTER_KEYS = %w[name description license metadata].freeze
 LEGACY_AGENT_KEYS = %w[allowed-tools disable-model-invocation].freeze
@@ -120,9 +122,85 @@ def validate_skill(skill_dir)
 end
 
 def skill_dirs
-  Dir.glob(File.join(ROOT, "*", "SKILL.md"))
+  Dir.glob(File.join(ROOT, "*", "skills", "*", "SKILL.md"))
      .map { |path| File.dirname(path) }
      .sort
+end
+
+def plugin_dirs
+  Dir.glob(File.join(ROOT, "*", ".claude-plugin", "plugin.json"))
+     .map { |path| File.dirname(File.dirname(path)) }
+     .sort
+end
+
+def validate_plugin(plugin_dir)
+  manifest_path = File.join(plugin_dir, ".claude-plugin", "plugin.json")
+  rel = relative(manifest_path)
+  folder = File.basename(plugin_dir)
+
+  begin
+    manifest = JSON.parse(read(manifest_path))
+  rescue JSON::ParserError => e
+    error("#{rel}: invalid JSON: #{e.message}")
+    return
+  end
+
+  unless manifest.is_a?(Hash)
+    error("#{rel}: must be a JSON object")
+    return
+  end
+
+  name = manifest["name"]
+  version = manifest["version"]
+  description = manifest["description"]
+
+  if !name.is_a?(String) || name.strip.empty?
+    error("#{rel}: missing string field `name`")
+  elsif name != folder
+    error("#{rel}: name `#{name}` must match folder `#{folder}`")
+  end
+
+  if !version.is_a?(String) || version.strip.empty?
+    error("#{rel}: missing string field `version`")
+  elsif version !~ SEMVER_RE
+    error("#{rel}: version `#{version}` is not valid semver (MAJOR.MINOR.PATCH)")
+  end
+
+  if !description.is_a?(String) || description.strip.empty?
+    error("#{rel}: missing string field `description`")
+  end
+
+  skill_md = File.join(plugin_dir, "skills", folder, "SKILL.md")
+  unless File.exist?(skill_md)
+    error("#{rel}: expected skill at skills/#{folder}/SKILL.md")
+  end
+end
+
+def validate_marketplace(plugins)
+  manifest_path = File.join(ROOT, ".claude-plugin", "marketplace.json")
+  rel = relative(manifest_path)
+  unless File.exist?(manifest_path)
+    error("#{rel}: missing")
+    return
+  end
+
+  begin
+    manifest = JSON.parse(read(manifest_path))
+  rescue JSON::ParserError => e
+    error("#{rel}: invalid JSON: #{e.message}")
+    return
+  end
+
+  unless manifest.is_a?(Hash) && manifest["plugins"].is_a?(Array)
+    error("#{rel}: must have a `plugins` array")
+    return
+  end
+
+  listed = manifest["plugins"].map { |p| p.is_a?(Hash) ? p["name"] : nil }.compact
+  expected = plugins.map { |dir| File.basename(dir) }
+
+  (expected - listed).each { |n| error("#{rel}: plugin `#{n}` not listed in marketplace") }
+  (listed - expected).each { |n| error("#{rel}: marketplace lists unknown plugin `#{n}`") }
 end
 
 def markdown_files(skill_dirs)
@@ -178,7 +256,7 @@ def validate_markdown_links(markdown_paths)
   end
 end
 
-def validate_readme(skill_dirs)
+def validate_readme(plugin_dirs)
   readme = File.join(ROOT, "README.md")
   unless File.exist?(readme)
     error("README.md: missing")
@@ -186,9 +264,9 @@ def validate_readme(skill_dirs)
   end
 
   content = read(readme)
-  skill_dirs.each do |dir|
+  plugin_dirs.each do |dir|
     name = File.basename(dir)
-    expected = "#{name}/SKILL.md"
+    expected = "#{name}/skills/#{name}/SKILL.md"
     unless content.include?("(#{expected})") || content.include?("(<#{expected}>)")
       error("README.md: missing skill link to #{expected}")
     end
@@ -204,16 +282,20 @@ def validate_readme(skill_dirs)
 end
 
 skills = skill_dirs
+plugins = plugin_dirs
 if skills.empty?
   error("No skill directories found")
 else
   skills.each { |dir| validate_skill(dir) }
 end
 
+plugins.each { |dir| validate_plugin(dir) }
+validate_marketplace(plugins)
+
 docs = markdown_files(skills)
 validate_no_todos(docs)
 validate_markdown_links(docs)
-validate_readme(skills)
+validate_readme(plugins)
 
 @warnings.each { |message| warn("warning: #{message}") }
 
