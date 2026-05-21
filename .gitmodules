@@ -1,0 +1,9 @@
+[submodule "replay/upstream"]
+	path = replay/upstream
+	url = https://github.com/mattt/Replay.git
+[submodule "ios-simulator-ui-flow/upstream"]
+	path = ios-simulator-ui-flow/upstream
+	url = https://github.com/cameroncooke/AXe.git
+[submodule "mise/upstream"]
+	path = mise/upstream
+	url = https://github.com/jdx/mise.git
