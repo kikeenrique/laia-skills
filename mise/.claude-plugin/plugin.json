@@ -1,8 +1,8 @@
 {
   "$schema": "https://code.claude.com/schemas/plugin.json",
   "name": "mise",
-  "version": "0.1.0",
-  "description": "mise-en-place workflows for dev tools, project config, environments, tasks, plugins/backends, lockfiles, CI, and troubleshooting.",
+  "version": "0.1.1",
+  "description": "mise-en-place workflows for dev tools, project config, environments, tasks, plugins/backends, dependency providers, tool stubs, MCP, lockfiles, CI, and troubleshooting.",
   "author": { "name": "Enrique Garcia" },
   "homepage": "https://github.com/kikeenrique/laia-skills",
   "repository": "https://github.com/kikeenrique/laia-skills",

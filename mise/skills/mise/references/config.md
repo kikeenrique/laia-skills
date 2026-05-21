@@ -55,6 +55,19 @@ Use `[plugins]` only when pinning or overriding plugin repositories for future p
 ```toml
 [plugins]
 elixir = "https://github.com/my-org/mise-elixir.git"
+"vfox-backend:myplugin" = "https://github.com/jdx/vfox-npm"
+```
+
+`[plugins]` replaces the deprecated `settings.shorthands_file` / `MISE_SHORTHANDS_FILE` mechanism. Put shared shortname-to-backend or shortname-to-URL entries here; use `mise plugin install <name> <url>` for one-off local installs.
+
+Use `[tool_alias]` for version aliases and `[shell_alias]` for shell aliases:
+
+```toml
+[tool_alias.node.versions]
+lts = "22"
+
+[shell_alias]
+dev = "mise run dev"
 ```
 
 ## Config Environments

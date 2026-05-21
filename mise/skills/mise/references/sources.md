@@ -10,6 +10,9 @@ Use these official docs when exact behavior, flags, or current defaults matter:
 - Settings: https://mise.jdx.dev/configuration/settings.html
 - Dev Tools: https://mise.jdx.dev/dev-tools/
 - Backends: https://mise.jdx.dev/dev-tools/backends/
+- npm Backend: https://mise.jdx.dev/dev-tools/backends/npm.html
+- Tool Stubs: https://mise.jdx.dev/dev-tools/tool-stubs.html
+- Dependency Providers: https://mise.jdx.dev/dev-tools/deps.html
 - Registry: https://mise.jdx.dev/registry.html
 - Environments: https://mise.jdx.dev/environments/
 - Hooks: https://mise.jdx.dev/hooks.html
@@ -25,6 +28,8 @@ Use these official docs when exact behavior, flags, or current defaults matter:
 - Python Cookbook: https://mise.jdx.dev/mise-cookbook/python.html
 - Node.js Cookbook: https://mise.jdx.dev/mise-cookbook/nodejs.html
 - `mise generate`: https://mise.jdx.dev/cli/generate.html
+- `mise generate tool-stub`: https://mise.jdx.dev/cli/generate/tool-stub.html
+- `mise mcp`: https://mise.jdx.dev/mcp.html
 - CLI Reference: https://mise.jdx.dev/cli/
 - Lockfiles: https://mise.jdx.dev/dev-tools/mise-lock.html
 - `mise lock`: https://mise.jdx.dev/cli/lock.html

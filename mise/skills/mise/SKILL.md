@@ -1,6 +1,6 @@
 ---
 name: mise
-description: Manage mise-en-place (`mise`) workflows for dev tool versions, project configuration, shell activation/shims, environment variables, task runner setup, hooks, generated CI/devcontainer files, plugins/backends, lockfiles, CI, and troubleshooting. Use when the user mentions mise, `mise.toml`, `.mise.toml`, `.tool-versions`, `.miserc.toml`, `mise.lock`, `mise use/install/exec/run/tasks/config/env/trust/plugins/generate`, migrating from asdf, configuring project dev environments, writing or debugging mise tasks, setting env vars, enabling config environments, managing tool backends, or creating reusable mise guidance.
+description: Manage mise-en-place (`mise`) workflows for dev tool versions, project configuration, shell activation/shims, environment variables, task runner setup, hooks, generated CI/devcontainer/tool-stub files, plugins/backends, dependency providers, MCP integration, lockfiles, CI, and troubleshooting. Use when the user mentions mise, `mise.toml`, `.mise.toml`, `.tool-versions`, `.miserc.toml`, `mise.lock`, `mise use/install/exec/run/tasks/deps/config/env/trust/plugins/generate/tool-stub/mcp`, migrating from asdf, configuring project dev environments, writing or debugging mise tasks, setting env vars, enabling config environments, managing tool backends, or creating reusable mise guidance.
 ---
 
 # mise
@@ -37,7 +37,7 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 | Create backend, tool, or environment plugins | [plugin-development.md](references/plugin-development.md) |
 | Add hooks, watch files, bootstrap files, CI files, or generated docs/stubs | [hooks-and-generate.md](references/hooks-and-generate.md) |
 | Apply Node.js or Python cookbook patterns | [language-cookbooks.md](references/language-cookbooks.md) |
-| Lockfiles, trust, CI, monorepos, settings, and advanced safeguards | [advanced.md](references/advanced.md) |
+| Lockfiles, release-age policy, trust, CI, monorepos, MCP, and advanced safeguards | [advanced.md](references/advanced.md) |
 
 ## Working Rules
 
@@ -49,6 +49,8 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 - Prefer exact or major versions that match the repo's existing conventions. Use `latest` only when the project already accepts moving versions.
 - Prefer registry, aqua, github, or language backends before asdf-style plugins. Plugins are powerful but carry more trust and maintenance risk.
 - Treat templates, env directives, and `path:` plugin versions as trust-sensitive. Check `mise trust --show` before telling users to trust config.
+- For `npm:` tools, keep lifecycle scripts denied by default unless the user explicitly accepts the install-time code execution risk. Prefer `aube_args` or `pnpm_args` with `--allow-build=<pkg>` for reviewed dependency builds; use `npm_args = "--ignore-scripts=false"` only when broad lifecycle-script execution is intended.
+- Pair moving versions with `[settings] minimum_release_age = "7d"` and lockfiles when the user cares about supply-chain safety and reproducible CI.
 
 ## Common Edits
 
@@ -73,7 +75,7 @@ Add task dependencies and incremental rebuild checks:
 [tasks.build]
 description = "Build the project"
 run = "npm run build"
-sources = ["src/**/*.ts", "package.json", "tsconfig.json"]
+sources = ["src/**/*.ts", "!src/**/*.test.ts", "package.json", "tsconfig.json"]
 outputs = ["dist/**"]
 
 [tasks.test]
@@ -111,6 +113,24 @@ mise lock
 mise install --locked
 ```
 
+Set npm backend install policy:
+
+```toml
+[settings]
+minimum_release_age = "7d"
+
+[tools]
+"npm:some-tool" = { version = "latest", aube_args = "--allow-build=esbuild" }
+```
+
+Create a lazy project-local executable:
+
+```bash
+mise generate tool-stub ./bin/rg \
+  --platform-url https://github.com/BurntSushi/ripgrep/releases/download/14.0.3/ripgrep-14.0.3-aarch64-apple-darwin.tar.gz
+mise generate tool-stub ./bin/rg --lock
+```
+
 ## Troubleshooting
 
 - If the wrong tool version is active, run `mise config` and `mise ls --current` from the exact directory where the command fails.
@@ -119,6 +139,7 @@ mise install --locked
 - If installs hit GitHub rate limits, configure GitHub authentication or use `mise.lock` so resolved URLs are reused.
 - If config is ignored or prompts for trust, run `mise trust --show`; do not blanket-trust unknown config without reviewing it.
 - If env vars are missing, compare `mise env --json`, `mise env --dotenv`, and the shell's activation state.
+- If `npm:` installs fail because a package needs lifecycle scripts, first identify the package that needs a build. Prefer `aube`/`pnpm` allowlists before opting into all npm scripts.
 
 ## Validation
 
