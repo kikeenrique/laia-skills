@@ -33,6 +33,8 @@ mise-tasks/test
 mise run build
 mise r test
 mise tasks
+mise tasks deps
+mise tasks validate
 mise --jobs 1 run test
 ```
 
@@ -60,6 +62,8 @@ run = "npm test"
 ```
 
 Use `depends_post` for follow-up tasks and `wait_for` for optional coordination with tasks that may already be running.
+
+`confirm` guards only the task's own `run` command. Dependencies run before the confirmation prompt unless you model them as `run = [{ task = "..." }]` or put `confirm` on the dependency tasks too.
 
 ## Structured Runs
 
@@ -98,9 +102,19 @@ outputs = ["dist/**"]
 
 If a dependency with `sources` reruns because its inputs changed, dependent tasks rerun too.
 
+Source exclusions use the same `!` convention as gitignore and watchexec. Entries are evaluated in order, so later positive entries can re-include a path. Escape a literal leading bang as `"\\!important.txt"` in TOML.
+
 ## Watch
 
 Use `mise watch` for rebuild loops. Add explicit `sources` to make watching and incremental checks precise.
+
+```bash
+mise watch build
+mise watch build --glob 'src/**/*.ts'
+mise watch serve --watch src --exts ts --restart
+```
+
+`mise watch` uses task `sources` by default and follows dependency sources for watched tasks. Extra flags are passed through to watchexec, so check `mise watch --help` for the installed version.
 
 ## Windows
 
@@ -115,6 +129,8 @@ run_windows = "cargo build --features windows"
 ## Troubleshooting
 
 - Use `mise tasks` to check discovery.
+- Use `mise tasks deps <task>` to inspect the task graph.
+- Use `mise tasks validate` before committing larger task refactors.
 - Use `mise --jobs 1 run <task>` when parallel output hides the real failure.
 - Check `sources` and `outputs` when tasks unexpectedly skip or rerun.
 - Prefer file tasks for long shell logic instead of large TOML strings.

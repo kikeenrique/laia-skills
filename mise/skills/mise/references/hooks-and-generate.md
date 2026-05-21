@@ -66,6 +66,11 @@ run = "cargo fmt"
 [[watch_files]]
 patterns = ["uv.lock"]
 task = "sync-deps"
+
+[[watch_files]]
+patterns = ["scripts/*.sh"]
+run = "shellcheck scripts/*.sh"
+shell = "bash -c"
 ```
 
 Each `[[watch_files]]` entry should set either `run` or `task`, not both. Watch hooks receive `MISE_WATCH_FILES_MODIFIED`.
@@ -94,7 +99,11 @@ mise generate git-pre-commit
 mise generate github-action
 mise generate task-docs
 mise generate task-stubs
-mise generate tool-stub ./bin/my-tool
+mise generate tool-stub ./bin/my-tool --url https://example.com/tool.tar.gz
+mise generate tool-stub ./bin/my-tool --lock
+mise generate tool-stub ./bin/bootstrap-tool --url https://example.com/tool.tar.gz --bootstrap --bootstrap-version 2026.5.13
 ```
 
 Use `--dry-run` when available before writing generated files. Review generated CI/devcontainer files for project-specific paths, shells, and lockfile expectations.
+
+For HTTP tool stubs, `mise generate tool-stub` can download archives to detect checksums and binary paths, append platform-specific URLs to existing stubs, fetch missing checksum data with `--fetch`, and embed locked platform data with `--lock`.
