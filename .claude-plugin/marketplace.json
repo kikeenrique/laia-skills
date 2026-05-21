@@ -9,21 +9,36 @@
     {
       "name": "mise",
       "source": "./mise",
-      "description": "mise-en-place workflows for dev tools, project config, environments, tasks, plugins/backends, lockfiles, CI, and troubleshooting.",
+      "version": "0.1.1",
+      "description": "mise-en-place workflows for dev tools, project config, environments, tasks, plugins/backends, dependency providers, tool stubs, MCP, lockfiles, CI, and troubleshooting.",
+      "author": { "name": "Enrique Garcia" },
+      "homepage": "https://github.com/kikeenrique/laia-skills",
+      "repository": "https://github.com/kikeenrique/laia-skills",
+      "license": "MIT",
       "category": "tooling",
       "keywords": ["mise", "dev-tools", "tasks", "env"]
     },
     {
       "name": "replay",
       "source": "./replay",
+      "version": "0.1.0",
       "description": "HTTP recording, playback, and stubbing for Swift tests using the Replay framework.",
+      "author": { "name": "Enrique Garcia" },
+      "homepage": "https://github.com/kikeenrique/laia-skills",
+      "repository": "https://github.com/kikeenrique/laia-skills",
+      "license": "MIT",
       "category": "testing",
       "keywords": ["swift", "testing", "http", "har", "replay"]
     },
     {
       "name": "ios-simulator-ui-flow",
       "source": "./ios-simulator-ui-flow",
-      "description": "Autonomous iOS Simulator UI verification flow: build, deploy, launch, capture logs, inspect and interact with UI via AXe CLI, screenshot, and verify.",
+      "version": "0.2.0",
+      "description": "Autonomous iOS Simulator UI verification flow verified against AXe v1.7.0: build, install, launch, inspect, tap, slider, swipe, drag, batch, screenshot, video, and verify.",
+      "author": { "name": "Enrique Garcia" },
+      "homepage": "https://github.com/kikeenrique/laia-skills",
+      "repository": "https://github.com/kikeenrique/laia-skills",
+      "license": "MIT",
       "category": "ios",
       "keywords": ["ios", "simulator", "axe", "ui-testing"]
     }
