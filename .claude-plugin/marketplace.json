@@ -1,0 +1,31 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "laia-skills",
+  "owner": {
+    "name": "Enrique Garcia"
+  },
+  "description": "Reusable Claude Code skills for iOS development workflows.",
+  "plugins": [
+    {
+      "name": "mise",
+      "source": "./mise",
+      "description": "mise-en-place workflows for dev tools, project config, environments, tasks, plugins/backends, lockfiles, CI, and troubleshooting.",
+      "category": "tooling",
+      "keywords": ["mise", "dev-tools", "tasks", "env"]
+    },
+    {
+      "name": "replay",
+      "source": "./replay",
+      "description": "HTTP recording, playback, and stubbing for Swift tests using the Replay framework.",
+      "category": "testing",
+      "keywords": ["swift", "testing", "http", "har", "replay"]
+    },
+    {
+      "name": "ios-simulator-ui-flow",
+      "source": "./ios-simulator-ui-flow",
+      "description": "Autonomous iOS Simulator UI verification flow: build, deploy, launch, capture logs, inspect and interact with UI via AXe CLI, screenshot, and verify.",
+      "category": "ios",
+      "keywords": ["ios", "simulator", "axe", "ui-testing"]
+    }
+  ]
+}
