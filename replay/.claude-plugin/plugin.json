@@ -1,12 +1,13 @@
 {
   "$schema": "https://code.claude.com/schemas/plugin.json",
   "name": "replay",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "HTTP recording, playback, and stubbing for Swift tests using the Replay framework (HAR fixtures + Swift Testing traits).",
   "author": { "name": "Enrique Garcia" },
   "homepage": "https://github.com/kikeenrique/laia-skills",
   "repository": "https://github.com/kikeenrique/laia-skills",
   "license": "MIT",
   "keywords": ["swift", "testing", "http", "har", "replay"],
-  "category": "testing"
+  "category": "testing",
+  "skills": ["./skills/replay"]
 }
