@@ -1,0 +1,7 @@
+interface:
+  display_name: "iOS Simulator UI Flow"
+  short_description: "Automate simulator UI checks with AXe"
+  icon_small: "./assets/ios-simulator-ui-flow-icon.svg"
+  icon_large: "./assets/ios-simulator-ui-flow-icon.png"
+  brand_color: "#0A84FF"
+  default_prompt: "Use $ios-simulator-ui-flow to run, inspect, and verify this iOS app in Simulator."

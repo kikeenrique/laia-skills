@@ -1,0 +1,7 @@
+interface:
+  display_name: "Replay"
+  short_description: "Record and replay HTTP fixtures for Swift tests"
+  icon_small: "./assets/replay-icon.svg"
+  icon_large: "./assets/replay-icon.png"
+  brand_color: "#22C55E"
+  default_prompt: "Use $replay to add or debug HTTP replay fixtures in these Swift tests."

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title desc">
+  <title id="title">iOS Simulator UI Flow skill icon</title>
+  <desc id="desc">A large phone outline with an automation gear badge.</desc>
+  <rect x="22" y="7" width="48" height="86" rx="14" fill="#f8fafc" stroke="#111827" stroke-width="7"/>
+  <path d="M39 18h14" fill="none" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="70" cy="67" r="22" fill="#111827"/>
+  <circle cx="70" cy="67" r="18" fill="#e5e7eb"/>
+  <path d="M70 52v6M70 76v6M55 67h6M79 67h6M60 57l4 4M76 73l4 4M80 57l-4 4M64 73l-4 4" fill="none" stroke="#f97316" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="70" cy="67" r="7" fill="none" stroke="#f97316" stroke-width="5"/>
+</svg>
