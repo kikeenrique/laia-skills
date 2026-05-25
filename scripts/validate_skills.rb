@@ -12,9 +12,10 @@ SEMVER_RE = /\A\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\z/
 
 CORE_FRONTMATTER_KEYS = %w[name description license metadata].freeze
 LEGACY_AGENT_KEYS = %w[allowed-tools disable-model-invocation].freeze
-VENDOR_SIDECARS = [
-  "agents/openai.yaml"
-].freeze
+AGENT_SIDECAR = "agents/openai.yaml"
+AGENT_TOP_LEVEL_KEYS = %w[interface policy dependencies].freeze
+AGENT_INTERFACE_KEYS = %w[display_name short_description icon_small icon_large brand_color default_prompt].freeze
+HEX_COLOR_RE = /\A#[0-9A-Fa-f]{6}\z/
 MAX_DESCRIPTION_LENGTH = 1024
 
 @errors = []
@@ -115,10 +116,95 @@ def validate_skill(skill_dir)
     end
   end
 
-  VENDOR_SIDECARS.each do |sidecar|
-    sidecar_path = File.join(skill_dir, sidecar)
-    error("#{relative(sidecar_path)}: vendor-specific sidecar is not allowed") if File.exist?(sidecar_path)
+  validate_agent_sidecar(skill_dir)
+end
+
+def validate_agent_sidecar(skill_dir)
+  sidecar_path = File.join(skill_dir, AGENT_SIDECAR)
+  return unless File.exist?(sidecar_path)
+
+  rel = relative(sidecar_path)
+  begin
+    payload = YAML.safe_load(read(sidecar_path))
+  rescue Psych::SyntaxError => e
+    error("#{rel}: invalid YAML: #{e.message}")
+    return
   end
+
+  unless payload.is_a?(Hash)
+    error("#{rel}: must be a YAML mapping")
+    return
+  end
+
+  unexpected = payload.keys.map(&:to_s) - AGENT_TOP_LEVEL_KEYS
+  error("#{rel}: unexpected top-level keys: #{unexpected.join(', ')}") unless unexpected.empty?
+
+  interface = payload["interface"]
+  unless interface.is_a?(Hash)
+    error("#{rel}: missing mapping field `interface`")
+    return
+  end
+
+  unexpected_interface = interface.keys.map(&:to_s) - AGENT_INTERFACE_KEYS
+  unless unexpected_interface.empty?
+    error("#{rel}: unexpected interface keys: #{unexpected_interface.join(', ')}")
+  end
+
+  %w[display_name short_description].each do |field|
+    value = interface[field]
+    unless value.is_a?(String) && !value.strip.empty?
+      error("#{rel}: missing non-empty string field `interface.#{field}`")
+    end
+  end
+
+  default_prompt = interface["default_prompt"]
+  if !default_prompt.nil? && (!default_prompt.is_a?(String) || default_prompt.strip.empty?)
+    error("#{rel}: field `interface.default_prompt` must be a non-empty string")
+  end
+
+  brand_color = interface["brand_color"]
+  if !brand_color.nil? && (!brand_color.is_a?(String) || brand_color !~ HEX_COLOR_RE)
+    error("#{rel}: field `interface.brand_color` must use `#RRGGBB`")
+  end
+
+  %w[icon_small icon_large].each do |field|
+    validate_agent_asset_path(skill_dir, rel, field, interface[field])
+  end
+end
+
+def validate_agent_asset_path(skill_dir, rel, field, value)
+  return if value.nil?
+
+  unless value.is_a?(String) && !value.strip.empty?
+    error("#{rel}: field `interface.#{field}` must be a non-empty string")
+    return
+  end
+
+  unless value.start_with?("./")
+    error("#{rel}: field `interface.#{field}` must be a relative path starting with `./`")
+  end
+
+  if value.include?("..")
+    error("#{rel}: field `interface.#{field}` cannot contain `..`")
+    return
+  end
+
+  root = File.expand_path(skill_dir)
+  resolved = File.expand_path(value, skill_dir)
+  unless resolved == root || resolved.start_with?("#{root}#{File::SEPARATOR}")
+    error("#{rel}: field `interface.#{field}` must resolve inside the skill directory")
+    return
+  end
+
+  unless File.exist?(resolved)
+    error("#{rel}: field `interface.#{field}` points to missing asset: #{value}")
+    return
+  end
+
+  extension = File.extname(resolved).downcase
+  return if %w[.png .svg .jpg .jpeg .webp].include?(extension)
+
+  error("#{rel}: field `interface.#{field}` must point to a PNG, SVG, JPEG, or WebP asset")
 end
 
 def skill_dirs

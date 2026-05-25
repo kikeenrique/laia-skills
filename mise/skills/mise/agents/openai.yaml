@@ -1,0 +1,7 @@
+interface:
+  display_name: "Mise"
+  short_description: "Manage dev tools, env, tasks, and lockfiles"
+  icon_small: "./assets/mise-icon.svg"
+  icon_large: "./assets/mise-icon.png"
+  brand_color: "#00D8FF"
+  default_prompt: "Use $mise to configure this project's tools, tasks, and environment."

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title desc">
+  <title id="title">Mise skill icon</title>
+  <desc id="desc">A simplified chef hat inspired by mise-en-place.</desc>
+  <path fill="#ffffff" d="M24 58c-7-4-11-10-11-18 0-12 10-22 23-22 4 0 7 1 11 3 4-7 12-11 21-9 11 2 18 11 18 22v2c5 4 8 9 8 16 0 10-8 18-18 18H28c-3 0-4-5-4-12Z"/>
+  <rect x="24" y="60" width="52" height="22" rx="8" fill="#ffffff"/>
+  <path d="M33 72h34" fill="none" stroke="#00d8ff" stroke-width="8" stroke-linecap="round"/>
+</svg>
