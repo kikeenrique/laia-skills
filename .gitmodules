@@ -7,3 +7,6 @@
 [submodule "mise/upstream"]
 	path = mise/upstream
 	url = https://github.com/jdx/mise.git
+[submodule "visionos-agents/upstream"]
+	path = visionos-agents/upstream
+	url = https://github.com/tomkrikorian/visionOSAgents

@@ -13,6 +13,7 @@ A [Claude Code plugin marketplace](https://code.claude.com/docs/en/plugin-market
 /plugin install mise@laia-skills
 /plugin install replay@laia-skills
 /plugin install ios-simulator-ui-flow@laia-skills
+/plugin install visionos-agents@laia-skills
 ```
 
 Check for updates anytime with `/plugin marketplace update`.
@@ -24,6 +25,7 @@ Check for updates anytime with `/plugin marketplace update`.
 | [mise](mise/skills/mise/SKILL.md) | mise-en-place workflows for dev tools, project config, environments, tasks, plugins/backends, dependency providers, tool stubs, MCP, lockfiles, CI, and troubleshooting. |
 | [ios-simulator-ui-flow](ios-simulator-ui-flow/skills/ios-simulator-ui-flow/SKILL.md) | Autonomous iOS Simulator UI verification flow verified against AXe v1.7.0: builds, installs, launches, captures logs, inspects and interacts with UI via AXe CLI, uses tap/slider/swipe/drag/batch/screenshot/video, and verifies results without user intervention. |
 | [replay](replay/skills/replay/SKILL.md) | HTTP recording, playback, and stubbing for Swift tests using the [Replay](https://github.com/mattt/Replay) framework — HAR fixtures, Swift Testing traits, matcher tuning, secret redaction, and `AsyncHTTPClient` support. |
+| [visionos-agents](visionos-agents/skills/visionos-agents/SKILL.md) | visionOS / Apple Vision Pro spatial computing suite (22 skills): spatial SwiftUI, RealityKit (rendering, animation/physics, audio, ECS), ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, and Swift Charts 3D. Skills vendored from [tomkrikorian/visionOSAgents](https://github.com/tomkrikorian/visionOSAgents) (MIT). |
 
 ## Versioning
 
