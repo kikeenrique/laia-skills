@@ -56,6 +56,47 @@
       "category": "ios",
       "keywords": ["ios", "simulator", "axe", "ui-testing"],
       "skills": ["./ios-simulator-ui-flow/skills/ios-simulator-ui-flow"]
+    },
+    {
+      "name": "visionos-agents",
+      "source": {
+        "source": "github",
+        "repo": "kikeenrique/laia-skills",
+        "ref": "main"
+      },
+      "version": "0.1.0",
+      "description": "visionOS / Apple Vision Pro spatial computing skills: spatial SwiftUI, RealityKit, ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, and Swift Charts 3D.",
+      "author": { "name": "Enrique Garcia" },
+      "homepage": "https://github.com/kikeenrique/laia-skills",
+      "repository": "https://github.com/kikeenrique/laia-skills",
+      "license": "MIT",
+      "category": "development",
+      "keywords": ["visionos", "vision-pro", "spatial", "realitykit", "arkit", "swiftui", "usd"],
+      "skills": [
+        "./visionos-agents/skills/visionos-agents",
+        "./visionos-agents/skills/arkit-visionos-developer",
+        "./visionos-agents/skills/arkit-spatial-tracking-providers",
+        "./visionos-agents/skills/arkit-hand-tracking-provider",
+        "./visionos-agents/skills/arkit-reference-tracking-providers",
+        "./visionos-agents/skills/arkit-rendering-context-providers",
+        "./visionos-agents/skills/arkit-camera-access-providers",
+        "./visionos-agents/skills/realitykit-visionos-developer",
+        "./visionos-agents/skills/realitykit-rendering-materials",
+        "./visionos-agents/skills/realitykit-animation-physics",
+        "./visionos-agents/skills/realitykit-audio-spatial",
+        "./visionos-agents/skills/realitykit-ecs-systems",
+        "./visionos-agents/skills/spatial-app-architecture",
+        "./visionos-agents/skills/spatial-swiftui-developer",
+        "./visionos-agents/skills/swiftui-chart3d-developer",
+        "./visionos-agents/skills/visionos-widgetkit-developer",
+        "./visionos-agents/skills/visionos-immersive-media-developer",
+        "./visionos-agents/skills/shareplay-developer",
+        "./visionos-agents/skills/shadergraph-editor",
+        "./visionos-agents/skills/usd-editor",
+        "./visionos-agents/skills/usdkit-runtime-developer",
+        "./visionos-agents/skills/coding-standards-enforcer",
+        "./visionos-agents/skills/tkr-skill-writer"
+      ]
     }
   ]
 }
