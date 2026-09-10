@@ -8,6 +8,17 @@
 | `once` | Record if archive missing, else playback strict. Dev default. | Record if missing; playback then network fallback. | Record if missing; live otherwise. |
 | `rewrite` | Rewrite archive this run, then playback from it. Use after API change. | Rewrite + fallback. Rare. | Rewrite + live. Rare. |
 
+## Where recordings land
+
+Recording writes `Replays/<name>.har` **next to the test's source file**, creating the directory if it doesn't exist — so no manual `mkdir` and no `Replays/` folder to pre-create. Replay takes the source path from the compile-time `sourceLocation`, so this holds for `swift test`, `xcodebuild`, and Tuist-generated projects alike.
+
+A bundle registered with `.playbackIsolated(replaysFrom:)` does **not** change this; it's a playback fallback for copied resources (CI). Only two things redirect recording:
+
+- `rootURL:` on the `.replay(...)` trait
+- `.playbackIsolated(replaysRootURL:)`
+
+Point either at a build product and your fixtures land in DerivedData and vanish on the next build. See [troubleshooting.md](troubleshooting.md) and the resolution order in the main skill.
+
 ## Typical dev loop
 
 ```bash

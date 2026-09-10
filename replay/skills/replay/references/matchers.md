@@ -16,7 +16,7 @@ Matchers decide whether an incoming request is served by a HAR entry. They compo
 | `.path` | URL path | Most common partner to `.method` — tolerant of query noise. |
 | `.query` | Query items, **order-insensitive** | Pair with `.path` when certain params matter. |
 | `.fragment` | `#fragment` | Very rare. |
-| `.headers([...])` | Values of named request headers (case-insensitive names) | Match on `Accept`, API version headers, tenancy IDs. |
+| `.headers([...])` | Values of named **request** headers (case-insensitive names) | Match on `Accept`, API version headers, tenancy IDs. With stubs, see the caveat below. |
 | `.body` | Raw request body bytes | POST/PUT with deterministic payloads. |
 | `.custom((URLRequest, URLRequest) -> Bool)` | Anything you can compute | Escape hatch — prefer built-ins. |
 
@@ -27,6 +27,27 @@ Matchers decide whether an incoming request is served by a HAR entry. They compo
 - **Add `.headers(["X-API-Version"])`** when the endpoint's contract depends on a header.
 - **Add `.body`** for writes where the payload distinguishes entries.
 - **Use `.url`** only when you're sure URLs are stable — otherwise you'll chase mismatches.
+
+## `.headers` with stubs
+
+`.headers([...])` compares **request** headers. A `Stub`'s `headers:` argument is its **response** headers, and a stub carries no expected request headers by default — so `.headers(["Accept"])` against a stub only matches when `Accept` is *absent* from the incoming request. In practice that means it never matches.
+
+Attach expected request headers with `matchingRequestHeaders(_:)`:
+
+```swift
+@Test(
+    .replay(
+        stubs: [
+            .get("https://api.example.com/v2/users/42", 200,
+                 ["Content-Type": "application/json"], { #"{"id":42}"# })
+                .matchingRequestHeaders(["Accept": "application/json", "X-API-Version": "2"])
+        ],
+        matching: [.method, .path, .headers(["X-API-Version"])]
+    )
+)
+```
+
+Only the names listed in `.headers([...])` are actually compared, so it's safe to set more headers in `matchingRequestHeaders(_:)` than you match on. HAR-based playback needs none of this — recorded entries already carry the real request headers.
 
 ## Custom matcher
 
