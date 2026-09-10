@@ -30,7 +30,7 @@
         "repo": "kikeenrique/laia-skills",
         "ref": "main"
       },
-      "version": "0.1.2",
+      "version": "0.2.0",
       "description": "HTTP recording, playback, and stubbing for Swift tests using the Replay framework.",
       "author": { "name": "Enrique Garcia" },
       "homepage": "https://github.com/kikeenrique/laia-skills",

@@ -21,6 +21,20 @@
       "prompt": "I just recorded a HAR for a test that calls our internal billing API. The fixture has an `Authorization: Bearer eyJhbGc…` header on the request and a `Set-Cookie: session=…` header on the response. The response body also contains a customer email. What's the right way to handle this so I can commit the fixture safely, and how do I make sure future re-recordings stay clean?",
       "expected_output": "Should recommend adding record-time `filters:` to the `.replay(...)` trait (`.headers(removing: [\"Authorization\", \"Set-Cookie\"])` plus body redaction via `.body(replacing:with:)` or `.body(decoding:transform:)` for the email). Should mention re-recording with `REPLAY_RECORD_MODE=rewrite` after adding filters. Should mention the `swift package replay filter` plugin for scrubbing the existing file in place. Should warn about browser-exported HARs if mentioned. Should include a commit-time review checklist.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "recordings-vanish-in-xcode-project",
+      "prompt": "Xcode project, no Package.swift. My test suite is declared `@Suite(.playbackIsolated(replaysRootURL: Bundle(for: TestBundleToken.self).resourceURL?.appendingPathComponent(\"Replays\")))`. I record with `TEST_RUNNER_REPLAY_RECORD_MODE=once xcodebuild test …` and the test passes, but the HAR is nowhere in my project and the next run fails with `Replay Archive Missing` again. Where is it going and how do I fix this?",
+      "expected_output": "Should diagnose that `replaysRootURL:` is an unconditional directory override applying to recording as well, so the HAR is written into the built test bundle in DerivedData and destroyed by the next build. Fix: switch to `@Suite(.playbackIsolated(replaysFrom: Bundle(for: TestBundleToken.self)))`, which registers the bundle as a playback-only fallback so recording falls through to `Replays/` next to the test source file. Should explain the resolution order (trait `rootURL:` → `replaysRootURL:` → `Replays/` next to test source, where recording always writes → `replaysFrom:` bundle → any loaded bundle → cwd) and that the directory is created automatically. Should mention adding `Replays/` as a folder reference in Copy Bundle Resources so playback still works in CI. Should NOT recommend a `#filePath`-based custom trait as the primary fix.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "headers-matcher-never-matches-stub",
+      "prompt": "I'm using inline stubs, no HAR file. I want to assert my client sends `X-API-Version: 2`, so I wrote `.replay(stubs: [.get(\"https://api.example.com/users/42\", 200, [\"Content-Type\": \"application/json\", \"X-API-Version\": \"2\"], { #\"{\\\"id\\\":42}\"# })], matching: [.method, .path, .headers([\"X-API-Version\"])])`. It always fails with `No Matching Entry in Archive`. Why?",
+      "expected_output": "Should explain that a `Stub`'s `headers:` argument is the RESPONSE headers, while `Matcher.headers([...])` compares REQUEST headers — and that a stub has no expected request headers by default, so `.headers([\"X-API-Version\"])` only matches when that header is absent from the incoming request, i.e. never. Fix: chain `.matchingRequestHeaders([\"X-API-Version\": \"2\"])` onto the stub, keeping the response headers as-is. Should note that only the names listed in `.headers([...])` are compared, so extra entries in `matchingRequestHeaders(_:)` are harmless, and that HAR-based playback is unaffected. Should NOT suggest dropping the `.headers` matcher as the primary fix.",
+      "files": []
     }
   ]
 }
