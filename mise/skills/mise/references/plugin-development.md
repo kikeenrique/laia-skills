@@ -9,6 +9,8 @@ Use this reference when creating or reviewing mise plugins. For ordinary tool in
 | Backend plugin | One plugin manages multiple tools with `plugin:tool` names | `hooks/backend_list_versions.lua`, `hooks/backend_install.lua`, `hooks/backend_exec_env.lua` |
 | Tool plugin | One plugin manages one tool with custom lifecycle hooks | `hooks/available.lua`, `hooks/pre_install.lua`, install/env hooks |
 | Environment plugin | Provide env vars and PATH entries without tool versions | `hooks/mise_env.lua`, optional `hooks/mise_path.lua` |
+| Package plugin | A machine-global manager for `[bootstrap.packages]` | `hooks/package_installed.lua`, `hooks/package_install.lua`, optional `package_upgrade`/`package_uninstall` |
+| asdf plugin | An existing shell-based tool integration | asdf `bin/` scripts |
 
 Prefer vfox-style plugins for new plugin work. vfox is cross-platform, uses Lua through mise's built-in runtime, and provides modules for common operations.
 
@@ -46,6 +48,41 @@ Tool plugins manage one tool and fit custom installs, source builds, legacy vers
 Required hooks include version listing and pre-install/download behavior. Use rolling release metadata and checksums when a channel like `nightly` or `stable` keeps the same version name but changes content.
 
 Tool plugins can support attestations for downloaded artifacts; record verification in lockfiles when available.
+
+`ctx.options` carries typed tool options in the download, install, and env hooks. Declare build prerequisites so mise can report or install them (gated by the `system_deps` setting):
+
+```lua
+PLUGIN = {
+  name = "php",
+  systemDependencies = {
+    { bin = "bison", version = ">=3.0",
+      packages = { brew = "bison", apt = "bison", dnf = "bison" } },
+    { pkgconfig = "libxml-2.0",
+      packages = { brew = "libxml2", apt = "libxml2-dev", dnf = "libxml2-devel" } },
+  },
+}
+```
+
+Each entry names exactly one of `bin`, `pkgconfig`, `sharedlib`, or `command`; `packages` is a per-manager install hint.
+
+## Package Plugins
+
+A package plugin is a vfox plugin that manages host-owned state for `[bootstrap.packages]` rather than installing versioned tools under mise's data directory.
+
+```text
+mise-vscode-extensions/
+├── metadata.lua
+├── mise.plugin.toml          # [package-manager] declaration
+└── hooks/
+    ├── package_installed.lua
+    ├── package_install.lua
+    ├── package_upgrade.lua
+    └── package_uninstall.lua
+```
+
+The `package_installed` + `package_install` pair is what identifies the repository as a package plugin; with only one it stays an ordinary vfox plugin, and adding `backend_install.lua` makes it a tool backend instead — package and tool-backend plugins must live in separate repositories.
+
+Contracts: `PackageInstalled` must report state without prompting or making changes, versions are opaque strings, and the plugin must not use `sudo`.
 
 ## Environment Plugins
 

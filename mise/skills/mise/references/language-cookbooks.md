@@ -42,6 +42,8 @@ alias = "b"
 run = "npm run build"
 ```
 
+For `npm:`-backed CLIs, approve reviewed dependency builds with the backend-neutral `allow_builds` option rather than any `*_args` flag — see [dev-tools.md](dev-tools.md).
+
 For pnpm/corepack workflows, use a postinstall hook or task to enable package-manager setup, then make dev/test/build tasks depend on an install task with `sources`/`outputs` tied to the lockfile:
 
 ```toml
@@ -84,21 +86,24 @@ run = "pytest tests/"
 run = "ruff check src/"
 ```
 
-For `uv` projects, mise detects `.python-version` but does not automatically use uv's virtualenv unless configured. Use one of:
+`_.python.venv` in `[env]` is the only supported venv spelling. The `virtualenv` tool option in `[tools]` is deprecated and will be removed.
+
+For `uv` projects, mise does not automatically use uv's virtualenv unless configured. `python.uv_venv_auto` walks up for a `uv.lock` to find the project — without one the setting is a no-op:
 
 ```toml
 [settings]
-python.uv_venv_auto = "source"
-# or:
-# python.uv_venv_auto = "create|source"
+python.uv_venv_auto = "source"          # activate an existing .venv
+# python.uv_venv_auto = "create|source" # create it first if missing
 ```
 
-or:
+or, for projects not using uv:
 
 ```toml
 [env]
 _.python.venv = { path = ".venv" }
 ```
+
+These are separate code paths: `uv_create_args` and `python_create_args` in `_.python.venv` do not apply to `python.uv_venv_auto`. mise honors `UV_PROJECT_ENVIRONMENT` when choosing the environment path.
 
 Sync mise's Python with uv's `.python-version` when needed:
 
@@ -107,6 +112,10 @@ mise sync python --uv
 ```
 
 Use `uv run --script` shebangs in TOML tasks or file tasks for script-local dependencies.
+
+## Ruby
+
+mise installs precompiled Ruby binaries by default and falls back to compiling with `ruby-build`. On hosts without a build toolchain set `ruby.compile=false` so a missing binary errors instead of pulling in build dependencies.
 
 ## General Pattern
 

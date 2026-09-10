@@ -27,7 +27,11 @@ eval "$(mise activate zsh --shims)" # e.g. ~/.zprofile
 eval "$(mise activate zsh)"         # e.g. ~/.zshrc
 ```
 
-`mise activate` removes the shim directory from PATH when it takes over, so this combination is intentional.
+PATH activation removes the shim farms only when the effective toolset has no `lazy = true` declaration and `not_found_auto_install` is off. With either enabled, activation keeps the shim dirs *behind* real tool paths so lazy bootstrap commands stay reachable without dispatch overhead.
+
+To keep shims out of full activation regardless, `mise settings set activate_shims false` and restart the shell. Command wrappers use their own `command-wrappers/bin` directory and stay active; explicit `mise activate --shims` still works.
+
+To manage these snippets declaratively as part of machine setup, use `[bootstrap.mise_shell_activate]` — see [bootstrap.md](bootstrap.md).
 
 ## Shims
 
@@ -44,6 +48,7 @@ Limitations:
 - Env vars from `[env]` are loaded when a shim is called, not into the shell by itself.
 - `cd`, `enter`, `leave`, and `watch_files` hooks require `mise activate`; `preinstall` and `postinstall` do not.
 - `which node` may show the shim; use `mise which node` to find the real executable.
+- An unresolvable shim silently falls back to the next same-named executable on PATH. Set `not_found_system_fallback = false` (alongside `not_found_auto_install = false`) when it should fail loudly instead.
 
 Run `mise reshim` only when the shim directory is missing expected executables. mise normally updates shims during installs, updates, and removals.
 
