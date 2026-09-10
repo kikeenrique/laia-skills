@@ -1,6 +1,6 @@
 ---
 name: mise
-description: Manage mise-en-place (`mise`) workflows for dev tool versions, project configuration, shell activation/shims, environment variables, task runner setup, hooks, generated CI/devcontainer/tool-stub files, plugins/backends, dependency providers, MCP integration, lockfiles, CI, and troubleshooting. Use when the user mentions mise, `mise.toml`, `.mise.toml`, `.tool-versions`, `.miserc.toml`, `mise.lock`, `mise use/install/exec/run/tasks/deps/config/env/trust/plugins/generate/tool-stub/mcp`, migrating from asdf, configuring project dev environments, writing or debugging mise tasks, setting env vars, enabling config environments, managing tool backends, or creating reusable mise guidance.
+description: "Manage mise-en-place (`mise`) workflows for dev tool versions, project configuration, shell activation/shims, environment variables, task runner setup and caching, hooks, machine bootstrap and dotfiles, generated install-script/CI/devcontainer/tool-stub files, plugins/backends, dependency providers, MCP integration, lockfiles, CI, and troubleshooting. Use when the user mentions mise, `mise.toml`, `.mise.toml`, `.tool-versions`, `.miserc.toml`, `mise.lock`, `mise use/install/exec/run/tasks/deps/config/env/trust/plugins/generate/tool-stub/mcp`, `mise bootstrap` or `mise bs`, `[bootstrap.*]`, `[dotfiles]`, `packslip`, `mise lock --bump`, task artifact caching, `mise run --affected`, `MISE_SAFE`, migrating from asdf, configuring project dev environments, writing or debugging mise tasks, setting env vars, enabling config environments, managing tool backends, or creating reusable mise guidance."
 ---
 
 # mise
@@ -32,12 +32,15 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 | Edit `mise.toml`, config precedence, local files, or config environments | [config.md](references/config.md) |
 | Manage tool versions, backends, registry tools, or `.tool-versions` migration | [dev-tools.md](references/dev-tools.md) |
 | Add env vars, dotenv loading, templates, or exported env output | [environments.md](references/environments.md) |
-| Define, run, debug, or optimize `mise run` tasks | [tasks.md](references/tasks.md) |
-| Install or author plugins; choose plugins vs aqua/github/backends | [plugins.md](references/plugins.md) |
-| Create backend, tool, or environment plugins | [plugin-development.md](references/plugin-development.md) |
-| Add hooks, watch files, bootstrap files, CI files, or generated docs/stubs | [hooks-and-generate.md](references/hooks-and-generate.md) |
-| Apply Node.js or Python cookbook patterns | [language-cookbooks.md](references/language-cookbooks.md) |
-| Lockfiles, release-age policy, trust, CI, monorepos, MCP, and advanced safeguards | [advanced.md](references/advanced.md) |
+| Define, run, debug, or optimize `mise run` tasks, including monorepo targets | [tasks.md](references/tasks.md) |
+| Cache task artifacts, infer a workspace graph, or run only affected projects | [workspaces-and-caching.md](references/workspaces-and-caching.md) |
+| Set up a whole machine: OS packages, shell activation, repos, services, macOS defaults | [bootstrap.md](references/bootstrap.md) |
+| Track, link, copy, template, or sync dotfiles | [dotfiles.md](references/dotfiles.md) |
+| Install or author plugins; choose plugins vs packslip/aqua/github/backends | [plugins.md](references/plugins.md) |
+| Create backend, tool, environment, or package plugins | [plugin-development.md](references/plugin-development.md) |
+| Add hooks, watch files, install scripts, CI files, or generated docs/stubs | [hooks-and-generate.md](references/hooks-and-generate.md) |
+| Apply Node.js, Python, or Ruby cookbook patterns | [language-cookbooks.md](references/language-cookbooks.md) |
+| Lockfiles, release-age policy, trust, safe mode, sandboxing, CI, monorepo roots, MCP | [advanced.md](references/advanced.md) |
 
 ## Working Rules
 
@@ -47,10 +50,13 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 - Use `mise run <task>` for project workflows; it activates mise tools and env vars before running the task.
 - Keep committed project config in `mise.toml`; put developer-local overrides in `mise.local.toml` and gitignore local config and local lockfiles.
 - Prefer exact or major versions that match the repo's existing conventions. Use `latest` only when the project already accepts moving versions.
-- Prefer registry, aqua, github, or language backends before asdf-style plugins. Plugins are powerful but carry more trust and maintenance risk.
-- Treat templates, env directives, and `path:` plugin versions as trust-sensitive. Check `mise trust --show` before telling users to trust config.
-- For `npm:` tools, keep lifecycle scripts denied by default unless the user explicitly accepts the install-time code execution risk. Prefer `aube_args` or `pnpm_args` with `--allow-build=<pkg>` for reviewed dependency builds; use `npm_args = "--ignore-scripts=false"` only when broad lifecycle-script execution is intended.
-- Pair moving versions with `[settings] minimum_release_age = "7d"` and lockfiles when the user cares about supply-chain safety and reproducible CI.
+- Prefer `packslip` when the vendor publishes signed manifests, then aqua, then github/gitlab, then language backends, and only then asdf-style plugins. Plugins carry more trust and maintenance risk.
+- Treat templates, env directives, and `path:` plugin versions as trust-sensitive. Safe config (only `min_version`, plain `[tools]`, template-free `[tasks]`) loads without trust, and `mise run/install/exec/watch` auto-trust the active config, so check `mise trust --show` before telling users to trust anything else.
+- For untrusted config — bots, pull-request branches, anything the user did not write — run under `MISE_SAFE=1`.
+- For `npm:` tools, keep lifecycle scripts denied by default unless the user explicitly accepts the install-time code execution risk. Use the backend-neutral `allow_builds = ["<pkg>"]` tool option for reviewed dependency builds; `aube_args` is ignored by the default embedded installer. Use `npm_args = "--ignore-scripts=false"` only when broad lifecycle-script execution is intended.
+- `minimum_release_age` already defaults to `24h`; raise it (e.g. `"7d"`) and pair it with lockfiles when the user cares about supply-chain safety and reproducible CI.
+- `mise bootstrap` is destructive machine setup, not a project command. Always `mise trust` → `mise bootstrap --dry-run` → `mise bootstrap plan` → apply.
+- Keep machine setup in `[bootstrap.*]` and `[dotfiles]`; keep project tools in `[tools]`.
 
 ## Common Edits
 
@@ -111,6 +117,7 @@ Then run:
 ```bash
 mise lock
 mise install --locked
+mise lock --bump --dry-run    # re-resolve fuzzy selectors without touching mise.toml
 ```
 
 Set npm backend install policy:
@@ -120,7 +127,29 @@ Set npm backend install policy:
 minimum_release_age = "7d"
 
 [tools]
-"npm:some-tool" = { version = "latest", aube_args = "--allow-build=esbuild" }
+"npm:some-tool" = { version = "latest", allow_builds = ["esbuild"] }
+```
+
+Defer installing a rarely used tool until first invocation:
+
+```toml
+[tools]
+node = { version = "24", lazy = true }
+"github:example/acme" = { version = "1.2.3", lazy = true, lazy_bins = ["acme"] }
+```
+
+Declare machine setup (see [bootstrap.md](references/bootstrap.md)):
+
+```toml
+[bootstrap.packages]
+"brew:ripgrep" = "latest"
+
+[bootstrap.mise_shell_activate]
+zprofile = "shims"
+zshrc = "activate"
+
+[dotfiles]
+"~/.zshrc/activate" = { block = 'eval "$(mise activate zsh)"' }
 ```
 
 Create a lazy project-local executable:
@@ -135,11 +164,12 @@ mise generate tool-stub ./bin/rg --lock
 
 - If the wrong tool version is active, run `mise config` and `mise ls --current` from the exact directory where the command fails.
 - If activation does not work, inspect shell setup and prefer `mise exec -- <command>` as a reliable temporary path.
-- If task output is confusing under parallel execution, retry with `mise --jobs 1 run <task>` or set an explicit task output style.
+- If task output is confusing under parallel execution, remember style and verbosity are separate axes: `mise run --output interleave --quiet <task>`, or set `task.output` and `task.quiet`. `--jobs 1` already forces interleave.
+- If mise warns about a deprecated setting, check for flat `task_*` names (move them under `task.*`) and `env.mise.*` directives (use `env._.*`).
 - If installs hit GitHub rate limits, configure GitHub authentication or use `mise.lock` so resolved URLs are reused.
-- If config is ignored or prompts for trust, run `mise trust --show`; do not blanket-trust unknown config without reviewing it.
+- If config is ignored or prompts for trust, run `mise trust --show` and `mise doctor`. Remember safe files load untrusted and `mise run/install/exec/watch` auto-trust; `mise trust --all` covers subdirectories too. Do not blanket-trust unknown config without reviewing it.
 - If env vars are missing, compare `mise env --json`, `mise env --dotenv`, and the shell's activation state.
-- If `npm:` installs fail because a package needs lifecycle scripts, first identify the package that needs a build. Prefer `aube`/`pnpm` allowlists before opting into all npm scripts.
+- If `npm:` installs fail because a package needs lifecycle scripts, identify the package that needs a build and add it to `allow_builds` before opting into all npm scripts.
 
 ## Validation
 
@@ -150,6 +180,14 @@ mise config
 mise install --dry-run
 mise tasks
 mise run <changed-task>
+```
+
+When `[bootstrap.*]` or `[dotfiles]` changed:
+
+```bash
+mise bootstrap --dry-run
+mise bootstrap plan
+mise bootstrap status --missing
 ```
 
 For CI changes, prefer `mise install --locked` when a complete `mise.lock` is committed.
