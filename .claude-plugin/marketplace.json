@@ -47,8 +47,8 @@
         "repo": "kikeenrique/laia-skills",
         "ref": "main"
       },
-      "version": "0.2.2",
-      "description": "Autonomous iOS Simulator UI verification flow verified against AXe v1.7.0: build, install, launch, inspect, tap, slider, swipe, drag, batch, screenshot, video, and verify.",
+      "version": "0.3.0",
+      "description": "Autonomous iOS Simulator UI verification flow verified against AXe v1.8.0: build, install, launch, inspect, tap, slider, swipe, drag, batch, screenshot, video, and verify.",
       "author": { "name": "Enrique Garcia" },
       "homepage": "https://github.com/kikeenrique/laia-skills",
       "repository": "https://github.com/kikeenrique/laia-skills",

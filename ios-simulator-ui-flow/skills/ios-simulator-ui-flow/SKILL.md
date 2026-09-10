@@ -1,11 +1,11 @@
 ---
 name: ios-simulator-ui-flow
-description: Autonomous iOS Simulator UI verification flow for iOS apps. Use when asked to test on simulator, verify UI, check a screen, run and screenshot, inspect the accessibility tree, interact with an app via AXe, or after UI changes that need visual verification. Orchestrates build, install, launch, log capture, AXe describe/tap/slider/swipe/drag/type/batch/screenshot/video, and postcondition checks without user intervention.
+description: "Autonomous iOS Simulator UI verification flow for iOS apps. Use when asked to test on simulator, verify UI, check a screen, run and screenshot, inspect the accessibility tree, interact with an app via AXe, or after UI changes that need visual verification. Orchestrates build, install, launch, log capture, AXe describe/tap/slider/swipe/drag/type/batch/screenshot/video, and postcondition checks without user intervention."
 ---
 
 # iOS Simulator UI Verification Flow
 
-Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified against AXe `v1.7.0` (released 2026-05-11) and keeps the workflow command-oriented: use project-native build commands, `xcrun simctl` for lifecycle, and AXe for accessibility-tree inspection, input, screenshots, and video.
+Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified against AXe `v1.8.0` (released 2026-07-20) and keeps the workflow command-oriented: use project-native build commands, `xcrun simctl` for lifecycle, and AXe for accessibility-tree inspection, input, screenshots, and video.
 
 ## Principles
 
@@ -19,10 +19,16 @@ Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified
 ## Prerequisites
 
 - Xcode with the target iOS Simulator runtime installed.
-- AXe `v1.7.0` or newer in `PATH`: `brew install cameroncooke/axe/axe`.
+- AXe `v1.8.0` or newer in `PATH`: `brew install cameroncooke/axe/axe`.
 - `xcsift` for Swift and Xcode build output.
 - A generated Xcode project or workspace. For Tuist projects, run `tuist generate --no-open` before building.
 - A project-local artifact directory such as `tmp/` for screenshots, UI dumps, logs, and video. Create it with `mkdir -p tmp` when needed.
+
+### Xcode Compatibility
+
+AXe `v1.8.0` supports both Xcode 26 and Xcode 27. The HID transport is picked from the target simulator runtime — Indigo on Xcode 26, DTUHID on Xcode 27 — so the commands in this skill are identical on both. On Xcode 27 the Device Hub drives the simulator and `Simulator.app` no longer needs to be open; on Xcode 26 keep launching it. Upstream validated the release against Xcode 26.5 (17F42) / iOS 26.5 and Xcode 27 Beta 3 (27A5218g) / iOS 27.
+
+On Xcode 27, disable Device Hub **Resize Mode** before automating. With it enabled, taps and drags report a successful send while the touches are silently dropped.
 
 ## Capture Project Facts
 
@@ -63,7 +69,7 @@ Boot and wait for readiness when needed:
 ```bash
 xcrun simctl boot "$UDID"
 xcrun simctl bootstatus "$UDID" -b
-open -a Simulator
+open -a Simulator   # required on Xcode 26; optional on Xcode 27 (Device Hub)
 ```
 
 If another simulator is already booted, do not switch targets silently. Use the UDID that matches the requested device and pass that same UDID to every AXe and `simctl` command.
@@ -183,7 +189,7 @@ Capture a screenshot for visual review:
 axe screenshot --udid "$UDID" --output tmp/simulator.png
 ```
 
-Coordinates in `describe-ui` are logical points. AXe `v1.7.0` maps logical points for rotated landscape simulators and letterboxed landscape-only apps automatically, so use `describe-ui` frames directly. If you measured a coordinate from a screenshot PNG, convert pixels to logical points first and confirm with `describe-ui --point`.
+Coordinates in `describe-ui` are logical points. AXe `v1.8.0` maps logical points for rotated landscape simulators and letterboxed landscape-only apps automatically, so use `describe-ui` frames directly. If you measured a coordinate from a screenshot PNG, convert pixels to logical points first and confirm with `describe-ui --point`.
 
 ## 6. Interact With AXe
 
@@ -210,7 +216,7 @@ axe describe-ui --point 200,400 --udid "$UDID"
 axe tap -x 200 -y 400 --udid "$UDID"
 ```
 
-Switches and toggles are handled better in AXe `v1.7.0`: selector taps with default `--tap-style automatic` activate a contained UIKit `UISwitch` or SwiftUI `Toggle` when the matched row or label contains exactly one. Force the style only when troubleshooting:
+Switches and toggles are handled better in AXe `v1.8.0`: selector taps with default `--tap-style automatic` activate a contained UIKit `UISwitch` or SwiftUI `Toggle` when the matched row or label contains exactly one. Force the style only when troubleshooting:
 
 ```bash
 axe tap --label "Notifications" --tap-style physical --udid "$UDID"
@@ -230,7 +236,7 @@ axe slider --label "Volume" --value 40 --element-type Slider --udid "$UDID"
 
 ### Swipes, Drags, Gestures, And Touch
 
-Use the AXe `v1.7.0` coordinate syntax:
+Use the AXe `v1.8.0` coordinate syntax:
 
 ```bash
 axe swipe --start-x 200 --start-y 650 --end-x 200 --end-y 250 --duration 0.5 --udid "$UDID"
@@ -239,6 +245,8 @@ axe gesture scroll-down --udid "$UDID"
 axe gesture swipe-from-left-edge --udid "$UDID"
 axe touch -x 150 -y 250 --down --up --delay 1.0 --udid "$UDID"
 ```
+
+Always verify a `drag` result with `describe-ui`. On Xcode 27 Beta 3, `axe drag` acknowledged the send without delivering the touches, so a success exit code is not evidence the drag happened.
 
 ### Text And Keyboard
 
@@ -261,18 +269,21 @@ axe batch --udid "$UDID" \
   --step 'tap --id "login_email" --wait-timeout 5' \
   --step 'type "person@example.com"' \
   --step 'tap --id "login_submit" --wait-timeout 5' \
-  --step 'sleep 1' \
-  --step 'screenshot --output tmp/after-login.png'
+  --step 'sleep 1'
+
+axe screenshot --udid "$UDID" --output tmp/after-login.png
 ```
 
 Rules:
 
 - Put `--udid` on `axe batch`, not inside step lines.
+- Steps are limited to `tap`, `swipe`, `gesture`, `touch`, `type`, `button`, `key`, `key-sequence`, `key-combo`, plus the pseudo-step `sleep`. `screenshot`, `describe-ui`, and `slider` are not batch steps: run them as separate commands before or after the batch.
 - Use one step source per run: `--step`, `--file`, or `--stdin`.
 - Use `--wait-timeout` for selector taps that cross screens.
 - Use `--ax-cache perStep` when the UI changes between selector taps and you are not using `--wait-timeout`.
 - Add `--continue-on-error` only for best-effort probing.
 - Use discrete `axe slider` calls for slider verification; batch does not provide the same slider post-check.
+- A failing step aborts the run and reports that failure; AXe never replays the failed step or the steps before it, so a batch cannot silently repeat an action.
 
 ## 8. Video
 
@@ -289,6 +300,8 @@ For streaming:
 ```bash
 axe stream-video --udid "$UDID" --fps 10 --format mjpeg > tmp/stream.mjpeg
 ```
+
+`--fps` is honored for both the MJPEG and BGRA stream formats as of `v1.8.0`.
 
 ## 9. Verification Loop
 
@@ -324,15 +337,20 @@ Do not import `ios-build-verify` assumptions wholesale. It is SwiftUI/iOS-versio
 - **Element not found**: Refresh `describe-ui`, confirm the identifier/label exists, scroll if the row is virtualized, or add a stable accessibility identifier to the app.
 - **Tap dispatch succeeds but state does not change**: Add `--wait-timeout`, `--post-delay`, or a batch `sleep`; confirm the target with `describe-ui --point`; use physical tap style for switch/toggle edge cases.
 - **Coordinate taps miss**: Use logical points from `describe-ui`, not raw screenshot pixels.
+- **Xcode 27: input reports success but nothing happens**: Check Device Hub **Resize Mode**. With it enabled, taps and drags are acknowledged and then silently dropped. Disable it for UI automation.
+- **Drag reported success but the view did not move**: Never trust the drag exit code. Verify with `describe-ui`; on Xcode 27 Beta 3 `axe drag` acknowledged sends it did not deliver. Fall back to `axe swipe` or `axe touch` sequences and verify again.
+- **"AXe could not deliver simulator input"**: The simulator may have restarted or disconnected. Confirm it is booted (`xcrun simctl bootstatus "$UDID" -b`) and retry. An unknown UDID reports separately and points at `axe list-simulators`.
+- **Worried about a duplicated action after a failure**: Do not re-run an input step defensively. AXe only releases possibly-held touch state after an ambiguous physical-tap failure and never re-sends touch-down, so a failure cannot produce a double tap. Its per-simulator input broker also recovers stale state on its own.
+- **Accessibility query fails transiently**: AXe restarts `testmanagerd` and retries once, and `describe-ui --point` retries transient fallback results with backoff. Re-run once before treating it as an app bug.
 - **Slider or picker is flaky**: Prefer `axe slider` for sliders. For wheel-style controls, drive with gestures or drag and verify with `describe-ui`.
 - **Build output is noisy or missing errors**: Make sure stderr is captured with `2>&1` and the command is piped through `xcsift -f toon`.
-- **AXe breaks after Xcode updates**: AXe uses private SimulatorKit and AccessibilityPlatformTranslation frameworks. Recheck the installed AXe release and upstream notes before assuming the app is broken.
+- **AXe breaks after an Xcode update**: AXe depends on Xcode-version-specific simulator internals. `v1.8.0` supports Xcode 26 (Indigo transport) and Xcode 27 (Device Hub / DTUHID transport); anything outside that contract is unsupported. Recheck the installed AXe release, the upstream release notes, and https://axe-cli.com/docs before assuming the app is broken.
 
 ## Exit Checklist
 
 Before reporting success:
 
-- The AXe upstream version used for guidance is known. Current target: `v1.7.0`.
+- The AXe upstream version used for guidance is known. Current target: `v1.8.0`.
 - Every AXe simulator-interaction command includes `--udid "$UDID"`.
 - No stale AXe syntax is used, especially old `swipe --from/--to` forms.
 - Selector taps are preferred over coordinates where possible.
