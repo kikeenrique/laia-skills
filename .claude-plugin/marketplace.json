@@ -64,8 +64,8 @@
         "repo": "kikeenrique/laia-skills",
         "ref": "main"
       },
-      "version": "0.1.0",
-      "description": "Offline, citable Apple developer documentation search with the cupertino CLI: Apple docs, Human Interface Guidelines, sample code, Swift Evolution, and Swift packages.",
+      "version": "0.2.0",
+      "description": "Offline, citable Apple developer documentation search with the cupertino CLI (verified against cupertino v1.4.2): docs, HIG, sample code, Swift Evolution, Swift packages, symbol and inheritance queries, per-platform version filters, and SDK freshness checks.",
       "author": { "name": "Enrique Garcia" },
       "homepage": "https://github.com/kikeenrique/laia-skills",
       "repository": "https://github.com/kikeenrique/laia-skills",
