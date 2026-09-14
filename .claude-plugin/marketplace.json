@@ -58,6 +58,23 @@
       "skills": ["./ios-simulator-ui-flow/skills/ios-simulator-ui-flow"]
     },
     {
+      "name": "cupertino",
+      "source": {
+        "source": "github",
+        "repo": "kikeenrique/laia-skills",
+        "ref": "main"
+      },
+      "version": "0.1.0",
+      "description": "Offline, citable Apple developer documentation search with the cupertino CLI: Apple docs, Human Interface Guidelines, sample code, Swift Evolution, and Swift packages.",
+      "author": { "name": "Enrique Garcia" },
+      "homepage": "https://github.com/kikeenrique/laia-skills",
+      "repository": "https://github.com/kikeenrique/laia-skills",
+      "license": "MIT",
+      "category": "development",
+      "keywords": ["apple", "swift", "swiftui", "uikit", "documentation", "cupertino"],
+      "skills": ["./cupertino/skills/cupertino"]
+    },
+    {
       "name": "visionos-agents",
       "source": {
         "source": "github",

@@ -41,6 +41,7 @@ Each plugin pins the upstream project the skill documents under `<plugin>/upstre
 | `ios-simulator-ui-flow` | `ios-simulator-ui-flow/upstream` | [`cameroncooke/AXe`](https://github.com/cameroncooke/AXe) |
 | `mise` | `mise/upstream` | [`jdx/mise`](https://github.com/jdx/mise) |
 | `visionos-agents` | `visionos-agents/upstream` | [`tomkrikorian/visionOSAgents`](https://github.com/tomkrikorian/visionOSAgents) |
+| `cupertino` | `cupertino/upstream` | [`CupertinoHQ/cupertino`](https://codeberg.org/CupertinoHQ/cupertino) (Codeberg) |
 
 **Rules:**
 - Pin to a released tag whenever possible (detached HEAD on the tag commit). Avoid tracking `main`.

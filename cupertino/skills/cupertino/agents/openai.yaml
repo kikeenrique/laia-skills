@@ -1,0 +1,7 @@
+interface:
+  display_name: "Cupertino"
+  short_description: "Offline, citable search over Apple developer documentation"
+  icon_small: "./assets/cupertino-icon.png"
+  icon_large: "./assets/cupertino-icon.png"
+  brand_color: "#0A84FF"
+  default_prompt: "Use $cupertino to look up and verify the Apple APIs in this code against Apple's documentation."

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://code.claude.com/schemas/plugin.json",
+  "name": "cupertino",
+  "version": "0.1.0",
+  "description": "Offline, citable Apple developer documentation search with the cupertino CLI: Apple docs, Human Interface Guidelines, sample code, Swift Evolution, and Swift packages.",
+  "author": { "name": "Enrique Garcia" },
+  "homepage": "https://github.com/kikeenrique/laia-skills",
+  "repository": "https://github.com/kikeenrique/laia-skills",
+  "license": "MIT",
+  "keywords": ["apple", "swift", "swiftui", "uikit", "documentation", "cupertino"],
+  "category": "development",
+  "skills": ["./skills/cupertino"]
+}
