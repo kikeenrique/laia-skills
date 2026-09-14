@@ -14,6 +14,7 @@ A [Claude Code plugin marketplace](https://code.claude.com/docs/en/plugin-market
 /plugin install replay@laia-skills
 /plugin install ios-simulator-ui-flow@laia-skills
 /plugin install visionos-agents@laia-skills
+/plugin install cupertino@laia-skills
 ```
 
 Check for updates anytime with `/plugin marketplace update`.
@@ -26,6 +27,7 @@ Check for updates anytime with `/plugin marketplace update`.
 | [ios-simulator-ui-flow](ios-simulator-ui-flow/skills/ios-simulator-ui-flow/SKILL.md) | Autonomous iOS Simulator UI verification flow verified against AXe v1.8.0: builds, installs, launches, captures logs, inspects and interacts with UI via AXe CLI, uses tap/slider/swipe/drag/batch/screenshot/video, and verifies results without user intervention. |
 | [replay](replay/skills/replay/SKILL.md) | HTTP recording, playback, and stubbing for Swift tests using the [Replay](https://github.com/mattt/Replay) framework — HAR fixtures, Swift Testing traits, matcher tuning, secret redaction, and `AsyncHTTPClient` support. |
 | [visionos-agents](visionos-agents/skills/visionos-agents/SKILL.md) | visionOS / Apple Vision Pro spatial computing suite (22 skills): spatial SwiftUI, RealityKit (rendering, animation/physics, audio, ECS), ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, and Swift Charts 3D. Skills vendored from [tomkrikorian/visionOSAgents](https://github.com/tomkrikorian/visionOSAgents) (MIT). |
+| [cupertino](cupertino/skills/cupertino/SKILL.md) | Offline, citable Apple developer documentation search with the [cupertino](https://codeberg.org/CupertinoHQ/cupertino) CLI: Apple docs, Human Interface Guidelines, sample code, Swift Evolution, and Swift packages. Skill forked from upstream `skills/cupertino` (MIT). |
 
 ## Versioning
 
