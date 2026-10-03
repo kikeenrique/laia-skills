@@ -62,7 +62,9 @@ laia-skills/
 │   ├── scripts/validate_skills.rb     moved from scripts/
 │   └── config/
 │       ├── agents.json                hub + mirror agent dirs (tool behaviour)
-│       └── schemas/                   JSON Schemas for skills.json and agents.json
+│       ├── recheck.json               AI agent command used to re-check first-party skills
+│       ├── prompts/recheck.md         prompt template for that re-check
+│       └── schemas/                   JSON Schemas for the config files
 ├── docs/
 │   └── plans/                         committed plans and design docs (this file)
 ├── skills.json                       manifest: which skills come from which source
@@ -211,8 +213,8 @@ renders and prompts when attached to a TTY.
 | `laiaskills sources` | Configured sources: skills available vs installed, pinned commit, tracked branch |
 | `laiaskills check` | `git fetch --tags` each source (third-party and first-party `upstream/`). Tagged sources: report newer release tags. Untagged: report commits on the tracked branch that touch each skill's path. Also reports copies that are **not synced** or **modified** (offline). `--exit-code` → 1 when anything needs action |
 | `laiaskills sync [skill…]` | Make every installed copy match its pin: install missing, re-copy not-synced, remove skills dropped from `skills.json`. Refuses to overwrite **modified** copies without `--force`. Run after `git pull` |
-| `laiaskills upgrade [skill\|source…]` | Target = newest release tag, or branch head when untagged (`--to <tag\|commit>` overrides). Show `git log` + `diff --stat` for the skill path, confirm (Noora yes/no, or `--yes`), move the submodule pointer, re-resolve paths, re-copy into the hub, `git add`. Staged only; `--commit` also runs `commit`. Interactive runs end with "Commit now?" (default no) |
-| `laiaskills commit` | Commit the staged pin changes as one Conventional Commit with a generated message, e.g. `chore(third-party): bump swiftui-pro to v1.3.0, axe to 4f2c1a9` with one body line per skill (old → new). For a first-party `upstream/` re-pin it also bumps that plugin's `version` in `plugin.json` and `marketplace.json`, as `AGENTS.md` requires. Shows the message for confirmation (or `--yes`). **Never pushes** |
+| `laiaskills upgrade [skill\|source…]` | Target = newest release tag, or branch head when untagged (`--to <tag\|commit>` overrides). Show `git log` + `diff --stat` for the skill path, confirm (Noora yes/no, or `--yes`), move the submodule pointer, re-resolve paths, re-copy into the hub, `git add`. For a first-party `upstream/` pin it then runs the automated re-check (5.6; `--no-agent` skips it). Staged only; `--commit` also runs `commit`. Interactive runs end with "Commit now?" (default no) |
+| `laiaskills commit` | Commit the staged changes with generated Conventional Commit messages: third-party bumps in one `chore(third-party): bump swiftui-pro to v1.3.0, axe to 4f2c1a9` commit (one body line per skill, old → new); each re-checked first-party plugin in its own `docs(<plugin>): refresh guidance for <upstream> <tag>` commit, with the plugin `version` bumped in `plugin.json` and `marketplace.json` (patch by default; asks for minor/major/breaking). Shows the messages for confirmation (or `--yes`). **Never pushes** |
 | `laiaskills add <owner/repo[@skill] \| url> [--skill name…]` | Add the submodule (+ `shallow`), list its skills (Noora multiple-choice), write `skills.json` entries |
 | `laiaskills install [skill…]` | Copy the skill at its pin into the hub and create mirror links. `--working-tree` copies uncommitted first-party edits for testing |
 | `laiaskills remove <skill>` | Move the hub copy to the backups folder, remove mirror links and the `skills.json` entry; drop the submodule when no skill uses it |
@@ -220,7 +222,45 @@ renders and prompts when attached to a TTY.
 | `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL); emits `skills.json` + `git submodule add` plan for review |
 | `laiaskills browse <source>` | Optional (v2): Noora picker over a source's skills, preview `SKILL.md` |
 
-### 5.6 Technology
+### 5.6 Automated re-check of first-party skills
+
+`AGENTS.md` requires that a first-party plugin's `upstream/` pin only moves together with a re-check of
+the skill against the new release. `upgrade` automates that re-check by running an AI agent CLI
+non-interactively; the tool keeps control of git, validation, and committing.
+
+1. **Move the pin** to the new release tag and stage it.
+2. **Run the agent** from `tools/config/recheck.json` with the prompt template
+   `tools/config/prompts/recheck.md`, filled with the plugin, old and new tag, and paths. The template
+   asks the agent to re-check the skill against the new upstream release, update it where needed,
+   follow `AGENTS.md`, and not touch git.
+3. **Guard the result:**
+   - Only files under `first-party/<plugin>/skills/` may change; anything else is reverted and reported.
+   - `tools/scripts/validate_skills.rb` must pass. If it fails, the run fails and the changes stay
+     staged for inspection, uncommitted.
+   - If the agent changed nothing, the commit body records "re-checked against `<tag>`, no changes
+     needed".
+4. **Summarize and stage**: changed files and a diff summary.
+5. **`commit`** (separately, or `--commit`) bumps the plugin `version` and writes the commit.
+
+```json
+{
+  "$schema": "./schemas/recheck.schema.json",
+  "agent": "claude",
+  "commands": {
+    "claude": ["claude", "-p", "{prompt}", "--permission-mode", "acceptEdits"],
+    "codex": ["codex", "exec", "{prompt}"]
+  },
+  "timeoutMinutes": 30
+}
+```
+
+- The agent command lives in config, so a changed CLI flag is a config edit, not a code change. Exact
+  flags are confirmed against each CLI's `--help` at implementation time.
+- `--no-agent` skips step 2 when updating the skill by hand.
+- Runs locally only: it needs the agent CLI installed and signed in, so not in CI.
+- No scanning for old version strings and no hand-off brief: the agent re-checks the whole skill.
+
+### 5.7 Technology
 
 - Swift 6.1+, SwiftPM package at `tools/laiaskills/`. **Runs on Linux and macOS 13+.**
 - Cross-platform rules (Linux has no AppKit, CryptoKit, or Trash API):
@@ -255,6 +295,7 @@ renders and prompts when attached to a TTY.
 | Upstream repo renamed (e.g. `everything-claude-code` → `affaan-m/ECC`) | Medium | GitHub redirects; `doctor` flags redirected submodule URLs so `.gitmodules` gets the new name |
 | Upstream repo deleted | Low | Pinned commit survives locally; fork critical sources |
 | Swift toolchain / strict concurrency | Low | Mostly synchronous code, subprocess git |
+| AI agent CLI flags or behaviour change (re-check) | Medium | Command in `recheck.json`; result guarded by allowed paths + validator |
 
 Estimate: MVP under ~1k lines of Swift; a few hours per month afterwards.
 
@@ -297,7 +338,7 @@ Numbers are kept stable so they can be referred to in discussion.
 - **(12) Config file format.** JSON, with a schema file next to it so editors can autocomplete and the
   validator can catch mistakes.
 - **(13) CI and Linux.** The tool must work on **Linux and macOS**. GitHub CI builds and tests it on
-  Linux (`ubuntu-latest`), the cheaper runner, next to the existing skill validator. See 5.6 for what
+  Linux (`ubuntu-latest`), the cheaper runner, next to the existing skill validator. See 5.7 for what
   that rules out.
 - **(14) Licences.** Using third-party skills this way is fine: submodules are only references (a URL
   and a commit), so nothing is redistributed, and copies go to `~/.agents/skills`, not into the repo.
@@ -306,18 +347,13 @@ Numbers are kept stable so they can be referred to in discussion.
 - **(16) Supported agents.** Only `~/.agents/skills` receives real copies. Any other agent gets links
   into it; adding one is a single line in `tools/config/agents.json`.
 
+- **(17) Re-checking first-party skills after an upstream re-pin.** Automated: `upgrade` runs an AI agent
+  to re-check and update the skill, then guards the result (allowed paths, validator). No confirmation
+  prompt; you review before committing. See 5.6.
+
 ### Open questions
 
-**(17) Should `commit` ask for confirmation before re-pinning a first-party `upstream/`?**
-
-- *Why it matters:* `AGENTS.md` says a first-party plugin's `upstream/` pin is only moved after
-  re-checking the skill against the new upstream release, and the plugin `version` is bumped in the same
-  commit. `commit` does the version bump, but it cannot know whether the skill was re-checked.
-- *Options:* ask "Re-checked `<plugin>` against `<tag>`?" before committing such a pin; or trust the user
-  and commit without asking.
-- *Recommendation:* ask (skippable with `--yes`).
-
-**(8–11)** are one-off migration items, listed in section 9.
+None right now. **(8–11)** are one-off migration items, listed in section 9.
 
 ## 9. Migration (one-off)
 
