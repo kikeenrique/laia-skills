@@ -15,9 +15,9 @@ description = "Run the laiaskills tests on this machine"
 run = "swift test --package-path tools/laiaskills"
 
 [tasks."laiaskills:test-linux"]
-description = "Run the laiaskills tests in the swift:6.1 Linux image (needs docker or podman)"
+description = "Run the laiaskills tests in the swift:6.4 Ubuntu 26.04 image, like CI (needs docker or podman)"
 run = '''
 runtime=$(command -v docker || command -v podman) || { echo "Install docker or podman first." >&2; exit 1; }
-"$runtime" run --rm --volume "$MISE_PROJECT_ROOT:/repo" --workdir /repo swift:6.1 \
+"$runtime" run --rm --volume "$MISE_PROJECT_ROOT:/repo" --workdir /repo swift:6.4.0-resolute \
   bash -c "git config --global --add safe.directory '*' && swift test --package-path tools/laiaskills --build-path tools/laiaskills/.build/linux"
 '''

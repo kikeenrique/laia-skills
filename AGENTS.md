@@ -82,7 +82,7 @@ To add an external skill repo as a plugin:
 
 ## laiaskills
 
-Swift package in `tools/laiaskills/` (Swift 6.1+, must build and pass tests on **Linux and macOS**; CI runs it on Linux). Design: [`docs/plans/skills-repo-design.md`](docs/plans/skills-repo-design.md).
+Swift package in `tools/laiaskills/` (Swift 6.4+, must build and pass tests on **Linux and macOS**; CI runs it on Ubuntu 26.04). Design: [`docs/plans/skills-repo-design.md`](docs/plans/skills-repo-design.md).
 
 - `LaiaSkillsKit` holds all logic and is what the tests cover; the `laiaskills` target only parses arguments and renders. All Noora calls go through `UI.swift`.
 - No macOS-only APIs (AppKit, CryptoKit, the Trash API). Shell out to `git` instead of using libgit2 or the GitHub API.

@@ -262,14 +262,15 @@ non-interactively; the tool keeps control of git, validation, and committing.
 
 ### 5.7 Technology
 
-- Swift 6.1+, SwiftPM package at `tools/laiaskills/`. **Runs on Linux and macOS 13+.**
+- Swift 6.4+, SwiftPM package at `tools/laiaskills/`. **Runs on Linux and macOS 13+.** The minimum
+  matches CI: Ubuntu 26.04 only has Swift builds from 6.4 on, so CI and the minimum moved together.
 - Cross-platform rules (Linux has no AppKit, CryptoKit, or Trash API):
   - Old copies go to `~/.agents/.laiaskills/backups/<name>-<timestamp>/` on both systems, never to the
     system Trash.
   - File hashes come from `git hash-object`; no CryptoKit (git is already required).
   - `show --open` uses `open -R` on macOS and `xdg-open` on Linux.
   - Only Foundation APIs available in swift-corelibs-foundation; `HOME` read from the environment.
-- Noora supports Linux (its own CI builds and tests on `ubuntu-latest` with Swift 6.1.2).
+- Noora supports Linux (its own CI builds and tests on Ubuntu).
 - Dependencies: `apple/swift-argument-parser`, `tuist/Noora` pinned `.upToNextMinor` (still 0.x:
   0.57.3 on 2026-09-23). Configs are JSON read with Foundation's `JSONDecoder`: no parser dependency.
 - JSON Schemas in `tools/config/schemas/` give editor completion and validation (JSON has no comments,
@@ -277,13 +278,13 @@ non-interactively; the tool keeps control of git, validation, and committing.
   (no JSON Schema gem), and `laiaskills` rejects configs it cannot decode.
 - Shell out to `git`; no libgit2, no GitHub API → no tokens, no rate limits, Codeberg works.
 - All Noora calls behind one `UI` protocol so a breaking Noora minor touches one file.
-- Run via a mise task in this repo (`mise run skills:check`), no install or notarization needed.
+- Run via a mise task in this repo (`mise run laiaskills check`), no install or notarization needed.
 - Tests: fixture repos built in a temp dir under `tmp/` (moved, ambiguous, removed skills; foreign
   entries in agent dirs).
-- CI: a Linux job in `.github/workflows/ci.yml` installs Swift (`SwiftyLab/setup-swift`, as Noora does)
-  and runs `swift build` + `swift test` in `tools/laiaskills/`, with the SwiftPM build folder cached.
-  Locally, a mise task runs the same tests in the `swift:6.1` Docker image to reproduce Linux results on
-  a Mac.
+- CI: a job on `ubuntu-26.04` in `.github/workflows/ci.yml` installs Swift 6.4 (`SwiftyLab/setup-swift`)
+  and runs `swift build` + `swift test` in `tools/laiaskills/`, with the SwiftPM build folder cached
+  under a key that includes the image and Swift version. Locally, `mise run laiaskills:test-linux` runs
+  the same tests in the `swift:6.4.0-resolute` (Ubuntu 26.04) Docker image.
 
 ## 6. Maintenance profile
 
@@ -349,7 +350,7 @@ Numbers are kept stable so they can be referred to in discussion.
 - **(12) Config file format.** JSON, with a schema file next to it so editors can autocomplete and the
   validator can catch mistakes.
 - **(13) CI and Linux.** The tool must work on **Linux and macOS**. GitHub CI builds and tests it on
-  Linux (`ubuntu-latest`), the cheaper runner, next to the existing skill validator. See 5.7 for what
+  Linux (`ubuntu-26.04`), the cheaper runner, next to the existing skill validator. See 5.7 for what
   that rules out.
 - **(14) Licences.** Using third-party skills this way is fine: submodules are only references (a URL
   and a commit), so nothing is redistributed, and copies go to `~/.agents/skills`, not into the repo.
