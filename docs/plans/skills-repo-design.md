@@ -273,7 +273,8 @@ non-interactively; the tool keeps control of git, validation, and committing.
 - Dependencies: `apple/swift-argument-parser`, `tuist/Noora` pinned `.upToNextMinor` (still 0.x:
   0.57.3 on 2026-09-23). Configs are JSON read with Foundation's `JSONDecoder`: no parser dependency.
 - JSON Schemas in `tools/config/schemas/` give editor completion and validation (JSON has no comments,
-  so notes go in `description` fields); the validator checks configs against them.
+  so notes go in `description` fields). The validator runs matching structural checks in plain Ruby
+  (no JSON Schema gem), and `laiaskills` rejects configs it cannot decode.
 - Shell out to `git`; no libgit2, no GitHub API → no tokens, no rate limits, Codeberg works.
 - All Noora calls behind one `UI` protocol so a breaking Noora minor touches one file.
 - Run via a mise task in this repo (`mise run skills:check`), no install or notarization needed.
@@ -301,10 +302,20 @@ Estimate: MVP under ~1k lines of Swift; a few hours per month afterwards.
 
 ## 7. Phases
 
-0. **Restructure** (section 4), one `refactor!` commit, validator green.
+0. **Restructure** (section 4), one `refactor!` commit, validator green. **Done.**
 1. **Read-only MVP**: `list`, `check` (including first-party upstream tags), `doctor`, plus the Linux CI
-   job from day one.
-2. **Write ops**: `add`, `install`, `remove`, `upgrade`, `import`.
+   job from day one. **Done.** Notes from implementing it:
+   - `skills.json` lists the 27 first-party skills plus `axe`, taken from the existing
+     `first-party/ios-simulator-ui-flow/upstream` pin. AXe ships two `axe` skills (`Skills/CLI/axe` and
+     the copy bundled in `Sources/AXe/Resources/skills/axe`), so `axe` uses `path: "Skills/CLI/axe"`,
+     the fuller one with `references/`.
+   - When stdout is not a terminal, tables print as plain aligned columns; Noora would otherwise
+     truncate cells to 80 columns.
+   - `doctor` finds a Claude Code plugin's skills the way Claude Code does: the marketplace entry's
+     `skills` list first, then the plugin's `plugin.json`, then its `skills/` folder.
+   - Tasks run through a root `mise.toml` (mise's own format, like `.gitmodules` is git's).
+2. **Write ops**: `add`, `install`, `sync`, `remove`, `upgrade`, `commit`, `show`, `sources`, `import`,
+   and the automated re-check (5.6).
 3. **Migration**: import → add submodules → `sync` (replaces previously installed copies with tracked
    ones) → clean up stale lock entries (checklist in section 9).
 4. **Optional**: `browse`.

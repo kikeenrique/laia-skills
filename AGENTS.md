@@ -39,7 +39,7 @@ Top-level folders are grouped by ownership, not packaging:
 |--------|----------|
 | `first-party/` | Skills authored here and published through the marketplace. Each subfolder is one plugin. |
 | `third-party/` | External skill repos used here, as git submodules. Never published, never copied into `first-party/`. (Planned.) |
-| `tools/` | Tooling: `tools/scripts/validate_skills.rb`, and later the `laiaskills` CLI and its configs. |
+| `tools/` | Tooling: `tools/scripts/validate_skills.rb`, the `laiaskills` CLI (`tools/laiaskills/`), and its configs (`tools/config/`). |
 | `docs/` | Committed plans and design docs. See [`docs/plans/skills-repo-design.md`](docs/plans/skills-repo-design.md). |
 | `tmp/` | Untracked scratch space. Not in `.gitignore`; never commit it. |
 
@@ -77,7 +77,17 @@ To add an external skill repo as a plugin:
 3. Write `first-party/<plugin>/.claude-plugin/plugin.json` (model it on `first-party/replay/`). Skill paths are relative to the plugin dir: `"skills": ["./skills/<skill>", ...]`.
 4. Register the plugin in `.claude-plugin/marketplace.json`. Skill paths there are relative to the repo root: `"skills": ["./first-party/<plugin>/skills/<skill>", ...]`.
 5. Add a `/plugin install <plugin>@laia-skills` line and a Plugins-table row to `README.md`.
-6. Run `ruby tools/scripts/validate_skills.rb` and fix any errors before committing.
+6. List each of its skills in `skills.json` as `{ "source": "first-party" }` (the validator warns about first-party skills that are missing).
+7. Run `mise run validate` (or `ruby tools/scripts/validate_skills.rb`) and fix any errors before committing.
+
+## laiaskills
+
+Swift package in `tools/laiaskills/` (Swift 6.1+, must build and pass tests on **Linux and macOS**; CI runs it on Linux). Design: [`docs/plans/skills-repo-design.md`](docs/plans/skills-repo-design.md).
+
+- `LaiaSkillsKit` holds all logic and is what the tests cover; the `laiaskills` target only parses arguments and renders. All Noora calls go through `UI.swift`.
+- No macOS-only APIs (AppKit, CryptoKit, the Trash API). Shell out to `git` instead of using libgit2 or the GitHub API.
+- Tests build their fixtures (including real git repos) under the repo's `tmp/laiaskills-tests/`, never the system temp folder.
+- Tasks: `mise run laiaskills <command>`, `mise run laiaskills:test`, and `mise run laiaskills:test-linux` (Docker or Podman).
 
 ### Validator conventions (`tools/scripts/validate_skills.rb`)
 

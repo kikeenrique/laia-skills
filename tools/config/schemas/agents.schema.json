@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kikeenrique/laia-skills/tools/config/schemas/agents.schema.json",
+  "title": "laiaskills agent folders",
+  "description": "The hub every skill is copied into, and the mirror folders whose entries link to it.",
+  "type": "object",
+  "required": ["hub", "mirrors"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "hub": { "$ref": "#/$defs/target" },
+    "mirrors": {
+      "type": "object",
+      "description": "Keyed by agent id, e.g. `claude`.",
+      "propertyNames": { "pattern": "^[a-z0-9-]+$" },
+      "additionalProperties": { "$ref": "#/$defs/target" }
+    }
+  },
+  "$defs": {
+    "target": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "description": "Folder path; a leading `~/` means the home folder." },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

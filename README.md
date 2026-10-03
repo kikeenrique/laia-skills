@@ -35,8 +35,20 @@ Check for updates anytime with `/plugin marketplace update`.
 |--------|----------|
 | `first-party/` | Skills authored here and published through this marketplace, one plugin per folder |
 | `third-party/` | External skill repos used here, as git submodules, not published (planned) |
-| `tools/` | Tooling: the skill validator now, the `laiaskills` CLI later |
+| `tools/` | Tooling: the skill validator and the `laiaskills` CLI (Swift, macOS and Linux) |
 | `docs/` | Plans and design docs, e.g. [the repo and `laiaskills` design](docs/plans/skills-repo-design.md) |
+
+## laiaskills
+
+A small CLI (work in progress) that tracks every skill this repo uses, first-party and third-party, and
+installs them into `~/.agents/skills`. `skills.json` lists the skills; `tools/config/agents.json` lists
+the agent folders. Run it with [mise](https://mise.jdx.dev):
+
+```text
+mise run laiaskills list      # skills, versions, and install state
+mise run laiaskills check     # newer upstream releases for every pinned source
+mise run laiaskills doctor    # problems in the config and the agent folders
+```
 
 ## Versioning
 

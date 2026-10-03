@@ -379,6 +379,98 @@ def validate_readme(plugin_dirs)
   end
 end
 
+SKILL_NAME_RE = /\A[a-z0-9]+(-[a-z0-9]+)*\z/
+SOURCE_RE = %r{\A(first-party|first-party/[^/]+/upstream|third-party/[^/]+)\z}
+
+def load_json_object(path)
+  rel = relative(path)
+  unless File.exist?(path)
+    error("#{rel}: missing")
+    return nil
+  end
+  data = JSON.parse(read(path))
+  return data if data.is_a?(Hash)
+
+  error("#{rel}: must be a JSON object")
+  nil
+rescue JSON::ParserError => e
+  error("#{rel}: invalid JSON: #{e.message}")
+  nil
+end
+
+def unexpected_keys(rel, hash, allowed)
+  extra = hash.keys - allowed
+  error("#{rel}: unexpected keys: #{extra.join(', ')}") unless extra.empty?
+end
+
+def submodule_paths
+  gitmodules = File.join(ROOT, ".gitmodules")
+  return [] unless File.exist?(gitmodules)
+
+  read(gitmodules).scan(/^\s*path\s*=\s*(\S+)\s*$/).flatten
+end
+
+# Structural checks matching tools/config/schemas/*.schema.json. Submodule contents are not checked
+# here (they are not cloned in CI); `laiaskills doctor` resolves them.
+def validate_laiaskills_configs(skill_dirs)
+  manifest_path = File.join(ROOT, "skills.json")
+  manifest = load_json_object(manifest_path)
+  if manifest
+    rel = relative(manifest_path)
+    unexpected_keys(rel, manifest, %w[$schema skills])
+    skills = manifest["skills"]
+    if skills.is_a?(Hash)
+      submodules = submodule_paths
+      skills.each do |name, entry|
+        error("#{rel}: skill name `#{name}` must be lowercase hyphen-case") unless name.match?(SKILL_NAME_RE)
+        unless entry.is_a?(Hash) && entry["source"].is_a?(String)
+          error("#{rel}: `#{name}` needs a string `source`")
+          next
+        end
+        unexpected_keys("#{rel} `#{name}`", entry, %w[source path])
+        source = entry["source"]
+        if !source.match?(SOURCE_RE)
+          error("#{rel}: `#{name}` has invalid source `#{source}`")
+        elsif source == "first-party"
+          found = Dir.glob(File.join(PLUGINS_ROOT, "*", "skills", name, "SKILL.md"))
+          error("#{rel}: `#{name}` is not a first-party skill") if found.empty?
+        elsif !submodules.include?(source)
+          error("#{rel}: `#{name}` source `#{source}` is not a submodule path in .gitmodules")
+        end
+        path = entry["path"]
+        error("#{rel}: `#{name}` path must be a string") unless path.nil? || path.is_a?(String)
+      end
+
+      listed = skills.select { |_, entry| entry.is_a?(Hash) && entry["source"] == "first-party" }.keys
+      skill_dirs.map { |dir| File.basename(dir) }.uniq.each do |name|
+        warning("#{rel}: first-party skill `#{name}` is not listed, so laiaskills won't install it") unless listed.include?(name)
+      end
+    else
+      error("#{rel}: needs a `skills` object")
+    end
+  end
+
+  agents_path = File.join(ROOT, "tools", "config", "agents.json")
+  agents = load_json_object(agents_path)
+  return unless agents
+
+  rel = relative(agents_path)
+  unexpected_keys(rel, agents, %w[$schema hub mirrors])
+  targets = { "hub" => agents["hub"] }
+  if agents["mirrors"].is_a?(Hash)
+    agents["mirrors"].each { |id, target| targets["mirrors.#{id}"] = target }
+  else
+    error("#{rel}: needs a `mirrors` object")
+  end
+  targets.each do |key, target|
+    unless target.is_a?(Hash) && target["path"].is_a?(String) && !target["path"].empty?
+      error("#{rel}: `#{key}` needs a non-empty string `path`")
+      next
+    end
+    unexpected_keys("#{rel} `#{key}`", target, %w[path description])
+  end
+end
+
 skills = skill_dirs
 plugins = plugin_dirs
 if skills.empty?
@@ -394,6 +486,7 @@ docs = markdown_files(skills)
 validate_no_todos(docs)
 validate_markdown_links(docs)
 validate_readme(plugins)
+validate_laiaskills_configs(skills)
 
 @warnings.each { |message| warn("warning: #{message}") }
 

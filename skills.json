@@ -1,0 +1,33 @@
+{
+  "$schema": "./tools/config/schemas/skills.schema.json",
+  "skills": {
+    "arkit-camera-access-providers": { "source": "first-party" },
+    "arkit-hand-tracking-provider": { "source": "first-party" },
+    "arkit-reference-tracking-providers": { "source": "first-party" },
+    "arkit-rendering-context-providers": { "source": "first-party" },
+    "arkit-spatial-tracking-providers": { "source": "first-party" },
+    "arkit-visionos-developer": { "source": "first-party" },
+    "axe": { "source": "first-party/ios-simulator-ui-flow/upstream", "path": "Skills/CLI/axe" },
+    "coding-standards-enforcer": { "source": "first-party" },
+    "cupertino": { "source": "first-party" },
+    "ios-simulator-ui-flow": { "source": "first-party" },
+    "mise": { "source": "first-party" },
+    "realitykit-animation-physics": { "source": "first-party" },
+    "realitykit-audio-spatial": { "source": "first-party" },
+    "realitykit-ecs-systems": { "source": "first-party" },
+    "realitykit-rendering-materials": { "source": "first-party" },
+    "realitykit-visionos-developer": { "source": "first-party" },
+    "replay": { "source": "first-party" },
+    "shadergraph-editor": { "source": "first-party" },
+    "shareplay-developer": { "source": "first-party" },
+    "spatial-app-architecture": { "source": "first-party" },
+    "spatial-swiftui-developer": { "source": "first-party" },
+    "swiftui-chart3d-developer": { "source": "first-party" },
+    "tkr-skill-writer": { "source": "first-party" },
+    "usd-editor": { "source": "first-party" },
+    "usdkit-runtime-developer": { "source": "first-party" },
+    "visionos-agents": { "source": "first-party" },
+    "visionos-immersive-media-developer": { "source": "first-party" },
+    "visionos-widgetkit-developer": { "source": "first-party" }
+  }
+}

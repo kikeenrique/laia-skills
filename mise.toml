@@ -1,0 +1,23 @@
+[tasks.validate]
+description = "Validate first-party skills, the marketplace, and the laiaskills configs"
+run = "ruby tools/scripts/validate_skills.rb"
+
+[tasks.laiaskills]
+description = "Run the laiaskills CLI, e.g. `mise run laiaskills check`"
+run = "swift run --quiet --package-path tools/laiaskills laiaskills"
+
+[tasks."laiaskills:build"]
+description = "Build laiaskills"
+run = "swift build --package-path tools/laiaskills"
+
+[tasks."laiaskills:test"]
+description = "Run the laiaskills tests on this machine"
+run = "swift test --package-path tools/laiaskills"
+
+[tasks."laiaskills:test-linux"]
+description = "Run the laiaskills tests in the swift:6.1 Linux image (needs docker or podman)"
+run = '''
+runtime=$(command -v docker || command -v podman) || { echo "Install docker or podman first." >&2; exit 1; }
+"$runtime" run --rm --volume "$MISE_PROJECT_ROOT:/repo" --workdir /repo swift:6.1 \
+  bash -c "git config --global --add safe.directory '*' && swift test --package-path tools/laiaskills --build-path tools/laiaskills/.build/linux"
+'''

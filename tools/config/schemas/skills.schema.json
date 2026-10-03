@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kikeenrique/laia-skills/tools/config/schemas/skills.schema.json",
+  "title": "laiaskills manifest",
+  "description": "Which skills laiaskills installs, and the source each one comes from. Source details (URL, branch, shallow) live in .gitmodules.",
+  "type": "object",
+  "required": ["skills"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "skills": {
+      "type": "object",
+      "description": "Keyed by the skill's frontmatter `name`.",
+      "propertyNames": { "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 64 },
+      "additionalProperties": { "$ref": "#/$defs/skill" }
+    }
+  },
+  "$defs": {
+    "skill": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "`first-party` for skills under first-party/<plugin>/skills/, otherwise a submodule path such as third-party/<owner>__<repo> or first-party/<plugin>/upstream.",
+          "pattern": "^(first-party|first-party/[^/]+/upstream|third-party/[^/]+)$"
+        },
+        "path": {
+          "type": "string",
+          "description": "Folder of the skill inside the source. Only needed when the name matches more than one skill.",
+          "pattern": "^[^/].*[^/]$"
+        }
+      }
+    }
+  }
+}

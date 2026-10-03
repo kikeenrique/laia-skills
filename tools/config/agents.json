@@ -1,0 +1,13 @@
+{
+  "$schema": "./schemas/agents.schema.json",
+  "hub": {
+    "path": "~/.agents/skills",
+    "description": "Only real install target; read natively by Codex, Gemini CLI, Copilot, OpenCode, Amp"
+  },
+  "mirrors": {
+    "claude": {
+      "path": "~/.claude/skills",
+      "description": "Entries are symlinks to the hub copies"
+    }
+  }
+}
