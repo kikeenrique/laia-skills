@@ -299,19 +299,23 @@ Numbers are kept stable so they can be referred to in discussion.
 - **(13) CI and Linux.** The tool must work on **Linux and macOS**. GitHub CI builds and tests it on
   Linux (`ubuntu-latest`), the cheaper runner, next to the existing skill validator. See 5.6 for what
   that rules out.
+- **(14) Licences.** Using third-party skills this way is fine: submodules are only references (a URL
+  and a commit), so nothing is redistributed, and copies go to `~/.agents/skills`, not into the repo.
+  Rule: never copy third-party files into `first-party/`.
 - **(15) Per-project skills.** Not needed. Skills are installed once for the whole machine.
 - **(16) Supported agents.** Only `~/.agents/skills` receives real copies. Any other agent gets links
   into it; adding one is a single line in `tools/config/agents.json`.
 
 ### Open questions
 
-**(14) Is it fine, licence-wise, to use third-party skills this way?**
+**(17) Should `commit` ask for confirmation before re-pinning a first-party `upstream/`?**
 
-- *Why it matters:* this repo is public. Copying someone else's files into it would mean redistributing
-  them.
-- *Answer:* submodules are only references (a URL and a commit), so nothing is redistributed. Copies go
-  to your own `~/.agents/skills`, not into the repo. The rule: never copy third-party files into
-  `first-party/`.
+- *Why it matters:* `AGENTS.md` says a first-party plugin's `upstream/` pin is only moved after
+  re-checking the skill against the new upstream release, and the plugin `version` is bumped in the same
+  commit. `commit` does the version bump, but it cannot know whether the skill was re-checked.
+- *Options:* ask "Re-checked `<plugin>` against `<tag>`?" before committing such a pin; or trust the user
+  and commit without asking.
+- *Recommendation:* ask (skippable with `--yes`).
 
 **(8–11)** are one-off migration items, listed in section 9.
 
