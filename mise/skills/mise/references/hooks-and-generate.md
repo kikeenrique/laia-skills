@@ -129,6 +129,6 @@ mise generate tool-stub ./bin/bootstrap-tool --url https://example.com/tool.tar.
 
 It is **not** `mise bootstrap`, which is declarative machine setup — see [bootstrap.md](bootstrap.md). `--windows` additionally writes a `<WRITE>.cmd` launcher (requires `--write`, generated on any host). `-l/--localize` keeps mise's binary, tools, cache, and state under `.mise/`; gitignore that directory.
 
-Use `--dry-run` when available before writing generated files. Review generated CI/devcontainer files for project-specific paths, shells, and lockfile expectations.
+Use `--dry-run` when available before writing generated files. Review generated CI/devcontainer files for project-specific paths, shells, and lockfile expectations. `mise generate github-action` still pins `jdx/mise-action@v3`; bump it to `@v5` (see [github-actions.md](github-actions.md)).
 
 For HTTP tool stubs, `mise generate tool-stub` can download archives to detect checksums and binary paths, append platform-specific URLs to existing stubs, fetch missing checksum data with `--fetch`, embed locked platform data with `--lock`, and choose `--checksum-algorithm sha256` instead of the default `blake3`.

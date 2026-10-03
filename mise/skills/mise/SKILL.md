@@ -1,6 +1,6 @@
 ---
 name: mise
-description: "Manage mise-en-place (`mise`) workflows for dev tool versions, project configuration, shell activation/shims, environment variables, task runner setup and caching, hooks, machine bootstrap and dotfiles, generated install-script/CI/devcontainer/tool-stub files, plugins/backends, dependency providers, MCP integration, lockfiles, CI, and troubleshooting. Use when the user mentions mise, `mise.toml`, `.mise.toml`, `.tool-versions`, `.miserc.toml`, `mise.lock`, `mise use/install/exec/run/tasks/deps/config/env/trust/plugins/generate/tool-stub/mcp`, `mise bootstrap` or `mise bs`, `[bootstrap.*]`, `[dotfiles]`, `packslip`, `mise lock --bump`, task artifact caching, `mise run --affected`, `MISE_SAFE`, migrating from asdf, configuring project dev environments, writing or debugging mise tasks, setting env vars, enabling config environments, managing tool backends, or creating reusable mise guidance."
+description: "Manage mise-en-place (`mise`) workflows for dev tool versions, project configuration, shell activation/shims, environment variables, task runner setup and caching, hooks, machine bootstrap and dotfiles, generated install-script/CI/devcontainer/tool-stub files, plugins/backends, dependency providers, MCP integration, lockfiles, CI including GitHub Actions via `jdx/mise-action`, and troubleshooting. Use when the user mentions mise, `mise.toml`, `.mise.toml`, `.tool-versions`, `.miserc.toml`, `mise.lock`, `mise use/install/exec/run/tasks/deps/config/env/trust/plugins/generate/tool-stub/mcp`, `mise bootstrap` or `mise bs`, `[bootstrap.*]`, `[dotfiles]`, `packslip`, `mise lock --bump`, task artifact caching, `mise run --affected`, `MISE_SAFE`, migrating from asdf, configuring project dev environments, writing or debugging mise tasks, setting env vars, enabling config environments, managing tool backends, or creating reusable mise guidance."
 ---
 
 # mise
@@ -40,6 +40,7 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 | Create backend, tool, environment, or package plugins | [plugin-development.md](references/plugin-development.md) |
 | Add hooks, watch files, install scripts, CI files, or generated docs/stubs | [hooks-and-generate.md](references/hooks-and-generate.md) |
 | Apply Node.js, Python, or Ruby cookbook patterns | [language-cookbooks.md](references/language-cookbooks.md) |
+| Set up mise in GitHub Actions with `jdx/mise-action` (inputs, caching, lockfiles, v5 upgrade) | [github-actions.md](references/github-actions.md) |
 | Lockfiles, release-age policy, trust, safe mode, sandboxing, CI, monorepo roots, MCP | [advanced.md](references/advanced.md) |
 
 ## Working Rules
@@ -190,4 +191,4 @@ mise bootstrap plan
 mise bootstrap status --missing
 ```
 
-For CI changes, prefer `mise install --locked` when a complete `mise.lock` is committed.
+For CI changes, prefer `mise install --locked` when a complete `mise.lock` is committed. On GitHub Actions, `jdx/mise-action@v5` does this automatically; see [github-actions.md](references/github-actions.md).

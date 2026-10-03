@@ -133,7 +133,7 @@ mise generate install-script -l -w    # once, locally; commit bin/mise, gitignor
 ./bin/mise exec -- npm test
 ```
 
-Set `MISE_VERSION` to select a release; the wrapper otherwise defaults to the version that generated it. On GitHub Actions use `jdx/mise-action@v4`, adding `install_args: --locked` when a lockfile is committed.
+Set `MISE_VERSION` to select a release; the wrapper otherwise defaults to the version that generated it. On GitHub Actions use `jdx/mise-action@v5`, which adds `--locked` automatically when a `mise.lock` is committed; see [github-actions.md](github-actions.md).
 
 Cache installed tools with a key covering runner OS/arch, mise config, and the lockfile, and still run `mise install` after restoring. Use `mise lock --platform ...` beforehand if lockfiles lack the CI platform, and configure GitHub authentication for uncached release metadata.
 

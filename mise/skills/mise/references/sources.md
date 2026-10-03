@@ -59,6 +59,7 @@ Use these official docs when exact behavior, flags, or current defaults matter:
 - `mise mcp`: https://mise.jdx.dev/mcp.html
 - CLI Reference: https://mise.jdx.dev/cli/
 - Lockfiles: https://mise.jdx.dev/dev-tools/mise-lock.html
+- GitHub Action (`jdx/mise-action`): https://github.com/jdx/mise-action
 - `mise bootstrap`: https://mise.jdx.dev/cli/bootstrap.html
 - `mise lock`: https://mise.jdx.dev/cli/lock.html
 - `mise packslip`: https://mise.jdx.dev/cli/packslip.html
