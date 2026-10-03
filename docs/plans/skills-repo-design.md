@@ -1,14 +1,14 @@
-# Skills repo and `skillctl` — design
+# Skills repo and `laiaskills` — design
 
 Status: **draft**, nothing implemented yet. Last updated 2026-10-03.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
-ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `skillctl`, does the mechanics.
+ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
 
 ## 1. Why
 
 Skills come from many repos and are installed into several agent directories. Typical skill managers
-install **copies** of a skill, which causes three recurring problems:
+install **untracked copies** of a skill, which causes three recurring problems:
 
 - **Silent staleness.** A copy does not change when its source does. Update checks, where they exist,
   often cover only some install sources, so outdated skills go unnoticed.
@@ -17,8 +17,9 @@ install **copies** of a skill, which causes three recurring problems:
 - **No review trail.** Updates overwrite files in place; there is no diff to review and no history to
   roll back to.
 
-The design removes copies: sources are git submodules pinned at exact commits, installs are symlinks
-into them, and git history is the audit trail.
+The design keeps copies but **tracks** them: sources are git submodules pinned at exact commits, each
+installed copy records the pin it came from, so both "upstream is newer than the pin" and "the copy is
+behind the pin" are detectable, and git history is the audit trail.
 
 ## 2. Goals and non-goals
 
@@ -27,7 +28,10 @@ Goals:
 - One repo pins every skill source at an exact commit; upgrades are reviewed diffs and commits.
 - `check` answers "what is outdated?" for third-party sources **and** for first-party plugins' `upstream/`
   pins (the manual re-verify-and-bump chore in `AGENTS.md`).
-- Installed state cannot drift from the repo: agent skill dirs hold symlinks into the working tree.
+- Installs are independent of the repo: copies in `~/.agents/skills`, so the repo can be moved,
+  re-cloned, or switched to another branch without affecting any agent.
+- Installed copies never drift silently: every copy is traceable to its pin, and `check`/`sync` close
+  the gap.
 - Low maintenance: depend on `git` and a stable `SKILL.md` convention, not on catalogs or APIs.
 
 Non-goals (v1):
@@ -54,12 +58,14 @@ laia-skills/
 ├── third-party/                      external skill repos consumed, never published
 │   └── <owner>__<repo>/               one submodule per source repo
 ├── tools/
-│   ├── skillctl/                      Swift package (Noora UI)
+│   ├── laiaskills/                    Swift package (Noora UI)
 │   ├── scripts/validate_skills.rb     moved from scripts/
-│   └── config/agents.toml             agent install targets (tool behaviour)
+│   └── config/
+│       ├── agents.json                hub + mirror agent dirs (tool behaviour)
+│       └── schemas/                   JSON Schemas for skills.json and agents.json
 ├── docs/
 │   └── plans/                         committed plans and design docs (this file)
-├── skills.toml                       manifest: which skills, from which source, to which agents
+├── skills.json                       manifest: which skills come from which source
 ├── .gitmodules
 ├── AGENTS.md
 ├── README.md
@@ -94,46 +100,53 @@ working, but deep links and path-based installs (`npx skills add …/mise/skills
 
 ## 5. Specs
 
-### 5.1 `skills.toml` (root, data)
+### 5.1 `skills.json` (root, data)
 
-```toml
-[sources."twostraws/SwiftUI-Agent-Skill"]
-url = "https://github.com/twostraws/SwiftUI-Agent-Skill"
-branch = "main"                        # tracked branch; the submodule commit is the version
-shallow = true
-
-[sources."AvdLee/Xcode-Build-Optimization-Agent-Skill"]
-url = "https://github.com/AvdLee/Xcode-Build-Optimization-Agent-Skill"
-branch = "main"
-
-[skills]
-swiftui-pro = { source = "twostraws/SwiftUI-Agent-Skill", path = "swiftui-pro" }  # path only to break ties
-xcode-build-fixer = { source = "AvdLee/Xcode-Build-Optimization-Agent-Skill" }
-axe = { source = "first-party:ios-simulator-ui-flow/upstream" }   # reuse an existing upstream pin
-mise = { source = "first-party" }
-watchos = { source = "rshankras/claude-code-apple-skills" }
+```json
+{
+  "$schema": "./tools/config/schemas/skills.schema.json",
+  "skills": {
+    "swiftui-pro": { "source": "third-party/twostraws__SwiftUI-Agent-Skill", "path": "swiftui-pro" },
+    "xcode-build-fixer": { "source": "third-party/AvdLee__Xcode-Build-Optimization-Agent-Skill" },
+    "axe": { "source": "first-party/ios-simulator-ui-flow/upstream" },
+    "mise": { "source": "first-party" },
+    "watchos": { "source": "third-party/rshankras__claude-code-apple-skills" }
+  }
+}
 ```
 
-- A source maps 1:1 to a submodule at `third-party/<owner>__<repo>`.
+- **Sources live in `.gitmodules`, not here.** `url`, `branch` (what `check` compares against; default:
+  the remote's default branch), and `shallow` are native submodule settings, so `skills.json` only maps
+  each skill to a submodule path. One source of truth per fact.
+- **The commit is the pin, versions when available.** The submodule commit recorded in this repo is the
+  installed version; there is no version field. When the upstream publishes release tags (semver), the
+  pin is the commit of a tag and `list`/`show` display that tag; `check` reports newer tags and
+  `upgrade` moves to the newest one. Without tags, `check` compares against the tracked branch head.
+  First-party `upstream/` pins follow the same rule (already the `AGENTS.md` policy).
+- `first-party` resolves to `first-party/*/skills/<name>`. A source may also be an existing first-party
+  `upstream/` pin, so no duplicate submodule (AXe ships its skill inside `cameroncooke/AXe`).
 - `first-party` resolves to `first-party/*/skills/<name>`; `first-party:<path>` points at a pin that
   already exists, so no duplicate submodule (AXe ships its skill inside `cameroncooke/AXe`).
 - **Skill identity = source + frontmatter `name`**, never the path. `path` is optional and exists only
   to settle ambiguity (e.g. twostraws repos contain both `swiftui-pro/` and a nested
   `swiftui-pro/skills/swiftui-pro/`).
 
-### 5.2 `tools/config/agents.toml` (tool behaviour)
+### 5.2 `tools/config/agents.json` (tool behaviour)
 
-```toml
-[hub]
-path = "~/.agents/skills"              # the only real install target; read natively by Codex,
-                                       # Gemini CLI, Copilot, OpenCode, Amp, …
-
-[mirrors.claude]
-path = "~/.claude/skills"              # entries link to the hub, as today
-
-# [mirrors.vibe]
-# path = "~/.vibe/skills"              # enable when used
+```json
+{
+  "$schema": "./schemas/agents.schema.json",
+  "hub": {
+    "path": "~/.agents/skills",
+    "description": "Only real install target; read natively by Codex, Gemini CLI, Copilot, OpenCode, Amp"
+  },
+  "mirrors": {
+    "claude": { "path": "~/.claude/skills", "description": "Entries link to the hub" }
+  }
+}
 ```
+
+Mistral Vibe (`~/.vibe/skills`) would be one more `mirrors` entry when needed.
 
 - **Only `~/.agents/skills` is supported as a target.** Agents that read it natively need nothing else.
 - An agent with its own directory is a **mirror**: each entry is a relative symlink to the hub entry
@@ -152,22 +165,39 @@ path = "~/.claude/skills"              # entries link to the hub, as today
 
 ### 5.4 Install model
 
-- Two hops, one source of truth:
+- **Copy into the hub, link the mirrors:**
 
   ```
-  ~/.claude/skills/<name>  →  ~/.agents/skills/<name>  →  <repo>/third-party/<owner>__<repo>/<path>
-        (mirror)                    (hub)                    or <repo>/first-party/<plugin>/skills/<name>
+  <repo> pinned commit ──copy──▶ ~/.agents/skills/<name>/  ◀── ~/.claude/skills/<name>  (symlink)
+                                        (hub, real folder)          (mirror)
   ```
 
-- Installed content always equals the checked-out commit; there is nothing to copy or hash. Upgrading a
-  skill only moves the submodule pointer; neither link changes unless the skill moved inside its repo.
+  The repo is only needed to install, sync, or upgrade. Agents never read from it, so it can be moved,
+  re-cloned, or left on any branch.
+- **Copies come from the commit, not the checkout.** Files are exported from git at the pinned commit
+  (`git archive <commit> <path>`), so a dirty submodule or half-edited first-party skill is never
+  installed by accident. `install --working-tree <skill>` copies uncommitted first-party edits on
+  purpose, for testing.
+- **Atomic replace.** Export into a staging folder under the hub, then swap with a rename; the previous
+  copy goes to `~/.agents/.laiaskills/backups/`. A failed install never leaves a half-written skill.
+- **Install state** lives in `~/.agents/.laiaskills.json` (machine-local, never in the repo, next to
+  the `npx skills` lock). Per skill: source submodule, skill path, commit, tag (if any), the git tree id
+  of the skill folder at that commit, a per-file blob-hash manifest, and the install time.
+- **Three-way status per skill**, computed by `check`/`list`:
+
+  | State | Meaning | Fix |
+  |---|---|---|
+  | up to date | copy = pin = newest upstream | — |
+  | **pin outdated** | upstream has a newer tag/commit than the pin | `upgrade` |
+  | **not synced** | copy ≠ pin (e.g. pin moved after a `git pull` or `upgrade` on another machine) | `sync` |
+  | **modified** | copy's files differ from its recorded manifest (edited in place) | `sync --force` (shows the diff first) |
+
+  File hashes are git blob ids (`git hash-object`), so they compare directly with the pinned commit's
+  tree, offline.
 - Global scope only. No workspace/project-level installs.
-- **Ownership**: `skillctl` only creates, replaces, or removes hub links that resolve into this repo, and
-  mirror links that point at a hub entry it owns.
-  Anything else in an agent dir (real folders, `npx skills` installs, other managers, links elsewhere) is
-  foreign: reported by `doctor`, never touched.
-- No lock file of its own: the submodule commits are the lock; symlinks are derived state that
-  `install` can always rebuild.
+- **Ownership**: `laiaskills` only creates, replaces, or removes hub folders recorded in its state file,
+  and mirror links that point at those folders. Anything else in an agent dir (other folders, `npx skills`
+  installs, other managers, links elsewhere) is foreign: reported by `doctor`, never touched.
 
 ### 5.5 Commands
 
@@ -176,28 +206,43 @@ renders and prompts when attached to a TTY.
 
 | Command | Does |
 |---|---|
-| `skillctl list [filter]` | Skills in `skills.toml`: source, pinned commit, install state per agent, "outdated" marker from the last fetch (offline). `--all` adds foreign skills found in agent dirs |
-| `skillctl show <skill>` | Detail view: description, source, agents, every install location, rendered `SKILL.md`. `--open` reveals in Finder |
-| `skillctl sources` | Configured sources: skills available vs installed, pinned commit, tracked branch |
-| `skillctl check` | `git fetch` each source; report commits on the tracked branch that touch each skill's path. For `first-party/*/upstream`, report newer release tags. `--exit-code` → 1 when anything is outdated |
-| `skillctl upgrade [skill\|source…]` | Show `git log` + `diff --stat` for the skill path, confirm (Noora yes/no, or `--yes`), move the submodule pointer, re-resolve paths, relink, `git add`. `--commit` writes a `chore(third-party): bump …` commit. **Never pushes** |
-| `skillctl add <owner/repo[@skill] \| url> [--skill name…]` | Add the submodule (+ `shallow`), list its skills (Noora multiple-choice), write `skills.toml` entries |
-| `skillctl install [skill…]` | Create/repair symlinks for the configured agents |
-| `skillctl remove <skill>` | Remove our symlinks and the `skills.toml` entry; drop the submodule when no skill uses it |
-| `skillctl doctor` | Broken symlinks (hub or mirror), mirror entries that bypass the hub, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names |
-| `skillctl import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL); emits `skills.toml` + `git submodule add` plan for review |
-| `skillctl browse <source>` | Optional (v2): Noora picker over a source's skills, preview `SKILL.md` |
+| `laiaskills list [filter]` | Skills in `skills.json`: source, pinned commit, install state per agent, "outdated" marker from the last fetch (offline). `--all` adds foreign skills found in agent dirs |
+| `laiaskills show <skill>` | Detail view: description, source, agents, every install location, rendered `SKILL.md`. `--open` reveals it in the file manager (Finder or `xdg-open`) |
+| `laiaskills sources` | Configured sources: skills available vs installed, pinned commit, tracked branch |
+| `laiaskills check` | `git fetch --tags` each source (third-party and first-party `upstream/`). Tagged sources: report newer release tags. Untagged: report commits on the tracked branch that touch each skill's path. Also reports copies that are **not synced** or **modified** (offline). `--exit-code` → 1 when anything needs action |
+| `laiaskills sync [skill…]` | Make every installed copy match its pin: install missing, re-copy not-synced, remove skills dropped from `skills.json`. Refuses to overwrite **modified** copies without `--force`. Run after `git pull` |
+| `laiaskills upgrade [skill\|source…]` | Target = newest release tag, or branch head when untagged (`--to <tag\|commit>` overrides). Show `git log` + `diff --stat` for the skill path, confirm (Noora yes/no, or `--yes`), move the submodule pointer, re-resolve paths, re-copy into the hub, `git add`. Staged only; `--commit` also runs `commit`. Interactive runs end with "Commit now?" (default no) |
+| `laiaskills commit` | Commit the staged pin changes as one Conventional Commit with a generated message, e.g. `chore(third-party): bump swiftui-pro to v1.3.0, axe to 4f2c1a9` with one body line per skill (old → new). For a first-party `upstream/` re-pin it also bumps that plugin's `version` in `plugin.json` and `marketplace.json`, as `AGENTS.md` requires. Shows the message for confirmation (or `--yes`). **Never pushes** |
+| `laiaskills add <owner/repo[@skill] \| url> [--skill name…]` | Add the submodule (+ `shallow`), list its skills (Noora multiple-choice), write `skills.json` entries |
+| `laiaskills install [skill…]` | Copy the skill at its pin into the hub and create mirror links. `--working-tree` copies uncommitted first-party edits for testing |
+| `laiaskills remove <skill>` | Move the hub copy to the backups folder, remove mirror links and the `skills.json` entry; drop the submodule when no skill uses it |
+| `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names |
+| `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL); emits `skills.json` + `git submodule add` plan for review |
+| `laiaskills browse <source>` | Optional (v2): Noora picker over a source's skills, preview `SKILL.md` |
 
 ### 5.6 Technology
 
-- Swift 6, macOS 13+, SwiftPM package at `tools/skillctl/`.
+- Swift 6.1+, SwiftPM package at `tools/laiaskills/`. **Runs on Linux and macOS 13+.**
+- Cross-platform rules (Linux has no AppKit, CryptoKit, or Trash API):
+  - Old copies go to `~/.agents/.laiaskills/backups/<name>-<timestamp>/` on both systems, never to the
+    system Trash.
+  - File hashes come from `git hash-object`; no CryptoKit (git is already required).
+  - `show --open` uses `open -R` on macOS and `xdg-open` on Linux.
+  - Only Foundation APIs available in swift-corelibs-foundation; `HOME` read from the environment.
+- Noora supports Linux (its own CI builds and tests on `ubuntu-latest` with Swift 6.1.2).
 - Dependencies: `apple/swift-argument-parser`, `tuist/Noora` pinned `.upToNextMinor` (still 0.x:
-  0.57.3 on 2026-09-23), Swift TOML parser (to choose).
+  0.57.3 on 2026-09-23). Configs are JSON read with Foundation's `JSONDecoder`: no parser dependency.
+- JSON Schemas in `tools/config/schemas/` give editor completion and validation (JSON has no comments,
+  so notes go in `description` fields); the validator checks configs against them.
 - Shell out to `git`; no libgit2, no GitHub API → no tokens, no rate limits, Codeberg works.
 - All Noora calls behind one `UI` protocol so a breaking Noora minor touches one file.
 - Run via a mise task in this repo (`mise run skills:check`), no install or notarization needed.
 - Tests: fixture repos built in a temp dir under `tmp/` (moved, ambiguous, removed skills; foreign
   entries in agent dirs).
+- CI: a Linux job in `.github/workflows/ci.yml` installs Swift (`SwiftyLab/setup-swift`, as Noora does)
+  and runs `swift build` + `swift test` in `tools/laiaskills/`, with the SwiftPM build folder cached.
+  Locally, a mise task runs the same tests in the `swift:6.1` Docker image to reproduce Linux results on
+  a Mac.
 
 ## 6. Maintenance profile
 
@@ -205,8 +250,9 @@ renders and prompts when attached to a TTY.
 |---|---|---|
 | Skills move/renamed inside source repos | High | Identity by name, re-discovered on every run |
 | Source repo layouts vary | Medium | Generic `SKILL.md` scan, optional `path` |
-| Agent directory conventions change | Medium | `tools/config/agents.toml` |
+| Agent directory conventions change | Medium | `tools/config/agents.json` |
 | Noora 0.x breaking minors | Medium | `.upToNextMinor` pin, single `UI` layer |
+| Upstream repo renamed (e.g. `everything-claude-code` → `affaan-m/ECC`) | Medium | GitHub redirects; `doctor` flags redirected submodule URLs so `.gitmodules` gets the new name |
 | Upstream repo deleted | Low | Pinned commit survives locally; fork critical sources |
 | Swift toolchain / strict concurrency | Low | Mostly synchronous code, subprocess git |
 
@@ -215,33 +261,63 @@ Estimate: MVP under ~1k lines of Swift; a few hours per month afterwards.
 ## 7. Phases
 
 0. **Restructure** (section 4), one `refactor!` commit, validator green.
-1. **Read-only MVP**: `list`, `check` (including first-party upstream tags), `doctor`.
+1. **Read-only MVP**: `list`, `check` (including first-party upstream tags), `doctor`, plus the Linux CI
+   job from day one.
 2. **Write ops**: `add`, `install`, `remove`, `upgrade`, `import`.
-3. **Migration**: import → add submodules → switch agent dirs to symlinks → remove previously installed
-   copies and stale lock entries (checklist in section 9).
-4. **Optional**: `browse`, CI job building and testing `skillctl`.
+3. **Migration**: import → add submodules → `sync` (replaces previously installed copies with tracked
+   ones) → clean up stale lock entries (checklist in section 9).
+4. **Optional**: `browse`.
 
-## 8. Pending decisions
+## 8. Decisions
 
-| # | Decision | Options | Leaning |
-|---|---|---|---|
-| 1 | Tool name | `skillctl` (already used by `nibzard/skillctl`, `agent-rt/skillctl` on GitHub) vs another | Rename to avoid confusion, or accept since it's never distributed |
-| 2 | First-party symlinks target | Live working tree vs a `git worktree` on `main` | Worktree on `main`, so half-done edits are not live everywhere |
-| 3 | ~~Claude links~~ | **Decided:** mirrors link to the hub (`~/.agents/skills`), as Claude does today | — |
-| 4 | Version tracking for third-party | Branch + pinned commit vs tags | Branch; most skill repos never tag |
-| 5 | Large sources (`github/awesome-copilot`, `affaan-m/everything-claude-code`, `wshobson/agents`) | Shallow submodule vs sparse checkout vs fork-and-trim | Shallow first; sparse only if size hurts |
-| 6 | Does `upgrade` commit? | Stage only vs `--commit` opt-in vs always | Stage by default, `--commit` opt-in |
-| 7 | Repos that publish a Claude marketplace (9 sources) | Submodule here vs `/plugin` | Submodule here, one mechanism; avoid installing both (duplicate skills) |
-| 8–11 | Migration specifics | See section 9 | — |
-| 12 | TOML parser dependency | Which Swift package | Evaluate in phase 1 |
-| 13 | CI for `skillctl` | None vs macOS runner build + test | None until phase 4 |
-| 14 | Third-party licenses | Submodules (no redistribution) are enough? | Yes, as long as nothing is copied into `first-party/` |
-| 15 | ~~Workspace scope~~ | **Decided:** global only, not needed for now | — |
-| 16 | ~~Extra install targets~~ | **Decided:** only `~/.agents/skills` is a target; other agents are mirrors linking into it (Mistral Vibe = one config line when needed) | — |
+Numbers are kept stable so they can be referred to in discussion.
+
+### Decided
+
+- **(1) Name.** The tool is called `laiaskills`.
+- **(2) How skills are installed.** Each skill is *copied* into `~/.agents/skills`. Agents never read
+  from this repo, so the repo can be moved or switched to another branch without breaking anything.
+- **(3) Agents with their own folder.** Folders such as `~/.claude/skills` contain links pointing to the
+  copies in `~/.agents/skills`, the same way `~/.claude/skills` works today.
+- **(4) What counts as a version.** A skill's version is the exact commit this repo has pinned. If the
+  upstream project publishes releases (tags like `v1.4.2`), we pin to a release and upgrade from release
+  to release. If it doesn't, we compare against the latest commit on its main branch.
+- **(5) Very large source repos.** Repos that are big compared to the skills we use from them
+  (`github/awesome-copilot` 111 MB, `affaan-m/ECC` 53 MB) are downloaded as the latest snapshot only
+  (git's "shallow" mode, `shallow = true` in `.gitmodules`). When upgrading one of them, the tool first
+  downloads the history it needs to show what changed. All other sources are cloned normally.
+- **(6) Committing upgrades.** `upgrade` prepares the change (staged) but does not commit. Committing is
+  also done from the tool, not by hand: `laiaskills commit` turns the prepared upgrades into one commit
+  with a generated message, and `upgrade --commit` does both in one go. When run interactively, `upgrade`
+  ends by asking whether to commit now (default: no). The tool never pushes.
+- **(7) Repos that also offer a Claude Code plugin marketplace.** Everything goes through this repo
+  (submodule + copy), including the 9 sources that could also be installed with `/plugin install`. One
+  place to check and upgrade, for every agent. Those repos must not also be installed with `/plugin`,
+  or Claude loads their skills twice; `doctor` flags it when it happens.
+- **(12) Config file format.** JSON, with a schema file next to it so editors can autocomplete and the
+  validator can catch mistakes.
+- **(13) CI and Linux.** The tool must work on **Linux and macOS**. GitHub CI builds and tests it on
+  Linux (`ubuntu-latest`), the cheaper runner, next to the existing skill validator. See 5.6 for what
+  that rules out.
+- **(15) Per-project skills.** Not needed. Skills are installed once for the whole machine.
+- **(16) Supported agents.** Only `~/.agents/skills` receives real copies. Any other agent gets links
+  into it; adding one is a single line in `tools/config/agents.json`.
+
+### Open questions
+
+**(14) Is it fine, licence-wise, to use third-party skills this way?**
+
+- *Why it matters:* this repo is public. Copying someone else's files into it would mean redistributing
+  them.
+- *Answer:* submodules are only references (a URL and a commit), so nothing is redistributed. Copies go
+  to your own `~/.agents/skills`, not into the repo. The rule: never copy third-party files into
+  `first-party/`.
+
+**(8–11)** are one-off migration items, listed in section 9.
 
 ## 9. Migration (one-off)
 
-Checklist for moving existing installs under `skillctl`. Remove this section once phase 3 is done.
+Checklist for moving existing installs under `laiaskills`. Remove this section once phase 3 is done.
 
 | # | Item | Plan |
 |---|---|---|
@@ -268,7 +344,7 @@ Third-party sources (21 repos; 20 new submodules, since AXe reuses an existing p
 | dadederk/iOS-Accessibility-Agent-Skill | ios-accessibility |
 | ehmo/platform-design-skills | macos-design-guidelines, visionos-design-guidelines |
 | rshankras/claude-code-apple-skills | watchos |
-| affaan-m/everything-claude-code | android-clean-architecture, compose-multiplatform-patterns, kotlin-coroutines-flows |
+| affaan-m/ECC | android-clean-architecture, compose-multiplatform-patterns, kotlin-coroutines-flows |
 | krutikjain/android-agent-skills | android-gradle-build-logic |
 | jamesrochabrun/skills | apple-hig-designer |
 | github/awesome-copilot | apple-appstore-reviewer |
@@ -296,7 +372,7 @@ What a typical GUI skill manager offers, and where each feature lands here.
 | Sources / marketplaces list | `sources` | Covered |
 | Per-source grid with Installed / Install | `browse` (v2), `add` picker | Deferred to v2 |
 | Install from `owner/repo@skill`, URL, path | `add` | Covered; local paths only for first-party |
-| Agent selection | Hub + mirrors in `agents.toml` | Covered globally; no per-skill selection (by design) |
+| Agent selection | Hub + mirrors in `agents.json` | Covered globally; no per-skill selection (by design) |
 | Workspace / global scope | Global only | Not needed (decision 15) |
 | Shows installs made by other tools | `list --all`, `doctor` | Covered |
 | Online discovery (skills.sh and similar) | — | Out of scope |
