@@ -25,8 +25,19 @@ struct CheckCommand: ParsableCommand {
         let statuses = UpstreamChecker.statuses(of: context.submodules, repo: context.repo.root, fetch: !offline)
             .sorted { ($0.kind, $0.path) < ($1.kind, $1.path) }
 
+        // Installed copies that lag behind their pin or were edited in place (offline check).
+        let installer = Installer(repo: context.repo, environment: context.environment)
+        let drifted: [Drift] = context.skills.compactMap { skill in
+            switch installer.status(of: skill) {
+            case .notSynced: return Drift(skill: skill.name, state: "not synced", fix: "laiaskills sync")
+            case let .modified(files):
+                return Drift(skill: skill.name, state: "modified: \(files.joined(separator: ", "))", fix: "laiaskills sync --force")
+            default: return nil
+            }
+        }
+
         if options.json {
-            try printJSON(statuses)
+            try printJSON(Report(sources: statuses, installs: drifted))
         } else {
             let ui = NooraUI()
             ui.table(
@@ -42,10 +53,24 @@ struct CheckCommand: ParsableCommand {
                     ? "1 of \(statuses.count) sources has a newer upstream version."
                     : "\(outdated) of \(statuses.count) sources have newer upstream versions.")
             }
+            if !drifted.isEmpty {
+                ui.table(headers: ["Installed skill", "State", "Fix"], rows: drifted.map { [$0.skill, $0.state, $0.fix] })
+            }
         }
 
-        if exitCode, statuses.contains(where: { $0.state == .outdated }) {
+        if exitCode, statuses.contains(where: { $0.state == .outdated }) || !drifted.isEmpty {
             throw ExitCode(1)
         }
+    }
+
+    struct Drift: Codable {
+        let skill: String
+        let state: String
+        let fix: String
+    }
+
+    struct Report: Codable {
+        let sources: [SourceStatus]
+        let installs: [Drift]
     }
 }

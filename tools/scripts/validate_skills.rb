@@ -450,6 +450,29 @@ def validate_laiaskills_configs(skill_dirs)
     end
   end
 
+  recheck_path = File.join(ROOT, "tools", "config", "recheck.json")
+  recheck = load_json_object(recheck_path)
+  if recheck
+    rel = relative(recheck_path)
+    unexpected_keys(rel, recheck, %w[$schema agent commands timeoutMinutes])
+    commands = recheck["commands"]
+    if !commands.is_a?(Hash) || commands.empty?
+      error("#{rel}: needs a non-empty `commands` object")
+    else
+      commands.each do |id, command|
+        unless command.is_a?(Array) && command.all? { |part| part.is_a?(String) } && command.include?("{prompt}")
+          error("#{rel}: command `#{id}` must be an array of strings containing \"{prompt}\"")
+        end
+      end
+      error("#{rel}: agent `#{recheck['agent']}` has no command") unless commands.key?(recheck["agent"])
+    end
+    unless recheck["timeoutMinutes"].is_a?(Integer) && recheck["timeoutMinutes"].positive?
+      error("#{rel}: `timeoutMinutes` must be a positive integer")
+    end
+    prompt = File.join(ROOT, "tools", "config", "prompts", "recheck.md")
+    error("#{relative(prompt)}: missing") unless File.exist?(prompt)
+  end
+
   agents_path = File.join(ROOT, "tools", "config", "agents.json")
   agents = load_json_object(agents_path)
   return unless agents

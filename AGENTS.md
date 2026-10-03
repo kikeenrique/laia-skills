@@ -88,6 +88,9 @@ Swift package in `tools/laiaskills/` (Swift 6.4+, must build and pass tests on *
 - No macOS-only APIs (AppKit, CryptoKit, the Trash API). Shell out to `git` instead of using libgit2 or the GitHub API.
 - Tests build their fixtures (including real git repos) under the repo's `tmp/laiaskills-tests/`, never the system temp folder.
 - Tasks: `mise run laiaskills <command>`, `mise run laiaskills:test`, and `mise run laiaskills:test-linux` (Docker or Podman).
+- Never block on GCD's shared pool (`DispatchQueue.global()`) while waiting for it: tests run in parallel on that pool and it deadlocks. `Shell` uses dedicated threads for this.
+- Manual end-to-end runs: point `HOME` at a folder under `tmp/` and use `--repo` with a throwaway clone under `tmp/`, so your real agent folders and this repo are never touched.
+- Re-pinning a first-party `upstream/` is done with `laiaskills upgrade` (it re-checks the skill with the agent in `tools/config/recheck.json`, prompt in `tools/config/prompts/recheck.md`) and `laiaskills commit` (bumps the plugin version).
 
 ### Validator conventions (`tools/scripts/validate_skills.rb`)
 

@@ -316,7 +316,20 @@ Estimate: MVP under ~1k lines of Swift; a few hours per month afterwards.
      `skills` list first, then the plugin's `plugin.json`, then its `skills/` folder.
    - Tasks run through a root `mise.toml` (mise's own format, like `.gitmodules` is git's).
 2. **Write ops**: `add`, `install`, `sync`, `remove`, `upgrade`, `commit`, `show`, `sources`, `import`,
-   and the automated re-check (5.6).
+   and the automated re-check (5.6). **Done.** Notes from implementing it:
+   - Install status compares git **tree ids**, not commits, so unrelated commits never mark a skill
+     "not synced". Submodule skills install from the pin in the index, so a staged `upgrade` counts.
+   - `add`, `remove`, and `upgrade` record what they staged in `.git/laiaskills/pending.json` (inside
+     `.git/`, never committed); `commit` turns that into messages and then clears it.
+   - Shallow sources read tags and branch heads with `git ls-remote`, so `check`, `add`, and `upgrade`
+     never download history or one snapshot per release.
+   - `recheck.json` configures Claude Code only (`claude -p … --permission-mode acceptEdits` with a
+     restricted `--allowedTools` list). Codex is one more `commands` entry once its flags are verified.
+   - An earlier version drained subprocess output on GCD's shared pool, which deadlocked under parallel
+     tests; `Shell` now uses dedicated threads.
+   - Verified end to end in a throwaway clone with a sandboxed `HOME`: sync of all 28 skills, edit
+     detection, `add` of a real GitHub source, `upgrade` of the AXe pin, `remove`, and `commit` (three
+     commits, plugin version bumped). The agent re-check itself is covered by tests with a stub agent.
 3. **Migration**: import → add submodules → `sync` (replaces previously installed copies with tracked
    ones) → clean up stale lock entries (checklist in section 9).
 4. **Optional**: `browse`.

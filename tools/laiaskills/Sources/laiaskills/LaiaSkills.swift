@@ -7,8 +7,32 @@ struct LaiaSkills: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "laiaskills",
         abstract: "Manage agent skills pinned in this repo and installed into ~/.agents/skills.",
-        subcommands: [ListCommand.self, CheckCommand.self, DoctorCommand.self]
+        subcommands: [
+            ListCommand.self, ShowCommand.self, SourcesCommand.self, CheckCommand.self, DoctorCommand.self,
+            SyncCommand.self, InstallCommand.self, RemoveCommand.self, AddCommand.self,
+            UpgradeCommand.self, CommitCommand.self, ImportCommand.self,
+        ]
     )
+}
+
+/// Gets approval for a risky step: `--yes`, or an interactive prompt. Non-interactive runs without
+/// `--yes` stop with an explanation instead of guessing.
+func approve(_ ui: UI, _ question: String, yes: Bool) throws -> Bool {
+    if yes { return true }
+    guard ui.isInteractive else {
+        throw ValidationError("\(question) Re-run with --yes to confirm (no terminal to ask in).")
+    }
+    return ui.confirm(question, default: false)
+}
+
+/// Looks up skills by name in the resolved list, failing on unknown names.
+func select(_ names: [String], from skills: [ResolvedSkill]) throws -> [ResolvedSkill] {
+    try names.map { name in
+        guard let skill = skills.first(where: { $0.name == name }) else {
+            throw ValidationError("`\(name)` is not in skills.json")
+        }
+        return skill
+    }
 }
 
 /// Options shared by every subcommand.
@@ -54,7 +78,9 @@ func statusLabel(_ status: SourceStatus) -> String {
     switch (status.state, status.mode) {
     case (.upToDate, _): return "up to date"
     case (.outdated, .tagged): return "update: \(status.pinnedLabel) → \(status.latest ?? "?")"
-    case (.outdated, .branch): return "\(status.commitsBehind ?? 0) commits behind origin/\(status.latest ?? "?")"
+    case (.outdated, .branch):
+        guard let behind = status.commitsBehind else { return "newer commits on origin/\(status.latest ?? "?")" }
+        return "\(behind) commits behind origin/\(status.latest ?? "?")"
     case (.unknown, _): return "unknown"
     }
 }

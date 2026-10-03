@@ -79,6 +79,11 @@ public enum UpstreamChecker {
         }
         guard let pinned = git.attempt("rev-parse", "HEAD") else { return unknown("cannot read pinned commit") }
 
+        // Shallow sources: read the remote's tags and branch head without downloading history.
+        if submodule.shallow && fetch {
+            return shallowStatus(of: submodule, kind: kind, git: git, pinned: pinned)
+        }
+
         var fetchNote: String?
         if fetch {
             do {
@@ -111,6 +116,26 @@ public enum UpstreamChecker {
         return SourceStatus(path: submodule.path, kind: kind, mode: .branch, pinnedCommit: pinned,
                             pinnedTag: pinnedTags.first, latest: branch, commitsBehind: behind,
                             state: behind > 0 ? .outdated : .upToDate, note: note.isEmpty ? nil : note)
+    }
+
+    static func shallowStatus(of submodule: Submodule, kind: String, git: Git, pinned: String) -> SourceStatus {
+        let pinnedRelease = (git.attempt("tag", "--points-at", "HEAD") ?? "")
+            .split(separator: "\n").compactMap { ReleaseVersion(tag: String($0)) }.max()
+        guard let releases = try? Adder.remoteReleaseTags(git) else {
+            return SourceStatus(path: submodule.path, kind: kind, mode: .branch, pinnedCommit: pinned, pinnedTag: nil,
+                                latest: nil, commitsBehind: nil, state: .unknown, note: "cannot reach origin")
+        }
+        if let pinnedRelease, let newest = releases.max() {
+            return SourceStatus(path: submodule.path, kind: kind, mode: .tagged, pinnedCommit: pinned,
+                                pinnedTag: pinnedRelease.tag, latest: newest.tag, commitsBehind: nil,
+                                state: pinnedRelease < newest ? .outdated : .upToDate, note: nil)
+        }
+        let branch = submodule.branch ?? "main"
+        let head = git.attempt("ls-remote", "origin", "refs/heads/\(branch)")?.split(separator: "\t").first.map(String.init)
+        return SourceStatus(path: submodule.path, kind: kind, mode: .branch, pinnedCommit: pinned, pinnedTag: nil,
+                            latest: branch, commitsBehind: nil,
+                            state: head == nil ? .unknown : (head == pinned ? .upToDate : .outdated),
+                            note: "shallow: newer commits exist but are not counted")
     }
 
     /// Checks many submodules in parallel (each is an independent git process).

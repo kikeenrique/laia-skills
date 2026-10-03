@@ -5,7 +5,16 @@ import Foundation
 final class Fixture {
     let root: URL
 
+    /// Lets every git process in the test run clone submodules from local paths (git blocks the file
+    /// protocol for submodules by default). Set once, process-wide, before any fixture runs git.
+    private static let allowLocalSubmodules: Void = {
+        setenv("GIT_CONFIG_COUNT", "1", 1)
+        setenv("GIT_CONFIG_KEY_0", "protocol.file.allow", 1)
+        setenv("GIT_CONFIG_VALUE_0", "always", 1)
+    }()
+
     init(_ name: String = #function) throws {
+        _ = Self.allowLocalSubmodules
         // Tests/LaiaSkillsKitTests/Fixtures.swift → repo root is four levels above the package.
         let repoRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

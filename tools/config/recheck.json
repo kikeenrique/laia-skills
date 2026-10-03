@@ -1,0 +1,13 @@
+{
+  "$schema": "./schemas/recheck.schema.json",
+  "agent": "claude",
+  "commands": {
+    "claude": [
+      "claude", "-p", "{prompt}",
+      "--permission-mode", "acceptEdits",
+      "--allowedTools", "Read", "Grep", "Glob", "Edit", "Write",
+      "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)", "Bash(git tag:*)"
+    ]
+  },
+  "timeoutMinutes": 30
+}

@@ -17,10 +17,14 @@ public enum Submodules {
     public static func load(repo: URL) throws -> [Submodule] {
         let file = repo.appendingPathComponent(".gitmodules")
         guard FileManager.default.fileExists(atPath: file.path) else { return [] }
-        let output = try Git(repo).run(
-            "config", "--file", ".gitmodules", "--get-regexp", #"^submodule\..*\.(path|url|branch|shallow)$"#
-        )
-        return parse(output)
+        let arguments = ["git", "config", "--file", ".gitmodules", "--get-regexp", #"^submodule\..*\.(path|url|branch|shallow)$"#]
+        let result = try Shell.run(arguments, in: repo)
+        // Exit status 1 means "no matching keys", e.g. an empty .gitmodules after the last submodule went.
+        if result.status == 1 { return [] }
+        guard result.succeeded else {
+            throw ShellError.failed(command: arguments.joined(separator: " "), status: result.status, stderr: result.stderr)
+        }
+        return parse(result.stdout)
     }
 
     /// Parses `submodule.<name>.<key> <value>` lines.
@@ -91,13 +95,18 @@ public enum SkillDiscovery {
     }
 
     static func frontmatterName(in text: String) -> String? {
+        frontmatterValue("name", in: text)
+    }
+
+    /// A top-level scalar from the YAML frontmatter, unquoted. Enough for `name` and `description`.
+    public static func frontmatterValue(_ key: String, in text: String) -> String? {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else { return nil }
         for line in lines.dropFirst() {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed == "---" { return nil }
-            guard line.hasPrefix("name:") else { continue }
-            var value = trimmed.dropFirst("name:".count).trimmingCharacters(in: .whitespaces)
+            guard line.hasPrefix("\(key):") else { continue }
+            var value = trimmed.dropFirst(key.count + 1).trimmingCharacters(in: .whitespaces)
             if value.count >= 2, let first = value.first, first == "\"" || first == "'", value.last == first {
                 value = String(value.dropFirst().dropLast())
             }
@@ -178,7 +187,7 @@ public enum SkillResolver {
     }
 }
 
-func relativePath(of url: URL, to base: URL) -> String {
+public func relativePath(of url: URL, to base: URL) -> String {
     let path = url.standardizedFileURL.path
     let basePath = base.standardizedFileURL.path
     guard path.hasPrefix(basePath + "/") else { return path }

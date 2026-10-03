@@ -45,10 +45,16 @@ installs them into `~/.agents/skills`. `skills.json` lists the skills; `tools/co
 the agent folders. Run it with [mise](https://mise.jdx.dev):
 
 ```text
-mise run laiaskills list      # skills, versions, and install state
-mise run laiaskills check     # newer upstream releases for every pinned source
-mise run laiaskills doctor    # problems in the config and the agent folders
+mise run laiaskills list               # skills, versions, and install state
+mise run laiaskills check              # newer upstream releases, and installed copies that drifted
+mise run laiaskills sync               # make installed copies match their pins (run after git pull)
+mise run laiaskills add owner/repo     # add skills from a third-party repo
+mise run laiaskills upgrade            # move pins to newer releases; re-checks first-party skills with an AI agent
+mise run laiaskills commit             # commit staged changes with generated messages (never pushes)
+mise run laiaskills doctor             # problems in the config and the agent folders
 ```
+
+Also `install`, `remove`, `show`, `sources`, and `import`; see `mise run laiaskills --help`.
 
 ## Versioning
 

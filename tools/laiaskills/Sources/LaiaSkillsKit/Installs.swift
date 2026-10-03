@@ -23,21 +23,6 @@ public enum MirrorState: String, Codable, Sendable {
     case bypass
 }
 
-/// Minimal view of `~/.agents/.laiaskills.json`, written from phase 2 on.
-public struct InstallState: Codable, Sendable {
-    public struct Record: Codable, Sendable {
-        public var commit: String?
-        public var tag: String?
-    }
-
-    public var skills: [String: Record]
-
-    public static func load(_ environment: Environment) -> InstallState? {
-        guard let data = try? Data(contentsOf: environment.stateFile) else { return nil }
-        return try? JSONDecoder().decode(InstallState.self, from: data)
-    }
-}
-
 public struct InstallInspector: Sendable {
     public let hub: URL
     public let mirrors: [(name: String, url: URL)]

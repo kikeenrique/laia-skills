@@ -13,10 +13,31 @@ protocol UI {
     func info(_ message: String)
     func warning(_ messages: [String])
     func error(_ message: String)
+    func line(_ message: String)
+    /// Asks a yes/no question. Only valid when `isInteractive`.
+    func confirm(_ question: String, default answer: Bool) -> Bool
+    /// Lets the user pick several options. Only valid when `isInteractive`.
+    func choose(_ question: String, options: [String]) -> [String]
+    /// True when both stdin and stdout are a terminal, so prompts can be shown.
+    var isInteractive: Bool { get }
 }
 
 struct NooraUI: UI {
     private let noora = Noora()
+
+    var isInteractive: Bool { isatty(STDIN_FILENO) == 1 && isatty(STDOUT_FILENO) == 1 }
+
+    func line(_ message: String) {
+        print(message)
+    }
+
+    func confirm(_ question: String, default answer: Bool) -> Bool {
+        noora.yesOrNoChoicePrompt(question: "\(question)", defaultAnswer: answer)
+    }
+
+    func choose(_ question: String, options: [String]) -> [String] {
+        noora.multipleChoicePrompt(question: "\(question)", options: options)
+    }
 
     func table(headers: [String], rows: [[String]]) {
         // Noora fits tables to the terminal width; when piped there is no terminal, so cells get

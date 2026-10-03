@@ -37,6 +37,7 @@ struct ListCommand: ParsableCommand {
             ).map { ($0.path, $0) }
         )
 
+        let installer = Installer(repo: context.repo, environment: context.environment)
         var rows = context.skills.map { skill -> Row in
             let status = skill.submodulePath.flatMap { pinned[$0] }
             let version = status?.pinnedLabel ?? skill.plugin.flatMap { context.pluginVersion($0) } ?? "—"
@@ -44,7 +45,7 @@ struct ListCommand: ParsableCommand {
                 name: skill.name,
                 source: skill.entry.source,
                 version: version,
-                hub: context.inspector.hubState(skill.name).rawValue,
+                hub: installer.status(of: skill).label,
                 mirrors: mirrorStates(skill.name, context),
                 status: skill.problem != nil ? "error" : status.map(statusLabel) ?? "—",
                 problem: skill.problem
@@ -69,7 +70,7 @@ struct ListCommand: ParsableCommand {
         let mirrorNames = context.inspector.mirrors.map(\.name)
         let ui = NooraUI()
         ui.table(
-            headers: ["Skill", "Source", "Version", "Hub"] + mirrorNames + ["Status"],
+            headers: ["Skill", "Source", "Version", "Installed"] + mirrorNames + ["Upstream"],
             rows: rows.map { row in
                 [row.name, row.source, row.version, row.hub] + mirrorNames.map { row.mirrors[$0] ?? "—" } + [row.status]
             }

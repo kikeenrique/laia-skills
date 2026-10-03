@@ -9,6 +9,32 @@ public struct SkillsManifest: Codable, Sendable {
     }
 }
 
+extension SkillsManifest {
+    /// Writes skills.json in its hand-edited layout: one line per skill, sorted by name.
+    public func write(to url: URL, schema: String = "./tools/config/schemas/skills.schema.json") throws {
+        func quoted(_ text: String) -> String {
+            let data = (try? JSONSerialization.data(withJSONObject: [text], options: [.withoutEscapingSlashes])) ?? Data()
+            return String(String(decoding: data, as: UTF8.self).dropFirst().dropLast())
+        }
+        let lines = skills.keys.sorted().map { name -> String in
+            let entry = skills[name]!
+            var fields = ["\"source\": \(quoted(entry.source))"]
+            if let path = entry.path { fields.append("\"path\": \(quoted(path))") }
+            return "    \(quoted(name)): { \(fields.joined(separator: ", ")) }"
+        }
+        let text = """
+        {
+          "$schema": \(quoted(schema)),
+          "skills": {
+        \(lines.joined(separator: ",\n"))
+          }
+        }
+
+        """
+        try Data(text.utf8).write(to: url, options: .atomic)
+    }
+}
+
 public struct SkillEntry: Codable, Sendable, Equatable {
     /// `first-party`, or a submodule path such as `third-party/owner__repo` or `first-party/<plugin>/upstream`.
     public var source: String
