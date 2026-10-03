@@ -1,58 +1,7 @@
 import Foundation
 import Testing
 @testable import LaiaSkillsKit
-
-/// A skills repo with one first-party skill (`alpha`) and one third-party skill (`beta`) in a submodule.
-struct SkillsRepoFixture {
-    let fixture: Fixture
-    var repo: URL { fixture.url("repo") }
-    var environment: Environment { Environment(home: fixture.url("home")) }
-
-    init(_ name: String = #function) throws {
-        fixture = try Fixture(name)
-        // Third-party origin with skill `beta`, tagged v1.0.0 then v1.1.0.
-        try fixture.originRepo("origin-beta", commits: [("README", nil)])
-        try fixture.skill("origin-beta/skills/beta", name: "beta")
-        try fixture.git("add", ".", in: "origin-beta")
-        try fixture.git("commit", "--quiet", "-m", "beta 1", in: "origin-beta")
-        try fixture.git("tag", "v1.0.0", in: "origin-beta")
-        try fixture.write("origin-beta/skills/beta/references/notes.md", "v1.1 notes")
-        try fixture.git("add", ".", in: "origin-beta")
-        try fixture.git("commit", "--quiet", "-m", "beta 2", in: "origin-beta")
-        try fixture.git("tag", "v1.1.0", in: "origin-beta")
-
-        // The skills repo.
-        try fixture.mkdir("repo")
-        try fixture.git("init", "--quiet", in: "repo")
-        try fixture.skill("repo/first-party/alpha/skills/alpha", name: "alpha")
-        try fixture.write("repo/first-party/alpha/skills/alpha/scripts/run.sh", "#!/bin/sh\necho hi\n")
-        try FileManager.default.setAttributes([.posixPermissions: 0o755],
-                                              ofItemAtPath: fixture.url("repo/first-party/alpha/skills/alpha/scripts/run.sh").path)
-        try Data([0x89, 0x50, 0x4E, 0x47, 0x00, 0xFF]).write(to: fixture.url("repo/first-party/alpha/skills/alpha/icon.png"))
-        try fixture.symlink("repo/first-party/alpha/skills/alpha/LINK.md", to: "SKILL.md")
-        try fixture.write("repo/skills.json", """
-        {"skills": {"alpha": {"source": "first-party"}, "beta": {"source": "third-party/o__beta"}}}
-        """)
-        try fixture.write("repo/tools/config/agents.json", """
-        {"hub": {"path": "~/.agents/skills"}, "mirrors": {"claude": {"path": "~/.claude/skills"}}}
-        """)
-        try fixture.git("-c", "protocol.file.allow=always", "submodule", "add", "--quiet",
-                        fixture.url("origin-beta").path, "third-party/o__beta", in: "repo")
-        try fixture.git("checkout", "--quiet", "v1.0.0", in: "repo/third-party/o__beta")
-        try fixture.git("add", ".", in: "repo")
-        try fixture.git("commit", "--quiet", "-m", "init", in: "repo")
-    }
-
-    func load() throws -> (Repository, [ResolvedSkill]) {
-        let repository = try Repository(root: repo)
-        return (repository, SkillResolver.resolve(repository, submodules: try Submodules.load(repo: repo)))
-    }
-
-    func installer() throws -> (Installer, [String: ResolvedSkill]) {
-        let (repository, skills) = try load()
-        return (Installer(repo: repository, environment: environment), Dictionary(uniqueKeysWithValues: skills.map { ($0.name, $0) }))
-    }
-}
+import LaiaSkillsTestSupport
 
 @Suite struct InstallerTests {
     @Test func installsCommittedFilesWithModesLinksAndMirrors() throws {

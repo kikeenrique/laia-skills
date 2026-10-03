@@ -24,13 +24,13 @@ public struct SourceSpec: Sendable, Equatable {
         var skill: String?
         var url: String?
 
-        if body.contains("://") {
+        if body.contains("://") || (body.hasPrefix("git@") && body.contains(":")) {
+            // URLs: owner/repo are the last two path segments (works for file:// and nested groups too).
             url = body
-            body = String(body.split(separator: "/", maxSplits: 2, omittingEmptySubsequences: false).last ?? "")
-            body = String(body.drop(while: { $0 != "/" }).dropFirst())  // drop the host
-        } else if body.hasPrefix("git@"), let colon = body.firstIndex(of: ":") {
-            url = body
-            body = String(body[body.index(after: colon)...])
+            let path = body.contains("://")
+                ? String(body.split(separator: "/", maxSplits: 3, omittingEmptySubsequences: false).dropFirst(3).first ?? "")
+                : String(body[body.index(after: body.firstIndex(of: ":")!)...])
+            body = path.split(separator: "/").suffix(2).joined(separator: "/")
         } else if let at = body.lastIndex(of: "@") {
             skill = String(body[body.index(after: at)...])
             body = String(body[..<at])

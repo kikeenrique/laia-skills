@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import LaiaSkillsKit
+import LaiaSkillsTestSupport
 
 /// Uses real git repos: an "origin" plus a clone standing in for a submodule checkout.
 @Suite struct UpstreamTests {

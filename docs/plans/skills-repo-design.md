@@ -330,6 +330,9 @@ Estimate: MVP under ~1k lines of Swift; a few hours per month afterwards.
    - Verified end to end in a throwaway clone with a sandboxed `HOME`: sync of all 28 skills, edit
      detection, `add` of a real GitHub source, `upgrade` of the AXe pin, `remove`, and `commit` (three
      commits, plugin version bumped). The agent re-check itself is covered by tests with a stub agent.
+   - That manual run is now automated: `LaiaSkillsCLITests` runs the built binary end to end (sync,
+     drift, add, upgrade, remove, commit, import, doctor, and the agent re-check through a stub
+     script), offline, on Linux CI as well.
 3. **Migration**: import → add submodules → `sync` (replaces previously installed copies with tracked
    ones) → clean up stale lock entries (checklist in section 9).
 4. **Optional**: `browse`.

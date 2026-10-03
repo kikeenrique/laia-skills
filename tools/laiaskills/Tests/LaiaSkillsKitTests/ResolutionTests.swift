@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import LaiaSkillsKit
+import LaiaSkillsTestSupport
 
 @Suite struct ResolutionTests {
     let source = Submodule(name: "s", path: "third-party/o__r", url: "https://example.com/o/r", branch: nil, shallow: false)

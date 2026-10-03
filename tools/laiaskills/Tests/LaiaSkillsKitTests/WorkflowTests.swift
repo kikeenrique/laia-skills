@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import LaiaSkillsKit
+import LaiaSkillsTestSupport
 
 @Suite struct SourceSpecTests {
     @Test func parsesGitHubShorthand() throws {
@@ -15,6 +16,10 @@ import Testing
         #expect(https.owner == "CupertinoHQ" && https.repository == "cupertino" && https.url.hasPrefix("https://codeberg.org/"))
         let ssh = try SourceSpec("git@github.com:affaan-m/ECC.git")
         #expect(ssh.owner == "affaan-m" && ssh.repository == "ECC" && ssh.url == "git@github.com:affaan-m/ECC.git")
+        let file = try SourceSpec("file:///srv/git/acme/gamma.git")
+        #expect(file.owner == "acme" && file.repository == "gamma")
+        let nested = try SourceSpec("https://gitlab.com/group/subgroup/tool")
+        #expect(nested.owner == "subgroup" && nested.repository == "tool")
     }
 
     @Test(arguments: ["justone", "a/b/c", "owner/repo@", ""])
@@ -116,8 +121,7 @@ import Testing
             """)
             try fixture.write("repo/tools/config/recheck.json", #"{"agent": "stub", "commands": {"stub": ["stub", "{prompt}"]}, "timeoutMinutes": 1}"#)
             try fixture.write("repo/tools/config/prompts/recheck.md", "Re-check {{plugin}} against {{upstream}} {{to}} (was {{from}}) in {{skillsPath}}.")
-            try fixture.git("-c", "protocol.file.allow=always", "submodule", "add", "--quiet",
-                            fixture.url("origin-beta").path, "first-party/alpha/upstream", in: "repo")
+            try fixture.git("submodule", "add", "--quiet", fixture.url("origin-beta").path, "first-party/alpha/upstream", in: "repo")
             try fixture.git("checkout", "--quiet", "v1.0.0", in: "repo/first-party/alpha/upstream")
             try fixture.git("add", ".", in: "repo")
             try fixture.git("commit", "--quiet", "-m", "alpha upstream", in: "repo")
