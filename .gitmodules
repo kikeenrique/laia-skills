@@ -1,15 +1,15 @@
 [submodule "replay/upstream"]
-	path = replay/upstream
+	path = first-party/replay/upstream
 	url = https://github.com/mattt/Replay.git
 [submodule "ios-simulator-ui-flow/upstream"]
-	path = ios-simulator-ui-flow/upstream
+	path = first-party/ios-simulator-ui-flow/upstream
 	url = https://github.com/cameroncooke/AXe.git
 [submodule "mise/upstream"]
-	path = mise/upstream
+	path = first-party/mise/upstream
 	url = https://github.com/jdx/mise.git
 [submodule "visionos-agents/upstream"]
-	path = visionos-agents/upstream
+	path = first-party/visionos-agents/upstream
 	url = https://github.com/tomkrikorian/visionOSAgents
 [submodule "cupertino/upstream"]
-	path = cupertino/upstream
+	path = first-party/cupertino/upstream
 	url = https://codeberg.org/CupertinoHQ/cupertino.git

@@ -21,7 +21,7 @@
       "license": "MIT",
       "category": "tooling",
       "keywords": ["mise", "dev-tools", "tasks", "env"],
-      "skills": ["./mise/skills/mise"]
+      "skills": ["./first-party/mise/skills/mise"]
     },
     {
       "name": "replay",
@@ -38,7 +38,7 @@
       "license": "MIT",
       "category": "testing",
       "keywords": ["swift", "testing", "http", "har", "replay"],
-      "skills": ["./replay/skills/replay"]
+      "skills": ["./first-party/replay/skills/replay"]
     },
     {
       "name": "ios-simulator-ui-flow",
@@ -55,7 +55,7 @@
       "license": "MIT",
       "category": "ios",
       "keywords": ["ios", "simulator", "axe", "ui-testing"],
-      "skills": ["./ios-simulator-ui-flow/skills/ios-simulator-ui-flow"]
+      "skills": ["./first-party/ios-simulator-ui-flow/skills/ios-simulator-ui-flow"]
     },
     {
       "name": "cupertino",
@@ -72,7 +72,7 @@
       "license": "MIT",
       "category": "development",
       "keywords": ["apple", "swift", "swiftui", "uikit", "documentation", "cupertino"],
-      "skills": ["./cupertino/skills/cupertino"]
+      "skills": ["./first-party/cupertino/skills/cupertino"]
     },
     {
       "name": "visionos-agents",
@@ -90,29 +90,29 @@
       "category": "development",
       "keywords": ["visionos", "vision-pro", "spatial", "realitykit", "arkit", "swiftui", "usd"],
       "skills": [
-        "./visionos-agents/skills/visionos-agents",
-        "./visionos-agents/skills/arkit-visionos-developer",
-        "./visionos-agents/skills/arkit-spatial-tracking-providers",
-        "./visionos-agents/skills/arkit-hand-tracking-provider",
-        "./visionos-agents/skills/arkit-reference-tracking-providers",
-        "./visionos-agents/skills/arkit-rendering-context-providers",
-        "./visionos-agents/skills/arkit-camera-access-providers",
-        "./visionos-agents/skills/realitykit-visionos-developer",
-        "./visionos-agents/skills/realitykit-rendering-materials",
-        "./visionos-agents/skills/realitykit-animation-physics",
-        "./visionos-agents/skills/realitykit-audio-spatial",
-        "./visionos-agents/skills/realitykit-ecs-systems",
-        "./visionos-agents/skills/spatial-app-architecture",
-        "./visionos-agents/skills/spatial-swiftui-developer",
-        "./visionos-agents/skills/swiftui-chart3d-developer",
-        "./visionos-agents/skills/visionos-widgetkit-developer",
-        "./visionos-agents/skills/visionos-immersive-media-developer",
-        "./visionos-agents/skills/shareplay-developer",
-        "./visionos-agents/skills/shadergraph-editor",
-        "./visionos-agents/skills/usd-editor",
-        "./visionos-agents/skills/usdkit-runtime-developer",
-        "./visionos-agents/skills/coding-standards-enforcer",
-        "./visionos-agents/skills/tkr-skill-writer"
+        "./first-party/visionos-agents/skills/visionos-agents",
+        "./first-party/visionos-agents/skills/arkit-visionos-developer",
+        "./first-party/visionos-agents/skills/arkit-spatial-tracking-providers",
+        "./first-party/visionos-agents/skills/arkit-hand-tracking-provider",
+        "./first-party/visionos-agents/skills/arkit-reference-tracking-providers",
+        "./first-party/visionos-agents/skills/arkit-rendering-context-providers",
+        "./first-party/visionos-agents/skills/arkit-camera-access-providers",
+        "./first-party/visionos-agents/skills/realitykit-visionos-developer",
+        "./first-party/visionos-agents/skills/realitykit-rendering-materials",
+        "./first-party/visionos-agents/skills/realitykit-animation-physics",
+        "./first-party/visionos-agents/skills/realitykit-audio-spatial",
+        "./first-party/visionos-agents/skills/realitykit-ecs-systems",
+        "./first-party/visionos-agents/skills/spatial-app-architecture",
+        "./first-party/visionos-agents/skills/spatial-swiftui-developer",
+        "./first-party/visionos-agents/skills/swiftui-chart3d-developer",
+        "./first-party/visionos-agents/skills/visionos-widgetkit-developer",
+        "./first-party/visionos-agents/skills/visionos-immersive-media-developer",
+        "./first-party/visionos-agents/skills/shareplay-developer",
+        "./first-party/visionos-agents/skills/shadergraph-editor",
+        "./first-party/visionos-agents/skills/usd-editor",
+        "./first-party/visionos-agents/skills/usdkit-runtime-developer",
+        "./first-party/visionos-agents/skills/coding-standards-enforcer",
+        "./first-party/visionos-agents/skills/tkr-skill-writer"
       ]
     }
   ]

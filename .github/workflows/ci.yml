@@ -11,4 +11,4 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Validate skills
-        run: ruby scripts/validate_skills.rb
+        run: ruby tools/scripts/validate_skills.rb

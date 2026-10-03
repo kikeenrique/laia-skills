@@ -6,7 +6,8 @@ require "json"
 require "pathname"
 require "yaml"
 
-ROOT = File.expand_path("..", __dir__)
+ROOT = File.expand_path("../..", __dir__)
+PLUGINS_ROOT = File.join(ROOT, "first-party")
 STRICT_AGENT_NEUTRAL = ENV.fetch("STRICT_AGENT_NEUTRAL", "0") == "1"
 SEMVER_RE = /\A\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\z/
 
@@ -208,13 +209,13 @@ def validate_agent_asset_path(skill_dir, rel, field, value)
 end
 
 def skill_dirs
-  Dir.glob(File.join(ROOT, "*", "skills", "*", "SKILL.md"))
+  Dir.glob(File.join(PLUGINS_ROOT, "*", "skills", "*", "SKILL.md"))
      .map { |path| File.dirname(path) }
      .sort
 end
 
 def plugin_dirs
-  Dir.glob(File.join(ROOT, "*", ".claude-plugin", "plugin.json"))
+  Dir.glob(File.join(PLUGINS_ROOT, "*", ".claude-plugin", "plugin.json"))
      .map { |path| File.dirname(File.dirname(path)) }
      .sort
 end
@@ -287,6 +288,17 @@ def validate_marketplace(plugins)
 
   (expected - listed).each { |n| error("#{rel}: plugin `#{n}` not listed in marketplace") }
   (listed - expected).each { |n| error("#{rel}: marketplace lists unknown plugin `#{n}`") }
+
+  manifest["plugins"].each do |plugin|
+    next unless plugin.is_a?(Hash) && plugin["skills"].is_a?(Array)
+
+    plugin["skills"].each do |skill_path|
+      skill_md = File.join(File.expand_path(skill_path, ROOT), "SKILL.md")
+      next if File.exist?(skill_md)
+
+      error("#{rel}: plugin `#{plugin['name']}` lists missing skill path `#{skill_path}`")
+    end
+  end
 end
 
 def markdown_files(skill_dirs)
@@ -352,7 +364,7 @@ def validate_readme(plugin_dirs)
   content = read(readme)
   plugin_dirs.each do |dir|
     name = File.basename(dir)
-    expected = "#{name}/skills/#{name}/SKILL.md"
+    expected = "first-party/#{name}/skills/#{name}/SKILL.md"
     unless content.include?("(#{expected})") || content.include?("(<#{expected}>)")
       error("README.md: missing skill link to #{expected}")
     end
