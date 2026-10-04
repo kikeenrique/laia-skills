@@ -38,7 +38,7 @@ Top-level folders are grouped by ownership, not packaging:
 | Folder | Contents |
 |--------|----------|
 | `first-party/` | Skills authored here and published through the marketplace. Each subfolder is one plugin. |
-| `third-party/` | External skill repos used here, as git submodules. Never published, never copied into `first-party/`. (Planned.) |
+| `third-party/` | External skill repos used here, as git submodules (`third-party/<owner>__<repo>`), added with `laiaskills add`. Never published, never copied into `first-party/`. Filled by the upcoming migration (see the roadmap in the design doc). |
 | `tools/` | Tooling: `tools/scripts/validate_skills.rb`, the `laiaskills` CLI (`tools/laiaskills/`), and its configs (`tools/config/`). |
 | `docs/` | Committed plans and design docs. See [`docs/plans/skills-repo-design.md`](docs/plans/skills-repo-design.md). |
 | `tmp/` | Untracked scratch space. Not in `.gitignore`; never commit it. |
@@ -61,10 +61,10 @@ The submodule *names* in `.gitmodules` (e.g. `replay/upstream`) predate the move
 
 **Rules:**
 - Pin to a released tag whenever possible (detached HEAD on the tag commit). Avoid tracking `main`.
-- The pin records the upstream version the skill was authored or last verified against. Bump it when you re-verify the skill against a newer release, and bump the plugin's `version` in the same commit so users see the update. (The planned `laiaskills upgrade` automates this; see the design doc.)
+- The pin records the upstream version the skill was authored or last verified against. Bump it when you re-verify the skill against a newer release, and bump the plugin's `version` in the same commit so users see the update. `laiaskills upgrade` does both: it moves the pin, has an AI agent re-check the skill, and `laiaskills commit` bumps the version (see the `laiaskills` section below).
 - Submodules are **only** for skill authors and CI. They are intentionally placed outside `first-party/<plugin>/skills/<name>/` so they are not scanned by the validator and not shipped to users via `/plugin install` — git does not auto-init submodules, and Claude Code's plugin install pulls only the plugin subtree (the root `.gitmodules` is not part of the install).
 - Clone with submodules locally when working on a skill: `git clone --recurse-submodules` or `git submodule update --init <path>`. Skip them entirely if you only need to read the skill.
-- To re-pin: `git -C first-party/<plugin>/upstream fetch --tags && git -C first-party/<plugin>/upstream checkout <tag>`, then `git add first-party/<plugin>/upstream`.
+- To re-pin: `mise run laiaskills upgrade first-party/<plugin>/upstream` (add `--to <tag>` for a specific release, `--no-agent` to update the skill by hand), then `mise run laiaskills commit`. By hand: `git -C first-party/<plugin>/upstream fetch --tags && git -C first-party/<plugin>/upstream checkout <tag>`, then `git add first-party/<plugin>/upstream`.
 
 ## Adding a plugin
 
@@ -82,7 +82,7 @@ To add an external skill repo as a plugin:
 
 ## laiaskills
 
-Swift package in `tools/laiaskills/` (Swift 6.4+, must build and pass tests on **Linux and macOS**; CI runs it on Ubuntu 26.04). Design: [`docs/plans/skills-repo-design.md`](docs/plans/skills-repo-design.md).
+Swift package in `tools/laiaskills/` (Swift 6.4+, must build and pass tests on **Linux and macOS**; CI runs it on Ubuntu 26.04). Design, decisions, and roadmap: [`docs/plans/skills-repo-design.md`](docs/plans/skills-repo-design.md). Update the roadmap there when you finish or add work.
 
 - `LaiaSkillsKit` holds all logic and is what the tests cover; the `laiaskills` target only parses arguments and renders. All Noora calls go through `UI.swift`.
 - No macOS-only APIs (AppKit, CryptoKit, the Trash API). Shell out to `git` instead of using libgit2 or the GitHub API.

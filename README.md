@@ -34,15 +34,18 @@ Check for updates anytime with `/plugin marketplace update`.
 | Folder | Contents |
 |--------|----------|
 | `first-party/` | Skills authored here and published through this marketplace, one plugin per folder |
-| `third-party/` | External skill repos used here, as git submodules, not published (planned) |
+| `third-party/` | External skill repos used here, as git submodules, not published (filled by the upcoming migration) |
 | `tools/` | Tooling: the skill validator and the `laiaskills` CLI (Swift, macOS and Linux) |
 | `docs/` | Plans and design docs, e.g. [the repo and `laiaskills` design](docs/plans/skills-repo-design.md) |
 
 ## laiaskills
 
-A small CLI (work in progress) that tracks every skill this repo uses, first-party and third-party, and
-installs them into `~/.agents/skills`. `skills.json` lists the skills; `tools/config/agents.json` lists
-the agent folders. Run it with [mise](https://mise.jdx.dev):
+A small Swift CLI that tracks every skill this repo uses, first-party and third-party, and installs
+them into `~/.agents/skills` (other agents' folders, such as `~/.claude/skills`, link to those copies).
+Third-party sources are git submodules pinned to releases; every install records the pin it came from,
+so outdated sources and drifted copies are both detected. `skills.json` lists the skills;
+`tools/config/agents.json` lists the agent folders. Runs on macOS and Linux. Run it with
+[mise](https://mise.jdx.dev):
 
 ```text
 mise run laiaskills list               # skills, versions, and install state
@@ -55,6 +58,10 @@ mise run laiaskills doctor             # problems in the config and the agent fo
 ```
 
 Also `install`, `remove`, `show`, `sources`, and `import`; see `mise run laiaskills --help`.
+
+Status: the commands are implemented and tested (`mise run laiaskills:test`, also on Linux CI); moving
+the existing installs under laiaskills is next. Design, decisions, and the roadmap of done and pending
+work: [docs/plans/skills-repo-design.md](docs/plans/skills-repo-design.md#7-roadmap).
 
 ## Versioning
 
