@@ -1,5 +1,6 @@
 {
   "$schema": "./tools/config/schemas/skills.schema.json",
+  "claudePlugins": ["swift-lsp@claude-plugins-official"],
   "skills": {
     "android-ci-cd-release-playstore": { "source": "third-party/krutikJain__android-agent-skills", "path": "skills/android-ci-cd-release-playstore" },
     "android-clean-architecture": { "source": "third-party/affaan-m__ECC", "path": "skills/android-clean-architecture" },
