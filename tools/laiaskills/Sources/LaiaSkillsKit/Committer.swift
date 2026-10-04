@@ -46,8 +46,9 @@ public enum Committer {
     /// first-party plugin whose upstream moved (matching how this repo writes history).
     public static func plan(_ pending: PendingChanges, upstreamNames: [String: String]) -> [CommitGroup] {
         var groups: [CommitGroup] = []
-        let edits = pending.changes.filter { $0.kind != .upgrade }
+        let edits = pending.changes.filter { $0.kind == .add || $0.kind == .remove }
         let upgrades = pending.changes.filter { $0.kind == .upgrade }
+        let patches = pending.changes.filter { $0.kind == .patch }
 
         if !edits.isEmpty {
             let added = edits.filter { $0.kind == .add }.flatMap(\.skills)
@@ -73,8 +74,9 @@ public enum Committer {
             let full = "chore(third-party): bump \(parts.joined(separator: ", "))"
             let subject = full.count <= 72 ? full : "chore(third-party): bump \(thirdParty.count) sources"
             let body = thirdParty.map { "- \($0.source ?? ""): \($0.from ?? "?") → \($0.to ?? "?") (skills: \($0.skills.joined(separator: ", ")))" }
-                .joined(separator: "\n")
-            groups.append(CommitGroup(subject: subject, body: body, paths: thirdParty.compactMap(\.source),
+                .joined(separator: "\n") + droppedLines(thirdParty)
+            groups.append(CommitGroup(subject: subject, body: body,
+                                      paths: thirdParty.compactMap(\.source) + thirdParty.flatMap { $0.droppedPatches ?? [] },
                                       plugin: nil, changes: thirdParty, skillsToSync: []))
         }
 
@@ -90,15 +92,36 @@ public enum Committer {
             var body = "Re-pins \(change.source ?? "upstream") from \(change.from ?? "?") to \(change.to ?? "?"). \(recheck)"
             let extra = change.skills.filter { $0 != plugin }
             if !extra.isEmpty { body += "\nAlso updates skills taken from the pin: \(extra.joined(separator: ", "))." }
+            body += droppedLines([change])
             groups.append(CommitGroup(
                 subject: "docs(\(plugin)): refresh guidance for \(upstream) \(change.to ?? "")",
                 body: body,
                 paths: [change.source, "first-party/\(plugin)/skills", "first-party/\(plugin)/.claude-plugin/plugin.json",
-                        ".claude-plugin/marketplace.json"].compactMap { $0 },
+                        ".claude-plugin/marketplace.json"].compactMap { $0 } + (change.droppedPatches ?? []),
                 plugin: plugin, changes: [change], skillsToSync: change.skills
             ))
         }
+
+        // One commit per patch, scoped to the skill it fixes.
+        for change in patches {
+            let skill = change.skills.first ?? "skills"
+            let full = "fix(\(skill)): \(change.reason ?? "patch the installed copy")"
+            groups.append(CommitGroup(
+                subject: full.count <= 72 ? full : "fix(\(skill)): patch the installed copy",
+                body: "Adds \(change.patch ?? Patches.path(for: skill)), applied to the installed copy on top of "
+                    + "\(change.source ?? "the pinned source")\(change.to.map { " \($0)" } ?? "")."
+                    + (full.count <= 72 ? "" : "\n\nReason: \(change.reason ?? "")"),
+                paths: [change.patch ?? Patches.path(for: skill)],
+                plugin: nil, changes: [change], skillsToSync: []
+            ))
+        }
         return groups
+    }
+
+    static func droppedLines(_ changes: [PendingChange]) -> String {
+        let dropped = changes.flatMap { $0.droppedPatches ?? [] }
+        return dropped.isEmpty ? "" : "\n\nDrops patches the new version already contains:\n"
+            + dropped.map { "- \($0)" }.joined(separator: "\n")
     }
 
     /// Bumps `version` in the plugin's plugin.json and its marketplace.json entry, editing the text so

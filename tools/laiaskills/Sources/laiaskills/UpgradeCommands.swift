@@ -52,18 +52,28 @@ struct UpgradeCommand: ParsableCommand {
         guard try approve(ui, "Upgrade \(plans.count) source\(plans.count == 1 ? "" : "s")?", yes: yes) else { throw ExitCode(1) }
 
         var problems: [String] = []
+        var conflicted: [String] = []
         for plan in plans {
             try Upgrader.apply(plan, repo: context.repo.root)
 
-            // Reinstall skills whose files come from this pin.
+            // Re-test local patches on the new version, then reinstall skills whose files come from this pin.
             let refreshed = try Context(options)
             var installer = Installer(repo: refreshed.repo, environment: refreshed.environment)
+            var dropped: [String] = []
             for skill in refreshed.skills where plan.skills.contains(skill.name) {
                 if let problem = skill.problem {
                     problems.append("\(skill.name): \(problem) — fix skills.json before committing")
-                } else {
-                    try installer.install(skill)
+                    continue
                 }
+                let review = try Patches.review(skill, repo: refreshed.repo.root, scratch: installer.hub)
+                dropped += review.dropped
+                for path in review.dropped { ui.info("\(skill.name): dropped \(path); \(plan.toLabel) already contains it.") }
+                if !review.conflicts.isEmpty {
+                    conflicted.append(skill.name)
+                    problems += review.conflicts.map { "\(skill.name): patch no longer applies — \($0)" }
+                    continue
+                }
+                try installer.install(skill)
             }
 
             var recheck: PendingChange.Recheck?
@@ -83,11 +93,19 @@ struct UpgradeCommand: ParsableCommand {
             }
             try PendingChanges.record(
                 PendingChange(kind: .upgrade, skills: plan.skills, source: plan.source.path, from: plan.fromLabel,
-                              to: plan.toLabel, plugin: plan.plugin, recheck: recheck),
+                              to: plan.toLabel, plugin: plan.plugin, recheck: recheck,
+                              droppedPatches: dropped.isEmpty ? nil : dropped),
                 repo: context.repo.root
             )
         }
         ui.warning(problems)
+        if !conflicted.isEmpty {
+            throw ValidationError("""
+                Stopped: patches for \(conflicted.joined(separator: ", ")) no longer apply. The new pin is staged and \
+                those skills keep their old copies. Update or delete the patches under \(Patches.folder)/, run \
+                `laiaskills sync`, then `laiaskills commit`.
+                """)
+        }
 
         if commit || (!yes && ui.isInteractive && ui.confirm("Commit now?", default: false)) {
             try CommitCommand.commitPending(options: options, ui: ui, yes: yes, bump: nil)

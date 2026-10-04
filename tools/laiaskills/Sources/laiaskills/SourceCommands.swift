@@ -147,6 +147,7 @@ struct ShowCommand: ParsableCommand {
         let status: String
         let hub: String
         let mirrors: [String: String]
+        let patches: [String]
     }
 
     func run() throws {
@@ -169,7 +170,8 @@ struct ShowCommand: ParsableCommand {
             hub: hubFolder.path,
             mirrors: Dictionary(uniqueKeysWithValues: context.inspector.mirrors.map {
                 ($0.name, "\($0.url.appendingPathComponent(skill).path) (\(mirrorLabel(skill, mirror: $0, entry: resolved.entry, context)))")
-            })
+            }),
+            patches: Patches.list(for: skill, repo: context.repo.root).map { $0.name + ($0.reason.map { ": \($0)" } ?? "") }
         )
 
         if open {
@@ -190,6 +192,9 @@ struct ShowCommand: ParsableCommand {
         ]
         for mirror in details.mirrors.keys.sorted() {
             rows.append(["Mirror \(mirror)", details.mirrors[mirror] ?? "—"])
+        }
+        for patch in details.patches {
+            rows.append(["Patch", patch])
         }
         ui.table(headers: ["Field", "Value"], rows: rows)
         if let text { ui.line("\n" + text) }

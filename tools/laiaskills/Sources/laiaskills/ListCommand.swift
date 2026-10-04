@@ -41,10 +41,11 @@ struct ListCommand: ParsableCommand {
         var rows = context.skills.map { skill -> Row in
             let status = skill.submodulePath.flatMap { pinned[$0] }
             let version = status?.pinnedLabel ?? skill.plugin.flatMap { context.pluginVersion($0) } ?? "—"
+            let patches = Patches.list(for: skill.name, repo: context.repo.root).count
             return Row(
                 name: skill.name,
                 source: skill.entry.source,
-                version: version,
+                version: version + (patches == 0 ? "" : " + \(patches) patch\(patches == 1 ? "" : "es")"),
                 hub: installer.status(of: skill).label,
                 mirrors: mirrorStates(skill.name, context, entry: skill.entry),
                 status: skill.problem != nil ? "error" : status.map(statusLabel) ?? "—",

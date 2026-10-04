@@ -75,6 +75,9 @@ public struct Installer {
         guard skill.problem == nil else { return .error(skill.problem!) }
         // Installed before plugin manifests and nested skills were left out of copies.
         if let files = record.files, Exporter.installablePaths(Array(files.keys)).count != files.count { return .notSynced }
+        // A patch was added, edited, or removed since the install.
+        let patches = (try? Patches.fingerprint(Patches.list(for: skill.name, repo: repo.root))) ?? [:]
+        if patches != (record.patches ?? [:]) { return .notSynced }
         do {
             let pin = try Pins.pin(for: skill, repo: repo.root)
             return pin.tree == record.tree && record.source == skill.entry.source ? .upToDate : .notSynced
@@ -133,9 +136,16 @@ public struct Installer {
         } else {
             let pin = try Pins.pin(for: skill, repo: repo.root)
             try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
-            let files = try Exporter.export(pin, to: staging)
-            record = InstallState.Record(source: skill.entry.source, path: pin.path, commit: pin.commit, tag: pin.tag,
-                                         tree: pin.tree, files: files, installedAt: Self.timestamp(), workingTree: false)
+            var files = try Exporter.export(pin, to: staging)
+            let patches = Patches.list(for: skill.name, repo: repo.root)
+            if !patches.isEmpty {
+                try Patches.apply(patches, to: staging)
+                files = try Exporter.fingerprint(staging)
+            }
+            var installed = InstallState.Record(source: skill.entry.source, path: pin.path, commit: pin.commit, tag: pin.tag,
+                                                tree: pin.tree, files: files, installedAt: Self.timestamp(), workingTree: false)
+            installed.patches = patches.isEmpty ? nil : try Patches.fingerprint(patches)
+            record = installed
         }
 
         let target = hub.appendingPathComponent(skill.name)
@@ -228,6 +238,11 @@ public struct Installer {
     }
 
     // MARK: Helpers
+
+    /// Today's date in UTC, e.g. `2026-10-04`.
+    public static func timestampDay() -> Substring {
+        timestamp().prefix(10)
+    }
 
     static func timestamp(compact: Bool = false) -> String {
         let formatter = DateFormatter()

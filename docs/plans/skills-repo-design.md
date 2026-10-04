@@ -58,6 +58,8 @@ laia-skills/
 │   └── visionos-agents/
 ├── third-party/                      external skill repos consumed, never published
 │   └── <owner>__<repo>/               one submodule per source repo
+├── patches/                          local fixes to third-party skills (5.8)
+│   └── <skill>/NNNN-<slug>.patch      applied to the installed copy, in file-name order
 ├── tools/
 │   ├── laiaskills/                    Swift package (Noora UI)
 │   ├── scripts/validate_skills.rb     moved from scripts/
@@ -221,14 +223,15 @@ renders and prompts when attached to a TTY.
 | `laiaskills list [filter]` | Skills in `skills.json`: source, pinned commit, install state per agent, "outdated" marker from the last fetch (offline). `--all` adds foreign skills found in agent dirs |
 | `laiaskills show <skill>` | Detail view: description, source, agents, every install location, rendered `SKILL.md`. `--open` reveals it in the file manager (Finder or `xdg-open`) |
 | `laiaskills sources` | Configured sources: skills available vs installed, pinned commit, tracked branch |
-| `laiaskills check` | `git fetch --tags` each source (third-party and first-party `upstream/`); shallow sources use `git ls-remote` instead. Tagged sources: report newer release tags. Untagged: report commits on the tracked branch that touch each skill's path. Also reports copies that are **not synced** or **modified** (offline). `--offline`; `--exit-code` → 1 when anything needs action |
+| `laiaskills check` | `git fetch --tags` each source (third-party and first-party `upstream/`); shallow sources use `git ls-remote` instead. Tagged sources: report newer release tags. Untagged: report commits on the tracked branch that touch each skill's path. Also reports copies that are **not synced** or **modified** (offline), and local patches that won't apply to, or are already in, the newest version (5.8). `--offline`; `--exit-code` → 1 when anything needs action |
 | `laiaskills sync [skill…]` | Make every installed copy match its pin: install missing, re-copy not-synced, replace other tools' copies, remove skills dropped from `skills.json`, repair mirror links (add missing ones, remove ones a skill skips). Refuses to overwrite **modified** copies without `--force`. Asks before replacing or removing (`--yes` skips; without a terminal it stops instead of guessing). `--dry-run`. Run after `git pull` |
 | `laiaskills upgrade [skill\|source…]` | Target = newest release tag, or branch head when untagged (`--to <tag\|commit>` overrides). Show `git log` + `diff --stat` for the skill path, confirm (Noora yes/no, or `--yes`), move the submodule pointer, re-resolve paths, re-copy into the hub, `git add`. For a first-party `upstream/` pin it then runs the automated re-check (5.6; `--no-agent` skips it). Staged only; `--commit` also runs `commit`. Interactive runs end with "Commit now?" (default no) |
 | `laiaskills commit` | Commit the staged changes with generated Conventional Commit messages: third-party bumps in one `chore(third-party): bump swiftui-pro to v1.3.0, axe to 4f2c1a9` commit (one body line per skill, old → new); each re-checked first-party plugin in its own `docs(<plugin>): refresh guidance for <upstream> <tag>` commit, with the plugin `version` bumped in `plugin.json` and `marketplace.json` (patch by default; asks for minor/major/breaking). Shows the messages for confirmation (or `--yes`). **Never pushes** |
 | `laiaskills add <owner/repo[@skill] \| url> [--skill name…]` | Add the submodule pinned to its newest release (`--shallow` for large repos), list its skills (Noora multiple-choice, or `--skill`), write `skills.json` entries, install (`--no-install` skips). URLs may be `https://`, `git@host:`, or `file://`; owner/repo are the last two path segments |
 | `laiaskills install [skill…]` | Copy the skill at its pin into the hub and create mirror links. `--working-tree` copies uncommitted first-party edits for testing |
 | `laiaskills remove <skill>` | Move the hub copy to the backups folder, remove mirror links and the `skills.json` entry; drop the submodule when no skill uses it |
-| `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, missing mirror links, links in mirrors a skill skips, `skipMirrors` naming an unknown mirror, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names |
+| `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, missing mirror links, links in mirrors a skill skips, `skipMirrors` naming an unknown mirror, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names, local patches that don't apply or are no longer needed (5.8) |
+| `laiaskills patch <skill> -m <reason>` | Save the edits to a third-party skill's installed copy as `patches/<skill>/NNNN-<slug>.patch` (or `--from <file>`), stage it, and reinstall with it (5.8) |
 | `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL). Prints the plan; `--apply` adds the sources and skills (staged, not installed), `--shallow owner/repo` for large ones. After `sync`, `--prune` removes the lock entries of skills laiaskills installed and of skills no longer installed (asks first, or `--yes`; backs the lock file up to the backups folder). Entries for skills other tools still install stay |
 | `laiaskills browse <source>` | Optional (v2): Noora picker over a source's skills, preview `SKILL.md` |
 
@@ -305,6 +308,31 @@ non-interactively; the tool keeps control of git, validation, and committing.
   under a key that includes the image and Swift version. Locally, `mise run laiaskills:test-linux` runs
   the same tests in the `swift:6.4.0-resolute` (Ubuntu 26.04) Docker image.
 
+### 5.8 Local patches (security fixes and similar)
+
+Security audits of third-party skills can require changing them before upstream does (decision 19).
+Submodules stay untouched; the fix is a patch applied to the installed copy.
+
+- **Where:** `patches/<skill>/NNNN-<slug>.patch`, a unified diff relative to the skill folder (`a/` and
+  `b/` prefixes) with a short header (`Reason:`, `Date:`) that `git apply` ignores. Found by folder; no
+  `skills.json` key. Committed and reviewed like any other change.
+- **Create:** edit the installed copy in the hub, then `laiaskills patch <skill> -m "<reason>"`. The diff
+  against the pin plus the earlier patches becomes the next patch file, staged; the skill is reinstalled
+  with it, and `commit` writes `fix(<skill>): <reason>`. `--from <file>` takes an existing patch instead.
+  First-party skills are edited directly, never patched.
+- **Install:** export the pin, apply the patches in file-name order in the staging folder, then swap. A
+  patch that doesn't apply fails the install with the patch named. The install record keeps each
+  patch's blob id, so adding, editing, or deleting one makes the copy "not synced".
+- **Upgrade:** after the pin moves, each patch is tried on the new version. One the new version already
+  contains (it reverse-applies) is deleted, staged, and listed in the upgrade commit. One that no longer
+  applies stops the upgrade: the pin stays staged, the skill keeps its old copy, and the patch has to be
+  updated or deleted before `sync` and `commit`.
+- **Visibility:** `list` shows `<version> + N patches`; `show` lists each patch with its reason;
+  `check` tests patches against the newest version when it has been fetched (not for shallow
+  sources); `doctor` flags patches that don't apply to the pin, patches the pin already contains,
+  patches for first-party skills, and patches for skills not in `skills.json`.
+- Sending a fix upstream stays manual; the patch file can be attached to an upstream issue or PR as is.
+
 ## 6. Maintenance profile
 
 | Driver | Frequency | Mitigation |
@@ -337,6 +365,8 @@ cross-platform handling. Expected upkeep is still a few hours per month.
 | 2026-10-04 | **Per-skill mirror opt-out** (`skipMirrors`) and **`import --prune`**; `sync` also repairs mirror links. 66 tests |
 | 2026-10-04 | **Phase 3, migration steps 1–5 and the commit**: 20 third-party sources and 36 skills imported (four under their current GitHub names: `affaan-m/ECC`, `krutikJain/android-agent-skills`, `AvdLee/Swift-Concurrency-Agent-Skill`, `twostraws/SwiftData-Agent-Skill`); `sync` replaced 40 copies (backed up) and installed 24; all 64 skills up to date and linked. Skill names now match ignoring case (`watchos` says `name: watchOS` upstream). Snapshot in `tmp/migration-snapshot-2026-10-04/` |
 | 2026-10-04 | **Phase 3 finished**: `visionos-agents` plugin uninstalled, commits pushed, `import --prune` emptied `~/.agents/.skill-lock.json` (40 entries, backed up). Copies now leave out plugin manifests and nested skills, which removed a duplicate `swiftui-pro:swiftui-pro`. 68 tests |
+| 2026-10-04 | **Fixes from comparing old and new copies**: ECC skills had been installed from their Japanese translations (`add` now prefers the shortest path, the canonical `skills/<name>`) |
+| 2026-10-04 | **Local patches** (decision 19, 5.8): `laiaskills patch`, patches applied on install, re-tested on upgrade, reported by `check` and `doctor`. First patch: `apple-hig-designer`, `printf -v` instead of `eval` on user input (from an earlier audit). 76 tests |
 
 ### Pending
 
@@ -453,6 +483,12 @@ Numbers are kept stable so they can be referred to in discussion.
     `"<skill>": { "source": "…", "skipMirrors": ["claude"] }`. The skill stays fully managed (pinned,
     checked, upgraded, copied into `~/.agents/skills`) but gets no `~/.claude/skills` link.
 
+- **(19) Local patches for third-party skills.** Decided 2026-10-04. Security audits can require fixing
+  a third-party skill before upstream does (the first: `apple-hig-designer`'s component script passed
+  user input through `eval`). Fixes are patch files in `patches/<skill>/`, applied to the installed copy
+  on every install; submodules stay pristine and nothing third-party is copied into the repo. A patch
+  the new upstream version already contains is dropped on upgrade; one that no longer applies stops the
+  upgrade instead of silently losing the fix. See 5.8.
 - **(8–11) Migration items.** Other skill managers (Commander, `npx skills`) stay for discovery only and never install or update managed skills; `~/.agents/.skill-lock.json` was pruned; the skills missing from it were added by hand; `skill-creator` and `formatting-build-output` follow decision 18.
 
 ## 9. Migration (done 2026-10-04)

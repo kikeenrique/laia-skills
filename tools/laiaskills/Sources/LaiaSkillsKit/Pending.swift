@@ -3,7 +3,7 @@ import Foundation
 /// A staged change made by laiaskills, waiting for `laiaskills commit` to write its commit message.
 public struct PendingChange: Codable, Sendable, Equatable {
     public enum Kind: String, Codable, Sendable {
-        case add, remove, upgrade
+        case add, remove, upgrade, patch
     }
 
     /// Outcome of the automated re-check of a first-party skill after its upstream moved.
@@ -21,9 +21,15 @@ public struct PendingChange: Codable, Sendable, Equatable {
     /// First-party plugin whose `upstream/` pin moved.
     public var plugin: String?
     public var recheck: Recheck?
+    /// For `patch`: the new patch file (repo-relative) and why it exists.
+    public var patch: String?
+    public var reason: String?
+    /// For `upgrade`: patch files deleted because the new pin already contains their change.
+    public var droppedPatches: [String]?
 
     public init(kind: Kind, skills: [String], source: String? = nil, from: String? = nil, to: String? = nil,
-                plugin: String? = nil, recheck: Recheck? = nil) {
+                plugin: String? = nil, recheck: Recheck? = nil, patch: String? = nil, reason: String? = nil,
+                droppedPatches: [String]? = nil) {
         self.kind = kind
         self.skills = skills
         self.source = source
@@ -31,6 +37,9 @@ public struct PendingChange: Codable, Sendable, Equatable {
         self.to = to
         self.plugin = plugin
         self.recheck = recheck
+        self.patch = patch
+        self.reason = reason
+        self.droppedPatches = droppedPatches
     }
 }
 
@@ -71,6 +80,8 @@ public struct PendingChanges: Codable, Sendable {
         if change.kind == .upgrade, let index = pending.changes.firstIndex(where: { $0.kind == .upgrade && $0.source == change.source }) {
             var merged = change
             merged.from = pending.changes[index].from
+            let dropped = (pending.changes[index].droppedPatches ?? []) + (change.droppedPatches ?? [])
+            merged.droppedPatches = dropped.isEmpty ? nil : dropped
             pending.changes[index] = merged
         } else {
             pending.changes.append(change)

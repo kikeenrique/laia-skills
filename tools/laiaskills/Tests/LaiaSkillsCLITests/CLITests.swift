@@ -131,6 +131,45 @@ import Testing
         #expect(try !setup.fixture.read("repo/.gitmodules").contains("o__beta"))
     }
 
+    // MARK: Patches
+
+    @Test func patchSavesAnEditCommitsItAndUpgradeDropsItOnceUpstreamHasIt() throws {
+        let setup = try SkillsRepoFixture()
+        #expect(try laiaskills(setup, "sync", "--yes").status == 0)
+        // The same file v1.1.0 adds, so the upgrade finds the patch already applied.
+        try setup.fixture.write("home/.agents/skills/beta/references/notes.md", "v1.1 notes")
+
+        let patch = try laiaskills(setup, "patch", "beta", "-m", "add notes", "--json")
+        #expect(patch.status == 0, "\(patch.stderr)")
+        #expect(try patch.jsonObject()["patch"] as? String == "patches/beta/0001-add-notes.patch")
+        let rows = try laiaskills(setup, "list", "--json").jsonArray()
+        let beta = rows.first { $0["name"] as? String == "beta" }
+        #expect(beta?["version"] as? String == "v1.0.0 + 1 patch")
+        #expect(beta?["hub"] as? String == "up to date")
+
+        #expect(try laiaskills(setup, "commit", "--yes").status == 0)
+        #expect(try lastSubject(setup) == "fix(beta): add notes")
+
+        let upgrade = try laiaskills(setup, "upgrade", "beta", "--yes", "--commit")
+        #expect(upgrade.status == 0, "\(upgrade.stderr)")
+        #expect(!setup.fixture.exists("repo/patches/beta/0001-add-notes.patch"))
+        #expect(try setup.fixture.git("log", "-1", "--format=%B", in: "repo").contains("patches/beta/0001-add-notes.patch"))
+        #expect(try setup.fixture.git("status", "--porcelain", in: "repo").isEmpty)
+    }
+
+    @Test func upgradeStopsWhenAPatchNoLongerApplies() throws {
+        let setup = try SkillsRepoFixture()
+        #expect(try laiaskills(setup, "sync", "--yes").status == 0)
+        try setup.fixture.write("home/.agents/skills/beta/references/notes.md", "our own notes")
+        #expect(try laiaskills(setup, "patch", "beta", "-m", "add notes").status == 0)
+
+        let upgrade = try laiaskills(setup, "upgrade", "beta", "--yes")
+        #expect(upgrade.status != 0)
+        #expect(upgrade.stderr.contains("no longer apply"))
+        // The old copy stays installed, with the patch.
+        #expect(try setup.fixture.read("home/.agents/skills/beta/references/notes.md") == "our own notes")
+    }
+
     // MARK: First-party re-check
 
     @Test func upgradeRunsTheAgentKeepsOnlySkillEditsAndCommitsThePlugin() throws {

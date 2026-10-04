@@ -18,6 +18,8 @@ public struct InstallState: Codable, Sendable {
         public var installedAt: String?
         /// Installed from uncommitted first-party edits, for testing.
         public var workingTree: Bool?
+        /// Patches applied on top of the pin: file name → git blob id of the patch.
+        public var patches: [String: String]?
 
         public init(source: String?, path: String?, commit: String?, tag: String?, tree: String?,
                     files: [String: String], installedAt: String, workingTree: Bool) {

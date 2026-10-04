@@ -88,9 +88,43 @@ public enum Doctor {
             }
         }
 
+        findings += patchFindings(repo: repo, skills: skills, scratch: inspector.hub)
         findings += skillsCLIFindings(managedNames: managedNames, inspector: inspector, environment: environment)
         findings += claudePluginFindings(managedNames: managedNames.filter { !skips($0, claudeMirror) }, environment: environment)
         return findings.sorted { ($0.severity, $0.check, $0.message) < ($1.severity, $1.check, $1.message) }
+    }
+
+    /// Patches for skills that aren't managed or are first-party, and patches that don't apply to the pin.
+    static func patchFindings(repo: Repository, skills: [ResolvedSkill], scratch: URL) -> [Finding] {
+        var findings: [Finding] = []
+        for name in Patches.patchedSkills(repo: repo.root) {
+            guard let skill = skills.first(where: { $0.name == name }) else {
+                findings.append(Finding(severity: .warning, check: "patches",
+                                        message: "\(Patches.path(for: name)): `\(name)` is not in skills.json; delete the patches"))
+                continue
+            }
+            if skill.entry.source == SkillEntry.firstParty {
+                findings.append(Finding(severity: .warning, check: "patches",
+                                        message: "\(name): first-party skills are edited directly; fold \(Patches.path(for: name)) into the skill"))
+                continue
+            }
+            guard skill.problem == nil, FileManager.default.fileExists(atPath: scratch.path),
+                  let pin = try? Pins.pin(for: skill, repo: repo.root),
+                  let fits = try? Patches.fit(Patches.list(for: name, repo: repo.root), gitDirectory: pin.gitDirectory,
+                                              commit: pin.commit, path: pin.path, scratch: scratch) else { continue }
+            for (patch, fit) in fits {
+                switch fit {
+                case .applies: break
+                case .alreadyApplied:
+                    findings.append(Finding(severity: .warning, check: "patches",
+                                            message: "\(name): \(patch.name) is already in the pinned version; delete it"))
+                case let .conflicts(detail):
+                    findings.append(Finding(severity: .error, check: "patches",
+                                            message: "\(name): \(patch.name) does not apply to the pin: \(detail)"))
+                }
+            }
+        }
+        return findings
     }
 
     /// `npx skills` lock entries that point at nothing, or that laiaskills now manages.

@@ -36,8 +36,10 @@ struct CheckCommand: ParsableCommand {
             }
         }
 
+        let patchNotes = patchOutlook(statuses, context: context, scratch: installer.hub)
+
         if options.json {
-            try printJSON(Report(sources: statuses, installs: drifted))
+            try printJSON(Report(sources: statuses, installs: drifted, patches: patchNotes))
         } else {
             let ui = NooraUI()
             ui.table(
@@ -56,6 +58,10 @@ struct CheckCommand: ParsableCommand {
             if !drifted.isEmpty {
                 ui.table(headers: ["Installed skill", "State", "Fix"], rows: drifted.map { [$0.skill, $0.state, $0.fix] })
             }
+            if !patchNotes.isEmpty {
+                ui.table(headers: ["Patched skill", "Patch", "On the newest version"],
+                         rows: patchNotes.map { [$0.skill, $0.patch, $0.outlook] })
+            }
         }
 
         if exitCode, statuses.contains(where: { $0.state == .outdated }) || !drifted.isEmpty {
@@ -69,8 +75,48 @@ struct CheckCommand: ParsableCommand {
         let fix: String
     }
 
+    struct PatchNote: Codable {
+        let skill: String
+        let patch: String
+        let outlook: String
+    }
+
     struct Report: Codable {
         let sources: [SourceStatus]
         let installs: [Drift]
+        let patches: [PatchNote]
+    }
+
+    /// How each patch of a skill from an outdated source would fare on the newest version, when that
+    /// version is available locally (shallow sources only list it remotely). Patches that still apply
+    /// are not listed.
+    private func patchOutlook(_ statuses: [SourceStatus], context: Context, scratch: URL) -> [PatchNote] {
+        var notes: [PatchNote] = []
+        for status in statuses where status.state == .outdated {
+            let patched = context.skills.filter {
+                $0.submodulePath == status.path && !Patches.list(for: $0.name, repo: context.repo.root).isEmpty
+            }
+            guard !patched.isEmpty, let latest = status.latest else { continue }
+            let git = Git(context.repo.root.appendingPathComponent(status.path))
+            let commit = git.attempt("rev-parse", "--verify", "--quiet", "\(latest)^{commit}")
+                ?? git.attempt("rev-parse", "--verify", "--quiet", "origin/\(latest)^{commit}")
+            for skill in patched {
+                let patches = Patches.list(for: skill.name, repo: context.repo.root)
+                guard let commit, let pin = try? Pins.pin(for: skill, repo: context.repo.root),
+                      let fits = try? Patches.fit(patches, gitDirectory: pin.gitDirectory, commit: commit,
+                                                  path: pin.path, scratch: scratch) else {
+                    notes += patches.map { PatchNote(skill: skill.name, patch: $0.name, outlook: "not checked: \(latest) not fetched") }
+                    continue
+                }
+                for (patch, fit) in fits {
+                    switch fit {
+                    case .applies: break
+                    case .alreadyApplied: notes.append(PatchNote(skill: skill.name, patch: patch.name, outlook: "already in \(latest); upgrade drops it"))
+                    case let .conflicts(detail): notes.append(PatchNote(skill: skill.name, patch: patch.name, outlook: "conflicts: \(detail)"))
+                    }
+                }
+            }
+        }
+        return notes
     }
 }

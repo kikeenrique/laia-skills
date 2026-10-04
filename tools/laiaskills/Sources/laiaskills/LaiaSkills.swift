@@ -10,7 +10,7 @@ struct LaiaSkills: ParsableCommand {
         subcommands: [
             ListCommand.self, ShowCommand.self, SourcesCommand.self, CheckCommand.self, DoctorCommand.self,
             SyncCommand.self, InstallCommand.self, RemoveCommand.self, AddCommand.self,
-            UpgradeCommand.self, CommitCommand.self, ImportCommand.self,
+            UpgradeCommand.self, CommitCommand.self, ImportCommand.self, PatchCommand.self,
         ]
     )
 }

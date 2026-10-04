@@ -38,7 +38,8 @@ Top-level folders are grouped by ownership, not packaging:
 | Folder | Contents |
 |--------|----------|
 | `first-party/` | Skills authored here and published through the marketplace. Each subfolder is one plugin. |
-| `third-party/` | External skill repos used here, as git submodules (`third-party/<owner>__<repo>`), added with `laiaskills add`. Never published, never copied into `first-party/`. Filled by the upcoming migration (see the roadmap in the design doc). |
+| `third-party/` | External skill repos used here, as git submodules (`third-party/<owner>__<repo>`), added with `laiaskills add`. Never published, never copied into `first-party/`. |
+| `patches/` | Local fixes to third-party skills (e.g. from security audits), one folder per skill, applied to the installed copy by `laiaskills`; submodules stay untouched. Create them with `laiaskills patch <skill> -m <reason>`. |
 | `tools/` | Tooling: `tools/scripts/validate_skills.rb`, the `laiaskills` CLI (`tools/laiaskills/`), and its configs (`tools/config/`). |
 | `docs/` | Committed plans and design docs. See [`docs/plans/skills-repo-design.md`](docs/plans/skills-repo-design.md). |
 | `tmp/` | Untracked scratch space. Not in `.gitignore`; never commit it. |
