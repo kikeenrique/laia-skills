@@ -100,7 +100,9 @@ Swift package in `tools/laiaskills/` (Swift 6.4+, must build and pass tests on *
 
 Third-party skills are never copied into the repo; `skills.json` maps each to a submodule under `third-party/`, and `laiaskills` installs copies into `~/.agents/skills`.
 
-- **Add:** `mise run laiaskills add <owner>/<repo> --skill <name>` (pins the newest release; `--shallow` for large repos), then `mise run laiaskills commit`. Use the repo's current GitHub name and casing. When a repo has several copies of a skill (translations, per-agent folders), the shortest path wins; check the `path` written to `skills.json`.
+- **Add:** `mise run laiaskills add <owner>/<repo> --skill <name>` (pins the newest release; `--shallow` for large repos), then `mise run laiaskills commit`. Use the repo's current GitHub name and casing. When a repo has several copies of a skill (translations, per-agent folders), the shortest path wins; check the `path` written to `skills.json`, or pick one with `--path <folder>`.
+- **Renamed upstream:** `laiaskills check` reports sources whose repo moved; apply it with `git submodule set-url -- <path> <new-url>` and commit `.gitmodules` with a pathspec.
+- **Claude plugins:** list the ones that should be installed in `claudePlugins` in `skills.json`; `doctor` reports missing and undeclared ones, `check` reports updates.
 - **Upgrade:** `mise run laiaskills check`, then `mise run laiaskills upgrade <skill-or-source>` and `commit`.
 - **Fix (e.g. after a security audit):** edit the installed copy in `~/.agents/skills/<skill>/`, then `mise run laiaskills patch <skill> -m "<reason>"` and `commit`. Never edit files under `third-party/`. Patches live in `patches/<skill>/` and are re-tested on every upgrade.
 - **Skip an agent:** `"skipMirrors": ["claude"]` on a `skills.json` entry when that agent already gets the skill another way (decision 18 in the design doc).

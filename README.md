@@ -51,7 +51,7 @@ on macOS and Linux. Run it with [mise](https://mise.jdx.dev):
 
 ```text
 mise run laiaskills list               # skills, versions, patches, and install state
-mise run laiaskills check              # newer upstream releases, drifted copies, patches that won't apply
+mise run laiaskills check              # newer releases, drifted copies, stale patches, renamed repos, plugin updates
 mise run laiaskills sync               # make installed copies match their pins (run after git pull)
 mise run laiaskills add owner/repo     # add skills from a third-party repo
 mise run laiaskills upgrade            # move pins to newer releases; re-checks first-party skills with an AI agent
@@ -62,7 +62,8 @@ mise run laiaskills doctor             # problems in the config, the agent folde
 
 Also `install`, `remove`, `show`, `sources`, and `import` (with `--prune` for the `npx skills` lock
 file); see `mise run laiaskills --help`. A skill can skip an agent's folder with `"skipMirrors"` in
-`skills.json`, for one that agent already gets another way.
+`skills.json`, for one that agent already gets another way, and `"claudePlugins"` lists the Claude
+Code plugins that should be installed, so `doctor` can spot missing or unexpected ones.
 
 Status: the commands are implemented and tested (`mise run laiaskills:test`, also on Linux CI), and
 all 64 installed skills (27 authored here, 37 third-party) are managed by laiaskills. Design, decisions,

@@ -138,6 +138,10 @@ working, but deep links and path-based installs (`npx skills add …/mise/skills
   `"skipMirrors": ["claude"]` for a skill Claude already gets another way (decision 18). The skill is
   still pinned, checked, upgraded, and copied into the hub; `sync` removes an existing link to it from
   those mirrors and leaves anything else there alone.
+- **`claudePlugins`** (optional, top level) lists the Claude Code plugins expected to be installed, as
+  `<plugin>@<marketplace>` (today `swift-lsp@claude-plugins-official`). `doctor` reports declared ones
+  that are missing and installed ones that aren't declared; `check` reports newer versions in their
+  marketplaces. Installing stays with `/plugin`. Leaving the key out turns tracking off.
 
 ### 5.2 `tools/config/agents.json` (tool behaviour)
 
@@ -224,14 +228,14 @@ renders and prompts when attached to a TTY.
 | `laiaskills list [filter]` | Skills in `skills.json`: source, pinned commit, install state per agent, "outdated" marker from the last fetch (offline). `--all` adds foreign skills found in agent dirs |
 | `laiaskills show <skill>` | Detail view: description, source, agents, every install location, rendered `SKILL.md`. `--open` reveals it in the file manager (Finder or `xdg-open`) |
 | `laiaskills sources` | Configured sources: skills available vs installed, pinned commit, tracked branch |
-| `laiaskills check` | `git fetch --tags` each source (third-party and first-party `upstream/`); shallow sources use `git ls-remote` instead. Tagged sources: report newer release tags. Untagged: report commits on the tracked branch that touch each skill's path. Also reports copies that are **not synced** or **modified** (offline), and local patches that won't apply to, or are already in, the newest version (5.8). `--offline`; `--exit-code` → 1 when anything needs action |
+| `laiaskills check` | `git fetch --tags` each source (third-party and first-party `upstream/`); shallow sources use `git ls-remote` instead. Tagged sources: report newer release tags. Untagged: report commits on the tracked branch that touch each skill's path. Also reports copies that are **not synced** or **modified** (offline), local patches that won't apply to, or are already in, the newest version (5.8), upstream repos that were renamed or transferred (their web page redirects; skipped with `--offline`), and Claude plugins with a newer marketplace version. `--offline`; `--exit-code` → 1 when anything needs action |
 | `laiaskills sync [skill…]` | Make every installed copy match its pin: install missing, re-copy not-synced, replace other tools' copies, remove skills dropped from `skills.json`, repair mirror links (add missing ones, remove ones a skill skips). Refuses to overwrite **modified** copies without `--force`. Asks before replacing or removing (`--yes` skips; without a terminal it stops instead of guessing). `--dry-run`. Run after `git pull` |
 | `laiaskills upgrade [skill\|source…]` | Target = newest release tag, or branch head when untagged (`--to <tag\|commit>` overrides). Show `git log` + `diff --stat` for the skill path, confirm (Noora yes/no, or `--yes`), move the submodule pointer, re-resolve paths, re-copy into the hub, `git add`. For a first-party `upstream/` pin it then runs the automated re-check (5.6; `--no-agent` skips it). Staged only; `--commit` also runs `commit`. Interactive runs end with "Commit now?" (default no) |
 | `laiaskills commit` | Commit the staged changes with generated Conventional Commit messages: third-party bumps in one `chore(third-party): bump swiftui-pro to v1.3.0, axe to 4f2c1a9` commit (one body line per skill, old → new); each re-checked first-party plugin in its own `docs(<plugin>): refresh guidance for <upstream> <tag>` commit, with the plugin `version` bumped in `plugin.json` and `marketplace.json` (patch by default; asks for minor/major/breaking). Shows the messages for confirmation (or `--yes`). **Never pushes** |
-| `laiaskills add <owner/repo[@skill] \| url> [--skill name…]` | Add the submodule pinned to its newest release (`--shallow` for large repos), list its skills (Noora multiple-choice, or `--skill`), write `skills.json` entries, install (`--no-install` skips). URLs may be `https://`, `git@host:`, or `file://`; owner/repo are the last two path segments |
+| `laiaskills add <owner/repo[@skill] \| url> [--skill name…]` | Add the submodule pinned to its newest release (`--shallow` for large repos), list its skills (Noora multiple-choice, or `--skill`), write `skills.json` entries, install (`--no-install` skips). When a repo has several copies of a skill, the shortest path wins; `--path <folder>` picks one explicitly. URLs may be `https://`, `git@host:`, or `file://`; owner/repo are the last two path segments |
 | `laiaskills install [skill…]` | Copy the skill at its pin into the hub and create mirror links. `--working-tree` copies uncommitted first-party edits for testing |
 | `laiaskills remove <skill>` | Move the hub copy to the backups folder, remove mirror links and the `skills.json` entry; drop the submodule when no skill uses it |
-| `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, missing mirror links, links in mirrors a skill skips, `skipMirrors` naming an unknown mirror, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names, local patches that don't apply or are no longer needed (5.8) |
+| `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, missing mirror links, links in mirrors a skill skips, `skipMirrors` naming an unknown mirror, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names, local patches that don't apply or are no longer needed (5.8), Claude plugins declared in `claudePlugins` but not installed or installed but not declared |
 | `laiaskills patch <skill> -m <reason>` | Save the edits to a third-party skill's installed copy as `patches/<skill>/NNNN-<slug>.patch` (or `--from <file>`), stage it, and reinstall with it (5.8) |
 | `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL). Prints the plan; `--apply` adds the sources and skills (staged, not installed), `--shallow owner/repo` for large ones. After `sync`, `--prune` removes the lock entries of skills laiaskills installed and of skills no longer installed (asks first, or `--yes`; backs the lock file up to the backups folder). Entries for skills other tools still install stay |
 | `laiaskills browse <source>` | Optional (v2): Noora picker over a source's skills, preview `SKILL.md` |
@@ -342,7 +346,7 @@ Submodules stay untouched; the fix is a patch applied to the installed copy.
 | Source repo layouts vary | Medium | Generic `SKILL.md` scan, optional `path` |
 | Agent directory conventions change | Medium | `tools/config/agents.json` |
 | Noora 0.x breaking minors | Medium | `.upToNextMinor` pin, single `UI` layer |
-| Upstream repo renamed (e.g. `everything-claude-code` → `affaan-m/ECC`) | Medium | GitHub redirects old URLs. Planned: `doctor` flags redirected submodule URLs so `.gitmodules` gets the new name (roadmap) |
+| Upstream repo renamed (e.g. `everything-claude-code` → `affaan-m/ECC`) | Medium | GitHub redirects old URLs and git follows them silently; `check` requests each repo's web page and reports a redirect to another path, with the `git submodule set-url` command to apply it |
 | Repos ship several copies of a skill (translations, per-agent folders) | Medium | `add` prefers the shortest path (`skills/<name>`); `path` in `skills.json` overrides |
 | A skill folder turns into a Claude plugin (nested copy, `.claude-plugin/`) | Low | Copies leave both out (5.4) |
 | Local patches go stale when upstream changes | Medium | `check` warns ahead; `upgrade` drops patches upstream absorbed and stops on conflicts (5.8) |
@@ -374,6 +378,7 @@ of third-party sources.
 | 2026-10-04 | **Test suite**: 76 tests (61 library, 15 end-to-end CLI), all offline; green on macOS and Linux CI through `7e09a92` |
 | 2026-10-04 | **Second patch**: `formatting-build-output` calls `xcsift` from PATH instead of `/usr/local/bin` |
 | 2026-10-04 | **First live AI re-check**: mise v2026.9.4 → v2026.10.2 (16 releases); plugin 0.3.0 → 0.4.0. The agent fixed what had gone stale (`pkgx` removed, trust rules, version pins) and added daemons, remote `include`, and `conf.d` folders, but skipped smaller features to keep the length. A second pass, checked against upstream docs, covered them in the reference files and fixed two more stale lines (`mise dot`, lockfile version 3). The prompt now separates the compact `SKILL.md` from reference files that may grow |
+| 2026-10-05 | **Source health**: `check` reports renamed upstream repos (a 301 from the repo's web page; git follows it silently) and Claude plugin updates; `add --path` picks one of several copies; `claudePlugins` in `skills.json` declares the expected Claude plugins (`swift-lsp`), and `doctor` reports missing and undeclared ones. 83 tests |
 | 2026-10-04 | **First routine third-party upgrade**: `ldomaradzki/xcsift` v1.5.1 → v1.5.2 and `wshobson/agents` (2 commits); no skill content changed. The xcsift patch was re-tested on the new version and kept |
 
 ### Pending
@@ -382,17 +387,14 @@ In priority order.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Push the local commits | owner | The xcsift patch, the re-check prompt, the mise 0.4.0 refresh, and roadmap updates; CI runs the validator and tests |
+| 1 | Push the local commits | owner | Renamed-repo check, `add --path`, Claude plugin tracking, and roadmap updates; CI runs the validator and tests |
 | 2 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
 | 3 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
 | 4 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task |
-| 5 | `doctor`: flag renamed upstream repos | tool | Promised in section 6: detect redirected submodule URLs (four sources had moved: ECC, krutikJain, two case changes) |
-| 6 | `add --path <folder>` | tool | Pick a specific copy when a repo has several; today the shortest path wins and the override is a hand edit of `skills.json` |
-| 7 | Codex in `recheck.json` | tool | Only if Codex is installed; verify its flags first |
-| 8 | Track Claude plugins that ship skills | tool | e.g. `"claudePlugins": ["<plugin>@<marketplace>"]` in `skills.json`: `doctor` reports declared-but-missing and undeclared plugins, `check` reports plugin updates. No plugin needs it today |
-| 9 | Optional: phase 4 `browse` | tool | Skills Manager already covers browsing |
-| 10 | Optional: Docker or Podman locally | owner | Only for `mise run laiaskills:test-linux`; CI covers Linux |
-| 11 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
+| 5 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
+| 6 | Optional: phase 4 `browse` | tool | Skills Manager already covers browsing |
+| 7 | Optional: Docker or Podman locally | owner | Only for `mise run laiaskills:test-linux`; CI covers Linux |
+| 8 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
 ### Implementation notes
 
