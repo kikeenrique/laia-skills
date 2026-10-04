@@ -1,7 +1,7 @@
 # Skills repo and `laiaskills` — design
 
-Status: **phases 0–2 implemented and tested** (macOS and Linux CI); phase 3, the migration of existing
-installs, is next. See the [roadmap](#7-roadmap). Last updated 2026-10-04.
+Status: **phases 0–3 done**: the tool is implemented and tested (macOS and Linux CI), and every
+installed skill is managed by it. See the [roadmap](#7-roadmap). Last updated 2026-10-04.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -184,6 +184,10 @@ Mistral Vibe (`~/.vibe/skills`) would be one more `mirrors` entry when needed.
   submodule or half-edited first-party skill is never installed by accident. First-party skills install
   from `HEAD`; submodule skills from the pin recorded in the index, so a staged `upgrade` counts. `install --working-tree <skill>` copies uncommitted first-party edits on
   purpose, for testing.
+- **One skill per copy.** A Claude plugin manifest (`.claude-plugin/`) and any subfolder holding another
+  `SKILL.md` are left out. Some upstreams make a skill folder double as a plugin with a nested copy of
+  the skill (`twostraws/SwiftUI-Agent-Skill` since v1.1.0); copied whole, Claude Code loads that copy
+  as a second skill (`swiftui-pro:swiftui-pro`). A copy that still holds those files counts as not synced.
 - **Atomic replace.** Export into a staging folder under the hub, then swap with a rename; the previous
   copy goes to `~/.agents/.laiaskills/backups/`. A failed install never leaves a half-written skill.
 - **Install state** lives in `~/.agents/.laiaskills.json` (machine-local, never in the repo, next to
@@ -332,21 +336,11 @@ cross-platform handling. Expected upkeep is still a few hours per month.
 | 2026-10-04 | **Decision 18**: the old `skill-creator` copy removed from `~/.agents/skills`, `~/.claude/skills`, and the lock file; the `xcsift` Claude plugin uninstalled |
 | 2026-10-04 | **Per-skill mirror opt-out** (`skipMirrors`) and **`import --prune`**; `sync` also repairs mirror links. 66 tests |
 | 2026-10-04 | **Phase 3, migration steps 1–5 and the commit**: 20 third-party sources and 36 skills imported (four under their current GitHub names: `affaan-m/ECC`, `krutikJain/android-agent-skills`, `AvdLee/Swift-Concurrency-Agent-Skill`, `twostraws/SwiftData-Agent-Skill`); `sync` replaced 40 copies (backed up) and installed 24; all 64 skills up to date and linked. Skill names now match ignoring case (`watchos` says `name: watchOS` upstream). Snapshot in `tmp/migration-snapshot-2026-10-04/` |
+| 2026-10-04 | **Phase 3 finished**: `visionos-agents` plugin uninstalled, commits pushed, `import --prune` emptied `~/.agents/.skill-lock.json` (40 entries, backed up). Copies now leave out plugin manifests and nested skills, which removed a duplicate `swiftui-pro:swiftui-pro`. 68 tests |
 
 ### Pending
 
-In order. **Phase 3, migration** moves the existing installs (section 9) under laiaskills; it is the
-first step that changes the real `~/.agents/skills`.
-
-Steps 1–5 and the commit are done (see Done). Left:
-
-| # | Task | Who | Notes |
-|---|---|---|---|
-| 6 | Uninstall the `visionos-agents@laia-skills` Claude plugin | owner | Otherwise Claude loads those skills twice; `doctor` flags it |
-| 7 | Push | owner | |
-| 8 | `import --prune`, stop using Commander for skills | tool + owner | Removes the lock entries of the migrated skills and the stale `swiftui-twostraws` |
-
-After the migration:
+Phase 3, the migration (section 9), is done; Commander stays for browsing only. Next, in order:
 
 | Task | Notes |
 |---|---|
@@ -459,50 +453,16 @@ Numbers are kept stable so they can be referred to in discussion.
     `"<skill>": { "source": "…", "skipMirrors": ["claude"] }`. The skill stays fully managed (pinned,
     checked, upgraded, copied into `~/.agents/skills`) but gets no `~/.claude/skills` link.
 
-**(8–11)** are one-off migration items, listed in section 9.
+- **(8–11) Migration items.** Other skill managers (Commander, `npx skills`) stay for discovery only and never install or update managed skills; `~/.agents/.skill-lock.json` was pruned; the skills missing from it were added by hand; `skill-creator` and `formatting-build-output` follow decision 18.
 
-## 9. Migration (one-off)
+## 9. Migration (done 2026-10-04)
 
-Checklist for moving existing installs under `laiaskills`. Remove this section once phase 3 is done.
-
-| # | Item | Plan |
-|---|---|---|
-| 8 | Other skill managers already installed | Keep for discovery only; never let them adopt or replace managed skills |
-| 9 | `~/.agents/.skill-lock.json` (`npx skills`) | Prune entries for managed names so other tools stop updating them |
-| 10 | Skills missing from the lock file | **Sources found** (installed `SKILL.md` identical to upstream): `android-ci-cd-release-playstore` → `krutikjain/android-agent-skills`, `mobile-android-design` → `wshobson/agents` (`plugins/ui-design/skills/`). Add both with `laiaskills add`. `swiftui-twostraws` has the same lock fingerprint as `swiftui-pro`: an old copy under another name, no longer installed; only its lock entry needs removing |
-| 11 | `formatting-build-output`, `skill-creator` | Decision 18. `formatting-build-output` is added with `laiaskills add` from `ldomaradzki/xcsift` (the lock file only has a local Commander path for it) and replaces the `xcsift` plugin. `skill-creator` is not managed and its old copy is removed |
-| — | Lock file still names `affaan-m/everything-claude-code` | The repo is now `affaan-m/ECC`: add it under the new name |
-
-`laiaskills import` (dry run, 2026-10-03) found 20 sources in the lock file; `Dimillian/Skills` and
-`dimillian/skills` merge into one. With `ldomaradzki/xcsift` (added by hand, decision 18) that makes 21 repos and 20 new submodules
-(AXe reuses an existing pin):
-
-| Source repo | Skills |
-|---|---|
-| AvdLee/Xcode-Build-Optimization-Agent-Skill | spm-build-analysis, xcode-build-benchmark, xcode-build-fixer, xcode-build-orchestrator, xcode-compilation-analyzer, xcode-project-analyzer |
-| AvdLee/SwiftUI-Agent-Skill | swiftui-expert-skill, update-swiftui-apis (lives under `.agents/skills/`) |
-| AvdLee/swift-concurrency-agent-skill | swift-concurrency |
-| Dimillian/Skills | swiftui-liquid-glass, swiftui-ui-patterns, swiftui-view-refactor, swiftui-performance-audit |
-| twostraws/SwiftUI-Agent-Skill | swiftui-pro |
-| twostraws/Swift-Concurrency-Agent-Skill | swift-concurrency-pro |
-| twostraws/Swift-Testing-Agent-Skill | swift-testing-pro |
-| twostraws/swiftdata-agent-skill | swiftdata-pro |
-| dpearson2699/swift-ios-skills | debugging-instruments, ios-simulator |
-| tuist/agent-skills | debug-generated-project, using-tuist-generated-projects |
-| cameroncooke/AXe | axe (reuse `first-party/ios-simulator-ui-flow/upstream`) |
-| dadederk/iOS-Accessibility-Agent-Skill | ios-accessibility |
-| ehmo/platform-design-skills | macos-design-guidelines, visionos-design-guidelines |
-| rshankras/claude-code-apple-skills | watchos |
-| affaan-m/ECC | android-clean-architecture, compose-multiplatform-patterns, kotlin-coroutines-flows |
-| krutikjain/android-agent-skills | android-gradle-build-logic, android-ci-cd-release-playstore |
-| jamesrochabrun/skills | apple-hig-designer |
-| github/awesome-copilot | apple-appstore-reviewer |
-| nextlevelbuilder/ui-ux-pro-max-skill | ui-ux-pro-max |
-| wshobson/agents | protocol-reverse-engineering, mobile-android-design |
-| ldomaradzki/xcsift | formatting-build-output (`plugins/claude-code/skills/xcsift`, decision 18) |
-
-First-party skills (`mise`, `replay`, `ios-simulator-ui-flow`, `cupertino`, `visionos-agents`) come from
-`first-party/` and need no submodule beyond their existing `upstream/` pins.
+Every skill installed by other tools is now managed by laiaskills: 20 third-party sources and 36 skills,
+plus the 28 first-party ones, 64 in total. Four sources are added under their current GitHub names
+rather than the ones in the old lock file (`affaan-m/ECC`, `krutikJain/android-agent-skills`,
+`AvdLee/Swift-Concurrency-Agent-Skill`, `twostraws/SwiftData-Agent-Skill`). The pre-migration snapshot
+is in `tmp/migration-snapshot-2026-10-04/`; per-skill backups and the old lock file are in
+`~/.agents/.laiaskills/backups/`.
 
 ## 10. Feature coverage
 

@@ -59,8 +59,8 @@ mise run laiaskills doctor             # problems in the config and the agent fo
 
 Also `install`, `remove`, `show`, `sources`, and `import`; see `mise run laiaskills --help`.
 
-Status: the commands are implemented and tested (`mise run laiaskills:test`, also on Linux CI); moving
-the existing installs under laiaskills is next. Design, decisions, and the roadmap of done and pending
+Status: the commands are implemented and tested (`mise run laiaskills:test`, also on Linux CI), and
+every installed skill is managed by laiaskills. Design, decisions, and the roadmap of done and pending
 work: [docs/plans/skills-repo-design.md](docs/plans/skills-repo-design.md#7-roadmap).
 
 ## Versioning
