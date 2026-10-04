@@ -152,8 +152,7 @@ Mistral Vibe (`~/.vibe/skills`) would be one more `mirrors` entry when needed.
 - **Only `~/.agents/skills` is supported as a target.** Agents that read it natively need nothing else.
 - An agent with its own directory is a **mirror**: each entry is a relative symlink to the hub entry
   (`~/.claude/skills/<name>` → `../../.agents/skills/<name>`), the layout `~/.claude/skills` already uses.
-- Every managed skill goes to the hub and to every mirror; no per-skill agent selection in v1
-  (a per-skill mirror opt-out is open as decision 18).
+- Every managed skill goes to the hub and to every mirror, unless it opts out of a mirror (decision 18).
 - Adding an agent or following a changed agent directory is a config edit, not a code change.
 
 ### 5.3 Discovery
@@ -334,16 +333,17 @@ first step that changes the real `~/.agents/skills`.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Decide decision 18 (per-skill mirror opt-out) | owner | Blocks how `skill-creator` and `formatting-build-output` are migrated |
-| 2 | Implement the opt-out, if chosen | tool | e.g. `"skipMirrors": ["claude"]` in `skills.json`; `doctor`'s duplicate check must respect it |
+| 1 | Implement the per-skill mirror opt-out (decision 18) | tool | `"skipMirrors": ["claude"]` in `skills.json`; `doctor`'s duplicate check must respect it. No longer blocks the migration: no skill in it needs the opt-out |
+| 2 | `add` `formatting-build-output` from `ldomaradzki/xcsift` | tool | `path: "plugins/claude-code/skills/xcsift"`, pinned to a release tag (v1.5.1 on 2026-10-04). Replaces the `xcsift` Claude plugin (decision 18) |
 | 3 | Snapshot `~/.agents/skills` and `~/.claude/skills` into `tmp/` | tool | Extra safety on top of the per-skill backups `sync` keeps |
 | 4 | `import --apply --shallow github/awesome-copilot` | tool | 20 sources from the lock file. Add ECC under its new name `affaan-m/ECC` (also shallow) instead of the lock's `everything-claude-code` |
 | 5 | `add` the two skills missing from the lock file | tool | `android-ci-cd-release-playstore` (`krutikjain/android-agent-skills`), `mobile-android-design` (`wshobson/agents`) |
 | 6 | Review: `git diff --cached`, `sources`, `doctor` | tool + owner | Everything resolves before anything is installed |
 | 7 | `sync --dry-run`, then `sync` | tool | Replaces ~37 copies installed by other tools (backed up); installs the 23 visionos skills into the hub |
-| 8 | Uninstall the `visionos-agents@laia-skills` Claude plugin | owner | Otherwise Claude loads those 23 skills twice; `doctor` flags it |
+| 8 | Uninstall the `visionos-agents@laia-skills` and `xcsift@xcsift` Claude plugins | owner | Otherwise Claude loads those skills twice; `doctor` flags it. Dropping `xcsift` also drops its `PreToolUse` hook (decision 18) |
 | 9 | `commit`, then push | tool / owner | |
 | 10 | Clean up: prune migrated entries from `~/.agents/.skill-lock.json` (incl. the stale `swiftui-twostraws`), stop using Commander for skills | tool + owner | No prune command yet: manual, or add one (e.g. `import --prune`) |
+| 11 | Remove the unmanaged `skill-creator` from `~/.agents/skills`, its `~/.claude/skills` link, and its lock entry | owner | Claude-only, it comes from the claude.ai sync (decision 18) |
 
 After the migration:
 
@@ -352,7 +352,7 @@ After the migration:
 | First live AI re-check: `upgrade first-party/mise/upstream` (v2026.9.4 → v2026.10.1) | Only stub-agent tests so far; this is the first real run of the agent |
 | `doctor`: flag renamed upstream repos | Promised in section 6, not implemented: detect redirected submodule URLs |
 | Codex in `recheck.json` | Only if Codex is installed; verify its flags first |
-| Update the `xcsift` Claude plugin (1.0.3 → 1.0.4) | Owner: `/plugin update` |
+| Track Claude plugins that ship skills | e.g. `"claudePlugins": ["<plugin>@<marketplace>"]` in `skills.json`: `doctor` reports declared-but-missing and undeclared plugins, `check` reports plugin updates. Installing stays with `/plugin`. No plugin needs it after the migration, so low priority |
 | Phase 4 (optional): `browse` | Skills Manager already covers browsing |
 | Optional: Docker or Podman locally | Only needed for `mise run laiaskills:test-linux`; CI covers Linux |
 
@@ -433,21 +433,21 @@ Numbers are kept stable so they can be referred to in discussion.
 - **(17) Re-checking first-party skills after an upstream re-pin.** Automated: `upgrade` runs an AI agent
   to re-check and update the skill, then guards the result (allowed paths, validator). No confirmation
   prompt; you review before committing. See 5.6.
-
-### Open questions
-
-**(18) Skills that Claude already gets another way.** `skill-creator` reaches Claude through the
-claude.ai account sync (as `anthropic-skills:skill-creator`, a newer copy), and `formatting-build-output`
-through the `xcsift` plugin (shown as `xcsift:xcsift`). Other agents reading `~/.agents/skills` would
-still want them, but every managed skill also gets a Claude mirror link today, so Claude would load
-them twice.
-
-- *Options:*
-  - **Per-skill mirror opt-out**: the skill stays fully managed (pinned, checked, upgraded, copied into
-    `~/.agents/skills` for Codex and others) but gets no `~/.claude/skills` link, e.g.
-    `"skill-creator": { "source": "third-party/anthropics__skills", "skipMirrors": ["claude"] }`.
-  - **Don't manage them**: leave both out of `skills.json`; Claude keeps its copies, other agents lose them.
-- *Deciding question:* should Codex and other agents have these two skills?
+- **(18) Skills that Claude already gets another way.** Decided 2026-10-04, case by case:
+  - **`skill-creator`: not managed.** It is Claude-specific, and Claude already gets a newer copy through
+    the claude.ai account sync (`anthropic-skills:skill-creator`). The copy in `~/.agents/skills` from
+    the old install is removed.
+  - **`formatting-build-output`: managed as a skill; the `xcsift` Claude plugin is uninstalled.** This is
+    xcsift's own skill (upstream's frontmatter says `name: formatting-build-output`; the folder is
+    `xcsift`, so the plugin shows it as `xcsift:xcsift`). The plugin adds a `PreToolUse` hook that
+    rewrites every `xcodebuild` / `swift build` / `swift test` call to pipe through `xcsift`. That is too
+    risky to keep: a bug in xcsift would then break every build, and in 1.0.3 the hook also returns
+    `permissionDecision: "allow"` for every other Bash command, which skips the permission prompt.
+    The skill tells the agent to pipe through `xcsift` itself, and every agent gets it.
+  - **The per-skill mirror opt-out is still built**, as a general feature for a skill that other agents
+    need but Claude already gets another way:
+    `"<skill>": { "source": "…", "skipMirrors": ["claude"] }`. The skill stays fully managed (pinned,
+    checked, upgraded, copied into `~/.agents/skills`) but gets no `~/.claude/skills` link.
 
 **(8–11)** are one-off migration items, listed in section 9.
 
@@ -460,11 +460,11 @@ Checklist for moving existing installs under `laiaskills`. Remove this section o
 | 8 | Other skill managers already installed | Keep for discovery only; never let them adopt or replace managed skills |
 | 9 | `~/.agents/.skill-lock.json` (`npx skills`) | Prune entries for managed names so other tools stop updating them |
 | 10 | Skills missing from the lock file | **Sources found** (installed `SKILL.md` identical to upstream): `android-ci-cd-release-playstore` → `krutikjain/android-agent-skills`, `mobile-android-design` → `wshobson/agents` (`plugins/ui-design/skills/`). Add both with `laiaskills add`. `swiftui-twostraws` has the same lock fingerprint as `swiftui-pro`: an old copy under another name, no longer installed; only its lock entry needs removing |
-| 11 | `formatting-build-output`, `skill-creator` | Both also reach Claude another way, see decision 18. `formatting-build-output` is the **original** xcsift skill name: upstream's frontmatter has always said `name: formatting-build-output` (the folder is `xcsift`, which Claude Code shows as `xcsift:xcsift`), so the `xcsift` plugin provides the same skill plus a hook. `skill-creator` comes from `anthropics/skills`; Claude also gets a newer copy via the claude.ai sync |
+| 11 | `formatting-build-output`, `skill-creator` | Decision 18. `formatting-build-output` is added with `laiaskills add` from `ldomaradzki/xcsift` (the lock file only has a local Commander path for it) and replaces the `xcsift` plugin. `skill-creator` is not managed and its old copy is removed |
 | — | Lock file still names `affaan-m/everything-claude-code` | The repo is now `affaan-m/ECC`: add it under the new name |
 
 `laiaskills import` (dry run, 2026-10-03) found 20 sources in the lock file; `Dimillian/Skills` and
-`dimillian/skills` merge into one. With `anthropics/skills` that makes 21 repos and 20 new submodules
+`dimillian/skills` merge into one. With `ldomaradzki/xcsift` (added by hand, decision 18) that makes 21 repos and 20 new submodules
 (AXe reuses an existing pin):
 
 | Source repo | Skills |
@@ -489,8 +489,7 @@ Checklist for moving existing installs under `laiaskills`. Remove this section o
 | github/awesome-copilot | apple-appstore-reviewer |
 | nextlevelbuilder/ui-ux-pro-max-skill | ui-ux-pro-max |
 | wshobson/agents | protocol-reverse-engineering, mobile-android-design |
-| anthropics/skills | skill-creator (depends on decision 18) |
-| ldomaradzki/xcsift | formatting-build-output (depends on decision 18) |
+| ldomaradzki/xcsift | formatting-build-output (`plugins/claude-code/skills/xcsift`, decision 18) |
 
 First-party skills (`mise`, `replay`, `ios-simulator-ui-flow`, `cupertino`, `visionos-agents`) come from
 `first-party/` and need no submodule beyond their existing `upstream/` pins.
@@ -512,7 +511,7 @@ What a typical GUI skill manager offers, and where each feature lands here.
 | Sources / marketplaces list | `sources` | Covered |
 | Per-source grid with Installed / Install | `browse` (v2), `add` picker | Deferred to v2 |
 | Install from `owner/repo@skill`, URL, path | `add` | Covered; local paths only for first-party |
-| Agent selection | Hub + mirrors in `agents.json` | Covered globally; per-skill mirror opt-out under discussion (decision 18) |
+| Agent selection | Hub + mirrors in `agents.json` | Covered globally, with a per-skill mirror opt-out (decision 18) |
 | Workspace / global scope | Global only | Not needed (decision 15) |
 | Shows installs made by other tools | `list --all`, `doctor` | Covered |
 | Online discovery (skills.sh and similar) | — | Out of scope |
