@@ -331,22 +331,20 @@ cross-platform handling. Expected upkeep is still a few hours per month.
 | 2026-10-04 | **End-to-end CLI tests**: the built binary is tested against fixture repos with a fake `HOME`; 57 tests pass on macOS and Linux CI |
 | 2026-10-04 | **Decision 18**: the old `skill-creator` copy removed from `~/.agents/skills`, `~/.claude/skills`, and the lock file; the `xcsift` Claude plugin uninstalled |
 | 2026-10-04 | **Per-skill mirror opt-out** (`skipMirrors`) and **`import --prune`**; `sync` also repairs mirror links. 66 tests |
+| 2026-10-04 | **Phase 3, migration steps 1–5 and the commit**: 20 third-party sources and 36 skills imported (four under their current GitHub names: `affaan-m/ECC`, `krutikJain/android-agent-skills`, `AvdLee/Swift-Concurrency-Agent-Skill`, `twostraws/SwiftData-Agent-Skill`); `sync` replaced 40 copies (backed up) and installed 24; all 64 skills up to date and linked. Skill names now match ignoring case (`watchos` says `name: watchOS` upstream). Snapshot in `tmp/migration-snapshot-2026-10-04/` |
 
 ### Pending
 
 In order. **Phase 3, migration** moves the existing installs (section 9) under laiaskills; it is the
 first step that changes the real `~/.agents/skills`.
 
+Steps 1–5 and the commit are done (see Done). Left:
+
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Snapshot `~/.agents/skills` and `~/.claude/skills` into `tmp/` | tool | Extra safety on top of the per-skill backups `sync` keeps |
-| 2 | `import --apply --shallow github/awesome-copilot` | tool | 20 sources from the lock file. Add ECC under its new name `affaan-m/ECC` (also shallow) instead of the lock's `everything-claude-code` |
-| 3 | `add` the three skills `import` can't map | tool | `android-ci-cd-release-playstore` (`krutikjain/android-agent-skills`) and `mobile-android-design` (`wshobson/agents`), missing from the lock file; `formatting-build-output` (`ldomaradzki/xcsift`, skill folder `plugins/claude-code/skills/xcsift`, v1.5.1 on 2026-10-04), whose lock entry only has a local Commander path (decision 18) |
-| 4 | Review: `git diff --cached`, `sources`, `doctor` | tool + owner | Everything resolves before anything is installed |
-| 5 | `sync --dry-run`, then `sync` | tool | Replaces ~37 copies installed by other tools (backed up); installs the 23 visionos skills into the hub |
 | 6 | Uninstall the `visionos-agents@laia-skills` Claude plugin | owner | Otherwise Claude loads those skills twice; `doctor` flags it |
-| 7 | `commit`, then push | tool / owner | |
-| 8 | `import --prune`, stop using Commander for skills | tool + owner | Removes the lock entries of migrated skills and stale ones (`swiftui-twostraws`, `formatting-build-output` today) |
+| 7 | Push | owner | |
+| 8 | `import --prune`, stop using Commander for skills | tool + owner | Removes the lock entries of the migrated skills and the stale `swiftui-twostraws` |
 
 After the migration:
 
