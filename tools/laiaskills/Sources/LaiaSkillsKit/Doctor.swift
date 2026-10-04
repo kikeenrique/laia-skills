@@ -15,6 +15,9 @@ public struct Finding: Codable, Sendable {
 
 /// Read-only health checks of the repo config, the agent folders, and other skill tools.
 public enum Doctor {
+    /// The mirror Claude Code reads. A skill that skips it may also come from a Claude plugin.
+    static let claudeMirror = "claude"
+
     public static func run(
         repo: Repository,
         submodules: [Submodule],
@@ -28,9 +31,15 @@ public enum Doctor {
         }
         let managedNames = Set(repo.manifest.skills.keys)
 
-        // skills.json entries that don't resolve to exactly one skill.
+        // skills.json entries that don't resolve to exactly one skill, or skip a mirror that doesn't exist.
         for skill in skills {
             if let problem = skill.problem { add(.error, "manifest", "\(skill.name): \(problem)") }
+            for mirror in skill.entry.skipMirrors ?? [] where repo.agents.mirrors[mirror] == nil {
+                add(.error, "manifest", "\(skill.name): skipMirrors names `\(mirror)`, which is not a mirror in agents.json")
+            }
+        }
+        func skips(_ name: String, _ mirror: String) -> Bool {
+            repo.manifest.skills[name]?.skips(mirror: mirror) == true
         }
 
         // Third-party sources no skill uses.
@@ -58,22 +67,29 @@ public enum Doctor {
             add(.error, "state", "\(name): recorded as installed but missing from \(inspector.hub.path)")
         }
 
-        // Mirrors: broken links anywhere, and managed skills that bypass the hub.
+        // Mirrors: broken links anywhere, managed skills that bypass the hub, links the skill opts out of,
+        // and installed skills with no link.
         for mirror in inspector.mirrors {
             for name in inspector.entries(in: mirror.url) {
                 switch inspector.mirrorState(name, in: mirror.url) {
                 case .broken:
                     add(.warning, "mirror", "\(mirror.name): broken symlink `\(name)`")
-                case .bypass where managedNames.contains(name):
+                case .bypass where managedNames.contains(name) && !skips(name, mirror.name):
                     add(.warning, "mirror", "\(mirror.name): `\(name)` does not link to the hub copy")
+                case .linked where skips(name, mirror.name):
+                    add(.warning, "mirror", "\(mirror.name): `\(name)` links to the hub copy but skips this mirror; `laiaskills sync` removes the link")
                 default:
                     break
                 }
             }
+            for name in managedNames.sorted() where inspector.hubState(name) == .managed && !skips(name, mirror.name)
+                && inspector.mirrorState(name, in: mirror.url) == .missing {
+                add(.warning, "mirror", "\(mirror.name): `\(name)` has no link to the hub copy; `laiaskills sync` adds it")
+            }
         }
 
         findings += skillsCLIFindings(managedNames: managedNames, inspector: inspector, environment: environment)
-        findings += claudePluginFindings(managedNames: managedNames, environment: environment)
+        findings += claudePluginFindings(managedNames: managedNames.filter { !skips($0, claudeMirror) }, environment: environment)
         return findings.sorted { ($0.severity, $0.check, $0.message) < ($1.severity, $1.check, $1.message) }
     }
 
@@ -84,10 +100,10 @@ public enum Doctor {
         for name in skills.keys.sorted() {
             if inspector.hubState(name) == .missing {
                 findings.append(Finding(severity: .warning, check: "skills-cli",
-                                        message: "\(name): listed in .skill-lock.json but not installed"))
+                                        message: "\(name): listed in .skill-lock.json but not installed; `laiaskills import --prune` removes the entry"))
             } else if managedNames.contains(name) {
                 findings.append(Finding(severity: .info, check: "skills-cli",
-                                        message: "\(name): also tracked by .skill-lock.json; prune it after migrating"))
+                                        message: "\(name): also tracked by .skill-lock.json; `laiaskills import --prune` removes the entry once laiaskills installed it"))
             }
         }
         return findings

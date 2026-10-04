@@ -46,7 +46,7 @@ struct ListCommand: ParsableCommand {
                 source: skill.entry.source,
                 version: version,
                 hub: installer.status(of: skill).label,
-                mirrors: mirrorStates(skill.name, context),
+                mirrors: mirrorStates(skill.name, context, entry: skill.entry),
                 status: skill.problem != nil ? "error" : status.map(statusLabel) ?? "—",
                 problem: skill.problem
             )
@@ -78,9 +78,9 @@ struct ListCommand: ParsableCommand {
         ui.warning(rows.compactMap { row in row.problem.map { "\(row.name): \($0)" } })
     }
 
-    private func mirrorStates(_ name: String, _ context: Context) -> [String: String] {
+    private func mirrorStates(_ name: String, _ context: Context, entry: SkillEntry? = nil) -> [String: String] {
         Dictionary(uniqueKeysWithValues: context.inspector.mirrors.map {
-            ($0.name, context.inspector.mirrorState(name, in: $0.url).rawValue)
+            ($0.name, mirrorLabel(name, mirror: $0, entry: entry, context))
         })
     }
 }

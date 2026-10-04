@@ -9,7 +9,8 @@ struct SyncCommand: ParsableCommand {
         discussion: """
         Installs missing skills, re-copies skills whose pin moved, replaces copies installed by other tools \
         (backups kept), and removes skills no longer in skills.json. Copies edited in place are skipped \
-        unless --force.
+        unless --force. Also repairs mirror links, including removing them from mirrors a skill skips \
+        (`skipMirrors` in skills.json).
         """
     )
 
@@ -66,6 +67,9 @@ struct SyncCommand: ParsableCommand {
                 case .install, .reinstall, .replaceForeign:
                     try installer.install(byName[step.name]!)
                     report.append(Step(name: step.name, action: Self.describe(step).action, detail: nil))
+                case .relink:
+                    try installer.linkMirrors(byName[step.name]!)
+                    report.append(Step(name: step.name, action: Self.describe(step).action, detail: nil))
                 case .remove:
                     try installer.uninstall(step.name)
                     report.append(Step(name: step.name, action: "removed", detail: nil))
@@ -97,6 +101,7 @@ struct SyncCommand: ParsableCommand {
         switch step.action {
         case .install: return Step(name: step.name, action: "install", detail: nil)
         case .reinstall: return Step(name: step.name, action: "update", detail: nil)
+        case .relink: return Step(name: step.name, action: "relink mirrors", detail: nil)
         case .replaceForeign: return Step(name: step.name, action: "replace other tool's copy", detail: nil)
         case .remove: return Step(name: step.name, action: "remove", detail: nil)
         case let .skipModified(files): return Step(name: step.name, action: "skip (edited in place)", detail: files.joined(separator: ", "))

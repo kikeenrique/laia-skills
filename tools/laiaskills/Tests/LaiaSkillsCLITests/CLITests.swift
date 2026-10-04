@@ -53,6 +53,38 @@ import Testing
         #expect(try FileManager.default.contentsOfDirectory(atPath: setup.fixture.url("home/.agents/.laiaskills/backups").path).count == 1)
     }
 
+    @Test func skipMirrorsKeepsTheHubCopyButNoLink() throws {
+        let setup = try SkillsRepoFixture()
+        #expect(try laiaskills(setup, "sync", "--yes").status == 0)
+        try setup.fixture.write("repo/skills.json", """
+        {"skills": {"alpha": {"source": "first-party"}, "beta": {"source": "third-party/o__beta", "skipMirrors": ["claude"]}}}
+        """)
+
+        let plan = try laiaskills(setup, "sync", "--dry-run", "--json").jsonArray()
+        #expect(plan.map { $0["action"] as? String } == ["relink mirrors"])
+        #expect(try laiaskills(setup, "sync", "--yes").status == 0)
+        #expect(setup.fixture.exists("home/.agents/skills/beta/SKILL.md"))
+        #expect(!setup.fixture.exists("home/.claude/skills/beta"))
+
+        let rows = try laiaskills(setup, "list", "--json").jsonArray()
+        let beta = rows.first { $0["name"] as? String == "beta" }
+        #expect((beta?["mirrors"] as? [String: String])?["claude"] == "skipped")
+    }
+
+    @Test func importPruneRemovesLockEntriesOnceSynced() throws {
+        let setup = try SkillsRepoFixture()
+        #expect(try laiaskills(setup, "sync", "--yes").status == 0)
+        try setup.fixture.write("home/.agents/.skill-lock.json", #"{"skills": {"beta": {}, "gone": {}}}"#)
+
+        #expect(try laiaskills(setup, "import", "--prune").stderr.contains("--yes"))
+        let pruned = try laiaskills(setup, "import", "--prune", "--yes", "--json")
+        #expect(pruned.status == 0, "\(pruned.stderr)")
+        #expect(try pruned.jsonArray().map { $0["name"] as? String } == ["beta", "gone"])
+        let lock = try setup.fixture.read("home/.agents/.skill-lock.json")
+        #expect(!lock.contains("beta") && !lock.contains("gone"))
+        #expect(try laiaskills(setup, "import", "--prune", "--apply").status != 0)
+    }
+
     // MARK: Sources
 
     @Test func addInstallsAndCommitsALocalSource() throws {

@@ -65,3 +65,59 @@ public enum Importer {
         return ImportItem(name: name, disposition: .thirdParty, source: "\(spec.owner)/\(spec.repository)", note: nil)
     }
 }
+
+/// A `.skill-lock.json` entry that `import --prune` removes.
+public struct PruneItem: Codable, Sendable, Equatable {
+    public enum Reason: String, Codable, Sendable {
+        /// In skills.json and installed by laiaskills: the other tool must stop updating it.
+        case managed
+        /// Nothing is installed under that name any more.
+        case notInstalled = "not installed"
+    }
+
+    public let name: String
+    public let reason: Reason
+}
+
+/// Removes entries from the `npx skills` lock once laiaskills owns the skill, or nothing is installed.
+/// Entries for skills another tool still installs (not managed here, or not yet synced) are left alone.
+public enum LockPruner {
+    public static func plan(repo: Repository, inspector: InstallInspector, environment: Environment) -> [PruneItem] {
+        guard let skills = try? lockSkills(environment).skills else { return [] }
+        return skills.keys.sorted().compactMap { name in
+            switch inspector.hubState(name) {
+            case .missing, .brokenLink:
+                return PruneItem(name: name, reason: .notInstalled)
+            case .managed where repo.manifest.skills[name] != nil:
+                return PruneItem(name: name, reason: .managed)
+            default:
+                return nil
+            }
+        }
+    }
+
+    /// Copies the lock file to the backups folder, then removes `names` from it, keeping everything else.
+    /// Returns the backup.
+    @discardableResult
+    public static func apply(_ names: [String], environment: Environment) throws -> URL {
+        var (json, skills) = try lockSkills(environment)
+        for name in names { skills[name] = nil }
+        json["skills"] = skills
+
+        let backup = environment.backups.appendingPathComponent("skill-lock-\(Installer.timestamp(compact: true)).json")
+        try FileManager.default.createDirectory(at: environment.backups, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: environment.skillsCLILock, to: backup)
+        // Pretty-printed with sorted keys: the layout the lock file already has.
+        let data = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys])
+        try data.write(to: environment.skillsCLILock, options: .atomic)
+        return backup
+    }
+
+    static func lockSkills(_ environment: Environment) throws -> (json: [String: Any], skills: [String: Any]) {
+        let data = try Data(contentsOf: environment.skillsCLILock)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw ConfigError.unreadable(environment.skillsCLILock, CocoaError(.fileReadCorruptFile))
+        }
+        return (json, json["skills"] as? [String: Any] ?? [:])
+    }
+}

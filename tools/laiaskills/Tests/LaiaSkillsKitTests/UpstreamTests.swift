@@ -102,4 +102,73 @@ import LaiaSkillsTestSupport
         #expect(findings.map(\.severity) == [.warning, .info])
         #expect(findings[0].message.hasPrefix("gone:"))
     }
+
+    @Test func respectsSkippedMirrors() throws {
+        let setup = try SkillsRepoFixture()
+        var (installer, skills) = try setup.installer()
+        try installer.install(try #require(skills["alpha"]))
+        try setup.fixture.write("repo/skills.json", """
+        {"skills": {"alpha": {"source": "first-party", "skipMirrors": ["claude"]}, "beta": {"source": "third-party/o__beta", "skipMirrors": ["codex"]}}}
+        """)
+        func messages() throws -> [String] {
+            let (repository, resolved) = try setup.load()
+            return Doctor.run(repo: repository, submodules: try Submodules.load(repo: setup.repo), skills: resolved,
+                              inspector: InstallInspector(agents: repository.agents, environment: setup.environment),
+                              environment: setup.environment).map(\.message)
+        }
+
+        var found = try messages()
+        #expect(found.contains { $0.contains("`alpha` links to the hub copy but skips this mirror") })
+        #expect(found.contains { $0.hasPrefix("beta: skipMirrors names `codex`") })
+
+        // Claude's own copy in a skipped mirror is expected, not a bypass.
+        try FileManager.default.removeItem(at: setup.fixture.url("home/.claude/skills/alpha"))
+        try setup.fixture.skill("home/.claude/skills/alpha", name: "alpha")
+        found = try messages()
+        #expect(!found.contains { $0.contains("`alpha`") })
+    }
+
+    @Test func flagsInstalledSkillsWithoutAMirrorLink() throws {
+        let setup = try SkillsRepoFixture()
+        var (installer, skills) = try setup.installer()
+        try installer.install(try #require(skills["beta"]))
+        try FileManager.default.removeItem(at: setup.fixture.url("home/.claude/skills/beta"))
+        let (repository, resolved) = try setup.load()
+        let findings = Doctor.run(repo: repository, submodules: try Submodules.load(repo: setup.repo), skills: resolved,
+                                  inspector: InstallInspector(agents: repository.agents, environment: setup.environment),
+                                  environment: setup.environment)
+        #expect(findings.contains { $0.message == "claude: `beta` has no link to the hub copy; `laiaskills sync` adds it" })
+    }
+}
+
+@Suite struct LockPrunerTests {
+    @Test func prunesManagedAndMissingEntriesOnly() throws {
+        let setup = try SkillsRepoFixture()
+        var (installer, skills) = try setup.installer()
+        try installer.install(try #require(skills["beta"]))
+        try setup.fixture.skill("home/.agents/skills/other", name: "other")
+        // alpha is managed but not synced yet: another tool's copy, so its entry stays.
+        try setup.fixture.skill("home/.agents/skills/alpha", name: "alpha")
+        try setup.fixture.write("home/.agents/.skill-lock.json", """
+        {"version": 3, "skills": {"alpha": {"source": "x"}, "beta": {"source": "o/beta"}, "gone": {}, "other": {"source": "y"}}}
+        """)
+        let (repository, _) = try setup.load()
+        let inspector = InstallInspector(agents: repository.agents, environment: setup.environment)
+
+        let plan = LockPruner.plan(repo: repository, inspector: inspector, environment: setup.environment)
+        #expect(plan == [PruneItem(name: "beta", reason: .managed), PruneItem(name: "gone", reason: .notInstalled)])
+
+        let backup = try LockPruner.apply(plan.map(\.name), environment: setup.environment)
+        #expect(try String(contentsOf: backup, encoding: .utf8).contains("\"gone\""))
+        let lock = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: setup.environment.skillsCLILock)) as? [String: Any])
+        #expect(lock["version"] as? Int == 3)
+        #expect((lock["skills"] as? [String: Any]).map { Set($0.keys) } == ["alpha", "other"])
+    }
+
+    @Test func noLockFileMeansNothingToPrune() throws {
+        let setup = try SkillsRepoFixture()
+        let (repository, _) = try setup.load()
+        let inspector = InstallInspector(agents: repository.agents, environment: setup.environment)
+        #expect(LockPruner.plan(repo: repository, inspector: inspector, environment: setup.environment).isEmpty)
+    }
 }

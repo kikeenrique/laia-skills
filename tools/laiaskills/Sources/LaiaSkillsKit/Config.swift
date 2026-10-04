@@ -20,6 +20,9 @@ extension SkillsManifest {
             let entry = skills[name]!
             var fields = ["\"source\": \(quoted(entry.source))"]
             if let path = entry.path { fields.append("\"path\": \(quoted(path))") }
+            if let skip = entry.skipMirrors {
+                fields.append("\"skipMirrors\": [\(skip.map(quoted).joined(separator: ", "))]")
+            }
             return "    \(quoted(name)): { \(fields.joined(separator: ", ")) }"
         }
         let text = """
@@ -40,13 +43,21 @@ public struct SkillEntry: Codable, Sendable, Equatable {
     public var source: String
     /// Folder of the skill inside the source; only needed when the name alone is ambiguous.
     public var path: String?
+    /// Mirrors (keys of `mirrors` in agents.json) that get no link, e.g. `["claude"]` for a skill Claude
+    /// already gets another way. The hub copy is installed as usual.
+    public var skipMirrors: [String]?
 
-    public init(source: String, path: String? = nil) {
+    public init(source: String, path: String? = nil, skipMirrors: [String]? = nil) {
         self.source = source
         self.path = path
+        self.skipMirrors = skipMirrors
     }
 
     public static let firstParty = "first-party"
+
+    public func skips(mirror: String) -> Bool {
+        skipMirrors?.contains(mirror) == true
+    }
 }
 
 /// `tools/config/agents.json`: the hub every skill is copied into, and the mirror folders linking to it.
@@ -150,6 +161,8 @@ public struct Environment: Sendable {
 
     /// Install state written by `laiaskills install`/`sync` (phase 2).
     public var stateFile: URL { home.appendingPathComponent(".agents/.laiaskills.json") }
+    /// Previous copies of skills and lock files that laiaskills replaced.
+    public var backups: URL { home.appendingPathComponent(".agents/.laiaskills/backups") }
     /// Lock file of the `npx skills` CLI.
     public var skillsCLILock: URL { home.appendingPathComponent(".agents/.skill-lock.json") }
     /// Claude Code's record of installed plugins.

@@ -167,7 +167,7 @@ struct ShowCommand: ParsableCommand {
             status: installer.status(of: resolved).label,
             hub: hubFolder.path,
             mirrors: Dictionary(uniqueKeysWithValues: context.inspector.mirrors.map {
-                ($0.name, "\($0.url.appendingPathComponent(skill).path) (\(context.inspector.mirrorState(skill, in: $0.url).rawValue))")
+                ($0.name, "\($0.url.appendingPathComponent(skill).path) (\(mirrorLabel(skill, mirror: $0, entry: resolved.entry, context)))")
             })
         )
 

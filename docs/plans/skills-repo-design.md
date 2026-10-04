@@ -131,6 +131,10 @@ working, but deep links and path-based installs (`npx skills add …/mise/skills
 - **Skill identity = source + frontmatter `name`**, never the path. `path` is optional and exists only
   to settle ambiguity (e.g. twostraws repos contain both `swiftui-pro/` and a nested
   `swiftui-pro/skills/swiftui-pro/`).
+- **`skipMirrors`** (optional) lists mirrors from `agents.json` that get no link, e.g.
+  `"skipMirrors": ["claude"]` for a skill Claude already gets another way (decision 18). The skill is
+  still pinned, checked, upgraded, and copied into the hub; `sync` removes an existing link to it from
+  those mirrors and leaves anything else there alone.
 
 ### 5.2 `tools/config/agents.json` (tool behaviour)
 
@@ -214,14 +218,14 @@ renders and prompts when attached to a TTY.
 | `laiaskills show <skill>` | Detail view: description, source, agents, every install location, rendered `SKILL.md`. `--open` reveals it in the file manager (Finder or `xdg-open`) |
 | `laiaskills sources` | Configured sources: skills available vs installed, pinned commit, tracked branch |
 | `laiaskills check` | `git fetch --tags` each source (third-party and first-party `upstream/`); shallow sources use `git ls-remote` instead. Tagged sources: report newer release tags. Untagged: report commits on the tracked branch that touch each skill's path. Also reports copies that are **not synced** or **modified** (offline). `--offline`; `--exit-code` → 1 when anything needs action |
-| `laiaskills sync [skill…]` | Make every installed copy match its pin: install missing, re-copy not-synced, replace other tools' copies, remove skills dropped from `skills.json`. Refuses to overwrite **modified** copies without `--force`. Asks before replacing or removing (`--yes` skips; without a terminal it stops instead of guessing). `--dry-run`. Run after `git pull` |
+| `laiaskills sync [skill…]` | Make every installed copy match its pin: install missing, re-copy not-synced, replace other tools' copies, remove skills dropped from `skills.json`, repair mirror links (add missing ones, remove ones a skill skips). Refuses to overwrite **modified** copies without `--force`. Asks before replacing or removing (`--yes` skips; without a terminal it stops instead of guessing). `--dry-run`. Run after `git pull` |
 | `laiaskills upgrade [skill\|source…]` | Target = newest release tag, or branch head when untagged (`--to <tag\|commit>` overrides). Show `git log` + `diff --stat` for the skill path, confirm (Noora yes/no, or `--yes`), move the submodule pointer, re-resolve paths, re-copy into the hub, `git add`. For a first-party `upstream/` pin it then runs the automated re-check (5.6; `--no-agent` skips it). Staged only; `--commit` also runs `commit`. Interactive runs end with "Commit now?" (default no) |
 | `laiaskills commit` | Commit the staged changes with generated Conventional Commit messages: third-party bumps in one `chore(third-party): bump swiftui-pro to v1.3.0, axe to 4f2c1a9` commit (one body line per skill, old → new); each re-checked first-party plugin in its own `docs(<plugin>): refresh guidance for <upstream> <tag>` commit, with the plugin `version` bumped in `plugin.json` and `marketplace.json` (patch by default; asks for minor/major/breaking). Shows the messages for confirmation (or `--yes`). **Never pushes** |
 | `laiaskills add <owner/repo[@skill] \| url> [--skill name…]` | Add the submodule pinned to its newest release (`--shallow` for large repos), list its skills (Noora multiple-choice, or `--skill`), write `skills.json` entries, install (`--no-install` skips). URLs may be `https://`, `git@host:`, or `file://`; owner/repo are the last two path segments |
 | `laiaskills install [skill…]` | Copy the skill at its pin into the hub and create mirror links. `--working-tree` copies uncommitted first-party edits for testing |
 | `laiaskills remove <skill>` | Move the hub copy to the backups folder, remove mirror links and the `skills.json` entry; drop the submodule when no skill uses it |
-| `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names |
-| `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL). Prints the plan; `--apply` adds the sources and skills (staged, not installed), `--shallow owner/repo` for large ones |
+| `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, missing mirror links, links in mirrors a skill skips, `skipMirrors` naming an unknown mirror, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names |
+| `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL). Prints the plan; `--apply` adds the sources and skills (staged, not installed), `--shallow owner/repo` for large ones. After `sync`, `--prune` removes the lock entries of skills laiaskills installed and of skills no longer installed (asks first, or `--yes`; backs the lock file up to the backups folder). Entries for skills other tools still install stay |
 | `laiaskills browse <source>` | Optional (v2): Noora picker over a source's skills, preview `SKILL.md` |
 
 ### 5.6 Automated re-check of first-party skills
@@ -325,6 +329,8 @@ cross-platform handling. Expected upkeep is still a few hours per month.
 | 2026-10-03 | **CI on Ubuntu 26.04 with Swift 6.4**, pinned ahead of the `ubuntu-latest` switch; minimum Swift raised to 6.4 to match |
 | 2026-10-03 | **Phase 2, write commands**: `sync`, `install`, `remove`, `add`, `upgrade`, `commit`, `show`, `sources`, `import`, and the automated AI re-check of first-party skills (5.6) |
 | 2026-10-04 | **End-to-end CLI tests**: the built binary is tested against fixture repos with a fake `HOME`; 57 tests pass on macOS and Linux CI |
+| 2026-10-04 | **Decision 18**: the old `skill-creator` copy removed from `~/.agents/skills`, `~/.claude/skills`, and the lock file; the `xcsift` Claude plugin uninstalled |
+| 2026-10-04 | **Per-skill mirror opt-out** (`skipMirrors`) and **`import --prune`**; `sync` also repairs mirror links. 66 tests |
 
 ### Pending
 
@@ -333,17 +339,14 @@ first step that changes the real `~/.agents/skills`.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Implement the per-skill mirror opt-out (decision 18) | tool | `"skipMirrors": ["claude"]` in `skills.json`; `doctor`'s duplicate check must respect it. No longer blocks the migration: no skill in it needs the opt-out |
-| 2 | `add` `formatting-build-output` from `ldomaradzki/xcsift` | tool | `path: "plugins/claude-code/skills/xcsift"`, pinned to a release tag (v1.5.1 on 2026-10-04). Replaces the `xcsift` Claude plugin (decision 18) |
-| 3 | Snapshot `~/.agents/skills` and `~/.claude/skills` into `tmp/` | tool | Extra safety on top of the per-skill backups `sync` keeps |
-| 4 | `import --apply --shallow github/awesome-copilot` | tool | 20 sources from the lock file. Add ECC under its new name `affaan-m/ECC` (also shallow) instead of the lock's `everything-claude-code` |
-| 5 | `add` the two skills missing from the lock file | tool | `android-ci-cd-release-playstore` (`krutikjain/android-agent-skills`), `mobile-android-design` (`wshobson/agents`) |
-| 6 | Review: `git diff --cached`, `sources`, `doctor` | tool + owner | Everything resolves before anything is installed |
-| 7 | `sync --dry-run`, then `sync` | tool | Replaces ~37 copies installed by other tools (backed up); installs the 23 visionos skills into the hub |
-| 8 | Uninstall the `visionos-agents@laia-skills` and `xcsift@xcsift` Claude plugins | owner | Otherwise Claude loads those skills twice; `doctor` flags it. Dropping `xcsift` also drops its `PreToolUse` hook (decision 18) |
-| 9 | `commit`, then push | tool / owner | |
-| 10 | Clean up: prune migrated entries from `~/.agents/.skill-lock.json` (incl. the stale `swiftui-twostraws`), stop using Commander for skills | tool + owner | No prune command yet: manual, or add one (e.g. `import --prune`) |
-| 11 | Remove the unmanaged `skill-creator` from `~/.agents/skills`, its `~/.claude/skills` link, and its lock entry | owner | Claude-only, it comes from the claude.ai sync (decision 18) |
+| 1 | Snapshot `~/.agents/skills` and `~/.claude/skills` into `tmp/` | tool | Extra safety on top of the per-skill backups `sync` keeps |
+| 2 | `import --apply --shallow github/awesome-copilot` | tool | 20 sources from the lock file. Add ECC under its new name `affaan-m/ECC` (also shallow) instead of the lock's `everything-claude-code` |
+| 3 | `add` the three skills `import` can't map | tool | `android-ci-cd-release-playstore` (`krutikjain/android-agent-skills`) and `mobile-android-design` (`wshobson/agents`), missing from the lock file; `formatting-build-output` (`ldomaradzki/xcsift`, skill folder `plugins/claude-code/skills/xcsift`, v1.5.1 on 2026-10-04), whose lock entry only has a local Commander path (decision 18) |
+| 4 | Review: `git diff --cached`, `sources`, `doctor` | tool + owner | Everything resolves before anything is installed |
+| 5 | `sync --dry-run`, then `sync` | tool | Replaces ~37 copies installed by other tools (backed up); installs the 23 visionos skills into the hub |
+| 6 | Uninstall the `visionos-agents@laia-skills` Claude plugin | owner | Otherwise Claude loads those skills twice; `doctor` flags it |
+| 7 | `commit`, then push | tool / owner | |
+| 8 | `import --prune`, stop using Commander for skills | tool + owner | Removes the lock entries of migrated skills and stale ones (`swiftui-twostraws`, `formatting-build-output` today) |
 
 After the migration:
 
@@ -391,6 +394,15 @@ After the migration:
    - Writing those tests surfaced two bugs, both fixed: `add` rejected `file://` and nested-group URLs
      (owner/repo are now the last two path segments), and library tests that commit only passed on
      machines with a global git identity (fixtures now set one for the whole test process).
+3. **Migration prep**: the per-skill mirror opt-out and `import --prune`. Notes from implementing it:
+   - `sync` used to compare only the hub copy, so a deleted mirror link or a new `skipMirrors` entry
+     went unnoticed. An up-to-date copy whose links don't match now gets a `relink` step.
+   - `uninstall` now removes only mirror links that point at the hub copy, so a skill's own folder or
+     link in a mirror it skips (e.g. one from a Claude plugin) is never touched.
+   - `doctor` reads `claude` as the mirror Claude Code uses: a skill that skips it is left out of the
+     duplicate-plugin check.
+   - The lock file is rewritten pretty-printed with sorted keys, the layout `npx skills` writes, with
+     unknown top-level keys kept.
 
 ## 8. Decisions
 

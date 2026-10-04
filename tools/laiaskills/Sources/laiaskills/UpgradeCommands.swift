@@ -177,6 +177,9 @@ struct ImportCommand: ParsableCommand {
         Reads ~/.agents/.skill-lock.json. Without --apply, only prints the plan. With --apply, adds each \
         third-party source as a submodule with its skills (staged, not installed); then run \
         `laiaskills sync` and `laiaskills commit`.
+
+        After the sync, --prune removes the lock entries of skills laiaskills now installs, and of skills \
+        that are no longer installed, so other tools stop updating them. The lock file is backed up first.
         """
     )
 
@@ -188,8 +191,19 @@ struct ImportCommand: ParsableCommand {
     @Option(name: .customLong("shallow"), help: "owner/repo to add as a shallow submodule (repeatable).")
     var shallowSources: [String] = []
 
+    @Flag(help: "Remove lock entries for skills laiaskills installed, or that are no longer installed.")
+    var prune = false
+
+    @Flag(help: "With --prune: don't ask for confirmation.")
+    var yes = false
+
+    func validate() throws {
+        if prune && apply { throw ValidationError("Use --apply and --prune in separate runs: sync in between.") }
+    }
+
     func run() throws {
         let context = try Context(options)
+        if prune { return try runPrune(context) }
         let items = Importer.plan(environment: context.environment, repo: context.repo)
         let ui = NooraUI()
 
@@ -224,5 +238,23 @@ struct ImportCommand: ParsableCommand {
                                       repo: repo.root)
         }
         ui.success("Imported. Next: `laiaskills sync` to install, then `laiaskills commit`.")
+    }
+
+    private func runPrune(_ context: Context) throws {
+        let items = LockPruner.plan(repo: context.repo, inspector: context.inspector, environment: context.environment)
+        let ui = NooraUI()
+        guard !items.isEmpty else {
+            if options.json { return try printJSON([PruneItem]()) }
+            return ui.success("Nothing to prune in \(context.environment.skillsCLILock.path).")
+        }
+        if !options.json {
+            ui.table(headers: ["Skill", "Reason"], rows: items.map { [$0.name, $0.reason.rawValue] })
+        }
+        guard try approve(ui, "Remove these \(items.count) entries from .skill-lock.json? It is backed up first.", yes: yes) else {
+            throw ExitCode(1)
+        }
+        let backup = try LockPruner.apply(items.map(\.name), environment: context.environment)
+        if options.json { return try printJSON(items) }
+        ui.success("Pruned \(items.count) entries. Backup: \(backup.path)")
     }
 }

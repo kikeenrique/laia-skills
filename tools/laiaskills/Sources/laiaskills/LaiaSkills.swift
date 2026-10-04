@@ -74,6 +74,13 @@ struct Context {
     }
 }
 
+/// A skill's state in one mirror, noting when the skill skips that mirror (`skipMirrors`).
+func mirrorLabel(_ name: String, mirror: (name: String, url: URL), entry: SkillEntry?, _ context: Context) -> String {
+    let state = context.inspector.mirrorState(name, in: mirror.url)
+    guard entry?.skips(mirror: mirror.name) == true else { return state.rawValue }
+    return state == .linked ? "linked, but skipped (run sync)" : "skipped"
+}
+
 func statusLabel(_ status: SourceStatus) -> String {
     switch (status.state, status.mode) {
     case (.upToDate, _): return "up to date"

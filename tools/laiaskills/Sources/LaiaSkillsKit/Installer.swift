@@ -32,6 +32,8 @@ public enum SyncAction: Sendable, Equatable {
     case install
     case replaceForeign
     case reinstall
+    /// The copy is up to date but a mirror link is missing, or present where the skill skips that mirror.
+    case relink
     case keep
     case skipModified([String])
     case remove
@@ -51,7 +53,7 @@ public struct Installer {
     public let mirrors: [(name: String, url: URL)]
     public private(set) var state: InstallState
     /// Previous copies, newest kept per skill: `~/.agents/.laiaskills/backups/<name>-<timestamp>`.
-    public var backups: URL { environment.home.appendingPathComponent(".agents/.laiaskills/backups") }
+    public var backups: URL { environment.backups }
     static let backupsKept = 3
 
     public init(repo: Repository, environment: Environment) {
@@ -96,7 +98,7 @@ public struct Installer {
             case .foreign: action = .replaceForeign
             case .notSynced, .workingTree: action = .reinstall
             case let .modified(files): action = force ? .reinstall : .skipModified(files)
-            case .upToDate: action = .keep
+            case .upToDate: action = mirrorsLinked(skill) ? .keep : .relink
             case let .error(message): action = .failed(message)
             }
             return SyncStep(name: skill.name, action: action)
@@ -137,32 +139,42 @@ public struct Installer {
         let target = hub.appendingPathComponent(skill.name)
         if entryExists(target) { try backUp(target, name: skill.name) }
         try FileManager.default.moveItem(at: staging, to: target)
-        try linkMirrors(skill.name)
+        try linkMirrors(skill)
 
         state.skills[skill.name] = record
         try state.save(environment)
         return record
     }
 
-    /// Moves the hub copy to backups, removes mirror links, and forgets the skill.
+    /// Moves the hub copy to backups, removes the mirror links to it, and forgets the skill. Links to
+    /// anything else (e.g. in a mirror the skill skips) stay.
     public mutating func uninstall(_ name: String) throws {
         let target = hub.appendingPathComponent(name)
         if entryExists(target) { try backUp(target, name: name) }
         for mirror in mirrors {
             let link = mirror.url.appendingPathComponent(name)
-            if isSymlink(link) { try FileManager.default.removeItem(at: link) }
+            let ours = relativeLink(from: mirror.url, to: target)
+            if isSymlink(link), (try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) == ours {
+                try FileManager.default.removeItem(at: link)
+            }
         }
         state.skills[name] = nil
         try state.save(environment)
     }
 
     /// Makes `<mirror>/<name>` a relative symlink to the hub copy. Real folders there are backed up first.
-    public func linkMirrors(_ name: String) throws {
+    /// In mirrors the skill skips, removes a link to the hub copy and leaves anything else alone.
+    public func linkMirrors(_ skill: ResolvedSkill) throws {
+        let name = skill.name
         let target = hub.appendingPathComponent(name)
         for mirror in mirrors {
-            try FileManager.default.createDirectory(at: mirror.url, withIntermediateDirectories: true)
             let link = mirror.url.appendingPathComponent(name)
             let destination = relativeLink(from: mirror.url, to: target)
+            if skill.entry.skips(mirror: mirror.name) {
+                if linksToHub(link, name: name) { try FileManager.default.removeItem(at: link) }
+                continue
+            }
+            try FileManager.default.createDirectory(at: mirror.url, withIntermediateDirectories: true)
             if isSymlink(link) {
                 if (try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) == destination { continue }
                 try FileManager.default.removeItem(at: link)
@@ -171,6 +183,22 @@ public struct Installer {
             }
             try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: destination)
         }
+    }
+
+    /// Whether every mirror has exactly the link `linkMirrors` would leave: the hub link in mirrors the
+    /// skill uses, none in the mirrors it skips.
+    public func mirrorsLinked(_ skill: ResolvedSkill) -> Bool {
+        mirrors.allSatisfy { mirror in
+            let link = mirror.url.appendingPathComponent(skill.name)
+            if skill.entry.skips(mirror: mirror.name) { return !linksToHub(link, name: skill.name) }
+            let destination = relativeLink(from: mirror.url, to: hub.appendingPathComponent(skill.name))
+            return (try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) == destination
+        }
+    }
+
+    func linksToHub(_ link: URL, name: String) -> Bool {
+        isSymlink(link) && FileManager.default.fileExists(atPath: link.path)
+            && link.resolvingSymlinksInPath().path == hub.appendingPathComponent(name).resolvingSymlinksInPath().path
     }
 
     // MARK: Backups

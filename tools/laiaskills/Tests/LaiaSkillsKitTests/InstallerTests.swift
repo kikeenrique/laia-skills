@@ -112,6 +112,53 @@ import LaiaSkillsTestSupport
         #expect(throws: PinError.self) { try Pins.pin(for: skill, repo: setup.repo) }
     }
 
+    @Test func skippedMirrorsGetNoLinkAndSyncRemovesOldOnes() throws {
+        let setup = try SkillsRepoFixture()
+        var (installer, skills) = try setup.installer()
+        try installer.install(try #require(skills["alpha"]))
+        #expect(setup.fixture.exists("home/.claude/skills/alpha"))
+
+        // Opting alpha out of the claude mirror makes sync remove the link, and only the link.
+        try setup.fixture.write("repo/skills.json", """
+        {"skills": {"alpha": {"source": "first-party", "skipMirrors": ["claude"]}, "beta": {"source": "third-party/o__beta"}}}
+        """)
+        (installer, skills) = try setup.installer()
+        let alpha = try #require(skills["alpha"])
+        #expect(installer.status(of: alpha) == .upToDate)
+        #expect(installer.plan([alpha], force: false).first?.action == .relink)
+        try installer.linkMirrors(alpha)
+        #expect(!setup.fixture.exists("home/.claude/skills/alpha"))
+        #expect(setup.fixture.exists("home/.agents/skills/alpha/SKILL.md"))
+        #expect(installer.plan([alpha], force: false).first?.action == .keep)
+
+        // Claude's own copy in the skipped mirror is left alone by install and uninstall.
+        try setup.fixture.skill("home/.claude/skills/alpha", name: "alpha")
+        try installer.install(alpha)
+        #expect(installer.mirrorsLinked(alpha))
+        try installer.uninstall("alpha")
+        #expect(setup.fixture.exists("home/.claude/skills/alpha/SKILL.md"))
+    }
+
+    @Test func syncRelinksAMissingMirrorLink() throws {
+        let setup = try SkillsRepoFixture()
+        var (installer, skills) = try setup.installer()
+        let beta = try #require(skills["beta"])
+        try installer.install(beta)
+        try FileManager.default.removeItem(at: setup.fixture.url("home/.claude/skills/beta"))
+        #expect(installer.plan([beta], force: false).first?.action == .relink)
+        try installer.linkMirrors(beta)
+        #expect(installer.plan([beta], force: false).first?.action == .keep)
+    }
+
+    @Test func manifestWritesSkipMirrors() throws {
+        let fixture = try Fixture()
+        let manifest = SkillsManifest(skills: ["a": SkillEntry(source: "first-party", skipMirrors: ["claude"])])
+        try manifest.write(to: fixture.url("skills.json"))
+        #expect(try fixture.read("skills.json").contains(#""a": { "source": "first-party", "skipMirrors": ["claude"] }"#))
+        let decoded = try JSONDecoder().decode(SkillsManifest.self, from: Data(contentsOf: fixture.url("skills.json")))
+        #expect(decoded.skills["a"]?.skips(mirror: "claude") == true)
+    }
+
     @Test func keepsOnlyTheNewestBackups() throws {
         let setup = try SkillsRepoFixture()
         var (installer, skills) = try setup.installer()

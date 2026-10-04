@@ -30,6 +30,13 @@
           "type": "string",
           "description": "Folder of the skill inside the source. Only needed when the name matches more than one skill.",
           "pattern": "^[^/].*[^/]$"
+        },
+        "skipMirrors": {
+          "type": "array",
+          "description": "Mirrors (keys of `mirrors` in tools/config/agents.json) that get no link to this skill, e.g. [\"claude\"] for a skill Claude already gets another way. The hub copy is still installed.",
+          "items": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "minItems": 1,
+          "uniqueItems": true
         }
       }
     }

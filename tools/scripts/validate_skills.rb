@@ -427,7 +427,7 @@ def validate_laiaskills_configs(skill_dirs)
           error("#{rel}: `#{name}` needs a string `source`")
           next
         end
-        unexpected_keys("#{rel} `#{name}`", entry, %w[source path])
+        unexpected_keys("#{rel} `#{name}`", entry, %w[source path skipMirrors])
         source = entry["source"]
         if !source.match?(SOURCE_RE)
           error("#{rel}: `#{name}` has invalid source `#{source}`")
@@ -439,6 +439,10 @@ def validate_laiaskills_configs(skill_dirs)
         end
         path = entry["path"]
         error("#{rel}: `#{name}` path must be a string") unless path.nil? || path.is_a?(String)
+        skip = entry["skipMirrors"]
+        unless skip.nil? || (skip.is_a?(Array) && !skip.empty? && skip.all? { |id| id.is_a?(String) } && skip.uniq == skip)
+          error("#{rel}: `#{name}` skipMirrors must be a non-empty list of distinct mirror ids")
+        end
       end
 
       listed = skills.select { |_, entry| entry.is_a?(Hash) && entry["source"] == "first-party" }.keys
