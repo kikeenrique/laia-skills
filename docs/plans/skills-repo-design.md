@@ -1,7 +1,8 @@
 # Skills repo and `laiaskills` — design
 
-Status: **phases 0–3 done**: the tool is implemented and tested (macOS and Linux CI), and every
-installed skill is managed by it. See the [roadmap](#7-roadmap). Last updated 2026-10-04.
+Status: **phases 0–3 done**: the tool is implemented and tested (macOS and Linux CI), every installed
+skill (64) is managed by it, and third-party skills can carry local patches (5.8). Next: the first live
+AI re-check. See the [roadmap](#7-roadmap). Last updated 2026-10-04.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -341,14 +342,18 @@ Submodules stay untouched; the fix is a patch applied to the installed copy.
 | Source repo layouts vary | Medium | Generic `SKILL.md` scan, optional `path` |
 | Agent directory conventions change | Medium | `tools/config/agents.json` |
 | Noora 0.x breaking minors | Medium | `.upToNextMinor` pin, single `UI` layer |
-| Upstream repo renamed (e.g. `everything-claude-code` → `affaan-m/ECC`) | Medium | GitHub redirects old URLs. Planned: `doctor` flags redirected submodule URLs so `.gitmodules` gets the new name (not implemented yet) |
+| Upstream repo renamed (e.g. `everything-claude-code` → `affaan-m/ECC`) | Medium | GitHub redirects old URLs. Planned: `doctor` flags redirected submodule URLs so `.gitmodules` gets the new name (roadmap) |
+| Repos ship several copies of a skill (translations, per-agent folders) | Medium | `add` prefers the shortest path (`skills/<name>`); `path` in `skills.json` overrides |
+| A skill folder turns into a Claude plugin (nested copy, `.claude-plugin/`) | Low | Copies leave both out (5.4) |
+| Local patches go stale when upstream changes | Medium | `check` warns ahead; `upgrade` drops patches upstream absorbed and stops on conflicts (5.8) |
 | Upstream repo deleted | Low | Pinned commit survives locally; fork critical sources |
 | Swift toolchain / strict concurrency | Low | Mostly synchronous code, subprocess git |
 | AI agent CLI flags or behaviour change (re-check) | Medium | Command in `recheck.json`; result guarded by allowed paths + validator |
 
-Size after phase 2: about 3,000 lines of Swift (including doc comments) plus 1,000 lines of tests,
-about three times the original "under 1k" estimate, mostly from the write commands, guards, and
-cross-platform handling. Expected upkeep is still a few hours per month.
+Size after phase 3 and local patches: about 3,600 lines of Swift (including doc comments) plus 1,300
+lines of tests, well over the original "under 1k" estimate, mostly from the write commands, guards,
+and cross-platform handling. Expected upkeep is still a few hours per month, plus the routine upgrade
+of third-party sources.
 
 ## 7. Roadmap
 
@@ -360,26 +365,31 @@ cross-platform handling. Expected upkeep is still a few hours per month.
 | 2026-10-03 | **Phase 1, read-only CLI**: `list`, `check` (including first-party `upstream/` tags), `doctor`; `skills.json`, `agents.json`, JSON Schemas, mise tasks, Linux CI job |
 | 2026-10-03 | **CI on Ubuntu 26.04 with Swift 6.4**, pinned ahead of the `ubuntu-latest` switch; minimum Swift raised to 6.4 to match |
 | 2026-10-03 | **Phase 2, write commands**: `sync`, `install`, `remove`, `add`, `upgrade`, `commit`, `show`, `sources`, `import`, and the automated AI re-check of first-party skills (5.6) |
-| 2026-10-04 | **End-to-end CLI tests**: the built binary is tested against fixture repos with a fake `HOME`; 57 tests pass on macOS and Linux CI |
-| 2026-10-04 | **Decision 18**: the old `skill-creator` copy removed from `~/.agents/skills`, `~/.claude/skills`, and the lock file; the `xcsift` Claude plugin uninstalled |
-| 2026-10-04 | **Per-skill mirror opt-out** (`skipMirrors`) and **`import --prune`**; `sync` also repairs mirror links. 66 tests |
-| 2026-10-04 | **Phase 3, migration steps 1–5 and the commit**: 20 third-party sources and 36 skills imported (four under their current GitHub names: `affaan-m/ECC`, `krutikJain/android-agent-skills`, `AvdLee/Swift-Concurrency-Agent-Skill`, `twostraws/SwiftData-Agent-Skill`); `sync` replaced 40 copies (backed up) and installed 24; all 64 skills up to date and linked. Skill names now match ignoring case (`watchos` says `name: watchOS` upstream). Snapshot in `tmp/migration-snapshot-2026-10-04/` |
-| 2026-10-04 | **Phase 3 finished**: `visionos-agents` plugin uninstalled, commits pushed, `import --prune` emptied `~/.agents/.skill-lock.json` (40 entries, backed up). Copies now leave out plugin manifests and nested skills, which removed a duplicate `swiftui-pro:swiftui-pro`. 68 tests |
-| 2026-10-04 | **Fixes from comparing old and new copies**: ECC skills had been installed from their Japanese translations (`add` now prefers the shortest path, the canonical `skills/<name>`) |
-| 2026-10-04 | **Local patches** (decision 19, 5.8): `laiaskills patch`, patches applied on install, re-tested on upgrade, reported by `check` and `doctor`. First patch: `apple-hig-designer`, `printf -v` instead of `eval` on user input (from an earlier audit). 76 tests |
+| 2026-10-04 | **End-to-end CLI tests**: the built binary is tested against fixture repos with a fake `HOME` |
+| 2026-10-04 | **Decision 18**: `skill-creator` left to the claude.ai sync (old copy removed); `formatting-build-output` managed as a skill, `xcsift` Claude plugin and its `PreToolUse` hook uninstalled |
+| 2026-10-04 | **Per-skill mirror opt-out** (`skipMirrors`, 5.1) and **`import --prune`**; `sync` also repairs mirror links |
+| 2026-10-04 | **Phase 3, migration** (section 9): 20 third-party sources and 36 skills imported, four under their current GitHub names; `sync` replaced 40 copies (backed up) and installed 24; `visionos-agents` Claude plugin uninstalled; `import --prune` emptied `~/.agents/.skill-lock.json`. All 64 skills up to date and linked. Snapshot in `tmp/migration-snapshot-2026-10-04/` |
+| 2026-10-04 | **Fixes found during the migration**: names match ignoring case (`watchos` says `name: watchOS`); copies leave out plugin manifests and nested skills (duplicate `swiftui-pro:swiftui-pro`); `add` prefers the canonical `skills/<name>` copy (ECC skills had come from their Japanese translations) |
+| 2026-10-04 | **Local patches** (decision 19, 5.8): `laiaskills patch`, applied on install, re-tested on upgrade, reported by `check` and `doctor`. First patch: `apple-hig-designer`, `printf -v` instead of `eval` on user input |
+| 2026-10-04 | **Test suite**: 76 tests (61 library, 15 end-to-end CLI), all offline |
 
 ### Pending
 
-Phase 3, the migration (section 9), is done; Commander stays for browsing only. Next, in order:
+In priority order.
 
-| Task | Notes |
-|---|---|
-| First live AI re-check: `upgrade first-party/mise/upstream` (v2026.9.4 → v2026.10.1) | Only stub-agent tests so far; this is the first real run of the agent |
-| `doctor`: flag renamed upstream repos | Promised in section 6, not implemented: detect redirected submodule URLs |
-| Codex in `recheck.json` | Only if Codex is installed; verify its flags first |
-| Track Claude plugins that ship skills | e.g. `"claudePlugins": ["<plugin>@<marketplace>"]` in `skills.json`: `doctor` reports declared-but-missing and undeclared plugins, `check` reports plugin updates. Installing stays with `/plugin`. No plugin needs it after the migration, so low priority |
-| Phase 4 (optional): `browse` | Skills Manager already covers browsing |
-| Optional: Docker or Podman locally | Only needed for `mise run laiaskills:test-linux`; CI covers Linux |
+| # | Task | Who | Notes |
+|---|---|---|---|
+| 1 | Push the local commits and confirm Linux CI is green | owner | CI is green through `0abe39c` (the migration). The commits after it (canonical copies, nested-skill filtering, local patches) were tested on macOS only; `gh run list` shows the result |
+| 2 | First live AI re-check: `upgrade first-party/mise/upstream` (v2026.9.4 → v2026.10.2) | tool + owner | Only stub-agent tests so far. Run without `--commit`, review the diff against the mise release notes, and tune `tools/config/recheck.json` or the prompt if the agent hits a tool limit |
+| 3 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` |
+| 4 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task |
+| 5 | `doctor`: flag renamed upstream repos | tool | Promised in section 6: detect redirected submodule URLs (four sources had moved: ECC, krutikJain, two case changes) |
+| 6 | `add --path <folder>` | tool | Pick a specific copy when a repo has several; today the shortest path wins and the override is a hand edit of `skills.json` |
+| 7 | Codex in `recheck.json` | tool | Only if Codex is installed; verify its flags first |
+| 8 | Track Claude plugins that ship skills | tool | e.g. `"claudePlugins": ["<plugin>@<marketplace>"]` in `skills.json`: `doctor` reports declared-but-missing and undeclared plugins, `check` reports plugin updates. No plugin needs it today |
+| 9 | Optional: phase 4 `browse` | tool | Skills Manager already covers browsing |
+| 10 | Optional: Docker or Podman locally | owner | Only for `mise run laiaskills:test-linux`; CI covers Linux |
+| 11 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
 ### Implementation notes
 
@@ -425,6 +435,20 @@ Phase 3, the migration (section 9), is done; Commander stays for browsing only. 
      duplicate-plugin check.
    - The lock file is rewritten pretty-printed with sorted keys, the layout `npx skills` writes, with
      unknown top-level keys kept.
+4. **Migration and what it surfaced**: notes from running it on the real machine.
+   - `import` only knows the names in the lock file. Four repos had since been renamed or recased, so
+     they were added first with `add` under their current names; `import` then skips skills already
+     in `skills.json`.
+   - Comparing the pre-migration snapshot with the new copies (20 identical, 5 packaging-only, 13 real
+     upgrades) found three problems, all fixed: the Japanese ECC copies (alphabetical choice among
+     duplicates), the nested `swiftui-pro` plugin copy, and the lost `printf -v` audit fix that led to
+     local patches.
+   - Patches are applied with `git apply` in a plain folder. `GIT_CEILING_DIRECTORIES` stops git from
+     discovering an enclosing repository (the test fixtures live inside this one), which would make it
+     read patch paths relative to that repository.
+   - Commit by hand only with a pathspec (`git commit -- <paths>`): `laiaskills` stages its own
+     changes (patches, `skills.json`, pins), and a bare `git commit` sweeps them into an unrelated
+     commit.
 
 ## 8. Decisions
 
@@ -520,6 +544,7 @@ What a typical GUI skill manager offers, and where each feature lands here.
 | Agent selection | Hub + mirrors in `agents.json` | Covered globally, with a per-skill mirror opt-out (decision 18) |
 | Workspace / global scope | Global only | Not needed (decision 15) |
 | Shows installs made by other tools | `list --all`, `doctor` | Covered |
+| Local modifications that survive updates | `patch`, `patches/` | Covered beyond typical managers: re-tested on every upgrade (5.8) |
 | Online discovery (skills.sh and similar) | — | Out of scope |
 | Reads Claude `marketplace.json` | — | Out of scope; `SKILL.md` scan instead, plugins via `/plugin` |
 | GUI | Noora CLI | Out of scope |

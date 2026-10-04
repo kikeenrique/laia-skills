@@ -93,6 +93,18 @@ Swift package in `tools/laiaskills/` (Swift 6.4+, must build and pass tests on *
 - Never block on GCD's shared pool (`DispatchQueue.global()`) while waiting for it: tests run in parallel on that pool and it deadlocks. `Shell` uses dedicated threads for this.
 - Manual end-to-end runs: point `HOME` at a folder under `tmp/` and use `--repo` with a throwaway clone under `tmp/`, so your real agent folders and this repo are never touched.
 - Re-pinning a first-party `upstream/` is done with `laiaskills upgrade` (it re-checks the skill with the agent in `tools/config/recheck.json`, prompt in `tools/config/prompts/recheck.md`) and `laiaskills commit` (bumps the plugin version).
+- `add`, `remove`, `upgrade`, `import --apply`, and `patch` stage their changes and record them in `.git/laiaskills/pending.json`; `laiaskills commit` writes the messages. When committing anything else by hand, always use a pathspec (`git commit -m … -- <paths>`): a bare `git commit` sweeps those staged changes into the wrong commit.
+- Patch-related code lives in `Patches.swift`. `git apply` runs with `GIT_CEILING_DIRECTORIES` so it never discovers an enclosing repo (fixtures live inside this one).
+
+## Third-party skills
+
+Third-party skills are never copied into the repo; `skills.json` maps each to a submodule under `third-party/`, and `laiaskills` installs copies into `~/.agents/skills`.
+
+- **Add:** `mise run laiaskills add <owner>/<repo> --skill <name>` (pins the newest release; `--shallow` for large repos), then `mise run laiaskills commit`. Use the repo's current GitHub name and casing. When a repo has several copies of a skill (translations, per-agent folders), the shortest path wins; check the `path` written to `skills.json`.
+- **Upgrade:** `mise run laiaskills check`, then `mise run laiaskills upgrade <skill-or-source>` and `commit`.
+- **Fix (e.g. after a security audit):** edit the installed copy in `~/.agents/skills/<skill>/`, then `mise run laiaskills patch <skill> -m "<reason>"` and `commit`. Never edit files under `third-party/`. Patches live in `patches/<skill>/` and are re-tested on every upgrade.
+- **Skip an agent:** `"skipMirrors": ["claude"]` on a `skills.json` entry when that agent already gets the skill another way (decision 18 in the design doc).
+- Don't install the same skills through a Claude plugin as well; `doctor` reports duplicates.
 
 ### Validator conventions (`tools/scripts/validate_skills.rb`)
 

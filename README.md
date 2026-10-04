@@ -34,7 +34,8 @@ Check for updates anytime with `/plugin marketplace update`.
 | Folder | Contents |
 |--------|----------|
 | `first-party/` | Skills authored here and published through this marketplace, one plugin per folder |
-| `third-party/` | External skill repos used here, as git submodules, not published (filled by the upcoming migration) |
+| `third-party/` | External skill repos used here (20 sources), as git submodules pinned to releases, not published |
+| `patches/` | Local fixes to third-party skills (e.g. from security audits), applied to the installed copies |
 | `tools/` | Tooling: the skill validator and the `laiaskills` CLI (Swift, macOS and Linux) |
 | `docs/` | Plans and design docs, e.g. [the repo and `laiaskills` design](docs/plans/skills-repo-design.md) |
 
@@ -43,25 +44,30 @@ Check for updates anytime with `/plugin marketplace update`.
 A small Swift CLI that tracks every skill this repo uses, first-party and third-party, and installs
 them into `~/.agents/skills` (other agents' folders, such as `~/.claude/skills`, link to those copies).
 Third-party sources are git submodules pinned to releases; every install records the pin it came from,
-so outdated sources and drifted copies are both detected. `skills.json` lists the skills;
-`tools/config/agents.json` lists the agent folders. Runs on macOS and Linux. Run it with
-[mise](https://mise.jdx.dev):
+so outdated sources and drifted copies are both detected. Local fixes to third-party skills (for
+example from a security audit) live in `patches/` and are re-applied on every install and re-tested on
+every upgrade. `skills.json` lists the skills; `tools/config/agents.json` lists the agent folders. Runs
+on macOS and Linux. Run it with [mise](https://mise.jdx.dev):
 
 ```text
-mise run laiaskills list               # skills, versions, and install state
-mise run laiaskills check              # newer upstream releases, and installed copies that drifted
+mise run laiaskills list               # skills, versions, patches, and install state
+mise run laiaskills check              # newer upstream releases, drifted copies, patches that won't apply
 mise run laiaskills sync               # make installed copies match their pins (run after git pull)
 mise run laiaskills add owner/repo     # add skills from a third-party repo
 mise run laiaskills upgrade            # move pins to newer releases; re-checks first-party skills with an AI agent
+mise run laiaskills patch <skill> -m … # save edits to an installed third-party skill as a patch
 mise run laiaskills commit             # commit staged changes with generated messages (never pushes)
-mise run laiaskills doctor             # problems in the config and the agent folders
+mise run laiaskills doctor             # problems in the config, the agent folders, and the patches
 ```
 
-Also `install`, `remove`, `show`, `sources`, and `import`; see `mise run laiaskills --help`.
+Also `install`, `remove`, `show`, `sources`, and `import` (with `--prune` for the `npx skills` lock
+file); see `mise run laiaskills --help`. A skill can skip an agent's folder with `"skipMirrors"` in
+`skills.json`, for one that agent already gets another way.
 
 Status: the commands are implemented and tested (`mise run laiaskills:test`, also on Linux CI), and
-every installed skill is managed by laiaskills. Design, decisions, and the roadmap of done and pending
-work: [docs/plans/skills-repo-design.md](docs/plans/skills-repo-design.md#7-roadmap).
+all 64 installed skills (27 authored here, 37 third-party) are managed by laiaskills. Design, decisions,
+and the roadmap of done and pending work:
+[docs/plans/skills-repo-design.md](docs/plans/skills-repo-design.md#7-roadmap).
 
 ## Versioning
 
