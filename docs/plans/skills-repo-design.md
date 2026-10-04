@@ -371,7 +371,8 @@ of third-party sources.
 | 2026-10-04 | **Phase 3, migration** (section 9): 20 third-party sources and 36 skills imported, four under their current GitHub names; `sync` replaced 40 copies (backed up) and installed 24; `visionos-agents` Claude plugin uninstalled; `import --prune` emptied `~/.agents/.skill-lock.json`. All 64 skills up to date and linked. Snapshot in `tmp/migration-snapshot-2026-10-04/` |
 | 2026-10-04 | **Fixes found during the migration**: names match ignoring case (`watchos` says `name: watchOS`); copies leave out plugin manifests and nested skills (duplicate `swiftui-pro:swiftui-pro`); `add` prefers the canonical `skills/<name>` copy (ECC skills had come from their Japanese translations) |
 | 2026-10-04 | **Local patches** (decision 19, 5.8): `laiaskills patch`, applied on install, re-tested on upgrade, reported by `check` and `doctor`. First patch: `apple-hig-designer`, `printf -v` instead of `eval` on user input |
-| 2026-10-04 | **Test suite**: 76 tests (61 library, 15 end-to-end CLI), all offline |
+| 2026-10-04 | **Test suite**: 76 tests (61 library, 15 end-to-end CLI), all offline; green on macOS and Linux CI through `7e09a92` |
+| 2026-10-04 | **Second patch**: `formatting-build-output` calls `xcsift` from PATH instead of `/usr/local/bin` |
 
 ### Pending
 
@@ -379,9 +380,9 @@ In priority order.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Push the local commits and confirm Linux CI is green | owner | CI is green through `0abe39c` (the migration). The commits after it (canonical copies, nested-skill filtering, local patches) were tested on macOS only; `gh run list` shows the result |
+| 1 | Push `6569a38` (the xcsift patch) and this roadmap update | owner | Docs and a patch file only; CI runs the validator |
 | 2 | First live AI re-check: `upgrade first-party/mise/upstream` (v2026.9.4 → v2026.10.2) | tool + owner | Only stub-agent tests so far. Run without `--commit`, review the diff against the mise release notes, and tune `tools/config/recheck.json` or the prompt if the agent hits a tool limit |
-| 3 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` |
+| 3 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
 | 4 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task |
 | 5 | `doctor`: flag renamed upstream repos | tool | Promised in section 6: detect redirected submodule URLs (four sources had moved: ECC, krutikJain, two case changes) |
 | 6 | `add --path <folder>` | tool | Pick a specific copy when a repo has several; today the shortest path wins and the override is a hand edit of `skills.json` |
