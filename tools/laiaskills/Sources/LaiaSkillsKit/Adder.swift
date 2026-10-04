@@ -101,8 +101,11 @@ public enum Adder {
         return entries
     }
 
-    /// The skill in `available` that `name` refers to, ignoring case.
+    /// The skill in `available` that `name` refers to, ignoring case. When a repo has several copies
+    /// (translations under `docs/ja-JP/skills/`, per-agent copies under `.github/skills/`), the shortest
+    /// path wins, which is the canonical `skills/<name>` in the layouts seen so far.
     public static func find(_ name: String, in available: [(name: String, path: String)]) -> (name: String, path: String)? {
-        available.first { SkillDiscovery.matches($0.name, name) }
+        available.filter { SkillDiscovery.matches($0.name, name) }
+            .min { ($0.path.split(separator: "/").count, $0.path) < ($1.path.split(separator: "/").count, $1.path) }
     }
 }

@@ -51,6 +51,19 @@ import LaiaSkillsTestSupport
         #expect(Array(Adder.entries(for: [found], all: available, source: source.path).keys) == ["watchos"])
     }
 
+    /// ECC ships translations and other copies next to the canonical skill; alphabetically the
+    /// Japanese one comes first.
+    @Test func prefersTheCanonicalCopyOfADuplicatedSkill() throws {
+        let available = [
+            (name: "kotlin", path: ".github/skills/kotlin"),
+            (name: "kotlin", path: "docs/ja-JP/skills/kotlin"),
+            (name: "kotlin", path: "skills/kotlin"),
+        ]
+        #expect(Adder.find("kotlin", in: available)?.path == "skills/kotlin")
+        #expect(Adder.entries(for: [Adder.find("kotlin", in: available)!], all: available, source: "s")["kotlin"]?.path
+            == "skills/kotlin")
+    }
+
     @Test func reportsAmbiguousAndMissingSkills() throws {
         let fixture = try Fixture()
         try fixture.write("third-party/o__r/.git", "gitdir: elsewhere")
