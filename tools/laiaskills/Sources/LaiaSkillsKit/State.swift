@@ -120,11 +120,12 @@ public enum Exporter {
     }
 
     /// Writes the files of `pin` into `destination`; returns relative path → blob id.
+    /// Leaves out what makes the folder more than one skill (see `installable`).
     public static func export(_ pin: Pin, to destination: URL) throws -> [String: String] {
         let git = Git(pin.gitDirectory)
         let listing = try git.data(["ls-tree", "-r", "-z", pin.commit, "--", pin.path + "/"])
         var files: [String: String] = [:]
-        for entry in parseTree(listing, prefix: pin.path + "/") {
+        for entry in installable(parseTree(listing, prefix: pin.path + "/")) {
             let target = destination.appendingPathComponent(entry.path)
             try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
             switch entry.mode {
@@ -142,6 +143,23 @@ public enum Exporter {
             files[entry.path] = entry.blob
         }
         return files
+    }
+
+    /// Drops a Claude plugin manifest (`.claude-plugin/`) and any subfolder holding another `SKILL.md`.
+    /// Some upstreams make a skill folder double as a plugin with a nested copy of the skill; installed
+    /// as is, Claude Code loads that copy as a second, plugin-namespaced skill.
+    static func installable(_ entries: [Entry]) -> [Entry] {
+        let keep = Set(installablePaths(entries.map(\.path)))
+        return entries.filter { keep.contains($0.path) }
+    }
+
+    /// The paths `installable` keeps, for file lists recorded at install time.
+    public static func installablePaths(_ paths: [String]) -> [String] {
+        let nested = paths.compactMap { path -> String? in
+            path.hasSuffix("/SKILL.md") ? String(path.dropLast("SKILL.md".count)) : nil
+        }
+        let excluded = nested + [".claude-plugin/"]
+        return paths.filter { path in !excluded.contains { path.hasPrefix($0) } }
     }
 
     static func parseTree(_ data: Data, prefix: String) -> [Entry] {

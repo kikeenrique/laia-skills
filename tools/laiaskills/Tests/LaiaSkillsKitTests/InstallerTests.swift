@@ -139,6 +139,33 @@ import LaiaSkillsTestSupport
         #expect(setup.fixture.exists("home/.claude/skills/alpha/SKILL.md"))
     }
 
+    /// A skill folder that doubles as a Claude plugin with a nested copy of the skill (twostraws's
+    /// swiftui-pro since v1.1.0) installs as the skill alone.
+    @Test func leavesOutPluginManifestsAndNestedSkills() throws {
+        let setup = try SkillsRepoFixture()
+        try setup.fixture.write("repo/first-party/alpha/skills/alpha/.claude-plugin/plugin.json", #"{"name": "alpha"}"#)
+        try setup.fixture.skill("repo/first-party/alpha/skills/alpha/skills/alpha", name: "alpha")
+        try setup.fixture.git("add", ".", in: "repo")
+        try setup.fixture.git("commit", "--quiet", "-m", "alpha plugin", in: "repo")
+        var (installer, skills) = try setup.installer()
+        let alpha = try #require(skills["alpha"])
+        let record = try installer.install(alpha)
+
+        #expect(setup.fixture.exists("home/.agents/skills/alpha/SKILL.md"))
+        #expect(!setup.fixture.exists("home/.agents/skills/alpha/.claude-plugin"))
+        #expect(!setup.fixture.exists("home/.agents/skills/alpha/skills"))
+        #expect(installer.status(of: alpha) == .upToDate)
+
+        // A copy installed before this rule, with the extra files on disk and recorded, gets re-synced.
+        try setup.fixture.write("home/.agents/skills/alpha/.claude-plugin/plugin.json", #"{"name": "alpha"}"#)
+        var state = try #require(InstallState.load(setup.environment))
+        state.skills["alpha"]?.files = try Exporter.fingerprint(setup.fixture.url("home/.agents/skills/alpha"))
+        try state.save(setup.environment)
+        (installer, skills) = try setup.installer()
+        #expect(installer.status(of: alpha) == .notSynced)
+        #expect(record.files?.keys.contains { $0.hasPrefix(".claude-plugin/") } == false)
+    }
+
     @Test func syncRelinksAMissingMirrorLink() throws {
         let setup = try SkillsRepoFixture()
         var (installer, skills) = try setup.installer()

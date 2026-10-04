@@ -73,6 +73,8 @@ public struct Installer {
         if let changed = editedFiles(folder: folder, record: record), !changed.isEmpty { return .modified(changed) }
         if record.workingTree == true { return .workingTree }
         guard skill.problem == nil else { return .error(skill.problem!) }
+        // Installed before plugin manifests and nested skills were left out of copies.
+        if let files = record.files, Exporter.installablePaths(Array(files.keys)).count != files.count { return .notSynced }
         do {
             let pin = try Pins.pin(for: skill, repo: repo.root)
             return pin.tree == record.tree && record.source == skill.entry.source ? .upToDate : .notSynced
