@@ -13,3 +13,65 @@
 [submodule "cupertino/upstream"]
 	path = first-party/cupertino/upstream
 	url = https://codeberg.org/CupertinoHQ/cupertino.git
+[submodule "third-party/affaan-m__ECC"]
+	path = third-party/affaan-m__ECC
+	url = https://github.com/affaan-m/ECC.git
+	shallow = true
+[submodule "third-party/krutikJain__android-agent-skills"]
+	path = third-party/krutikJain__android-agent-skills
+	url = https://github.com/krutikJain/android-agent-skills.git
+[submodule "third-party/AvdLee__Swift-Concurrency-Agent-Skill"]
+	path = third-party/AvdLee__Swift-Concurrency-Agent-Skill
+	url = https://github.com/AvdLee/Swift-Concurrency-Agent-Skill.git
+[submodule "third-party/twostraws__SwiftData-Agent-Skill"]
+	path = third-party/twostraws__SwiftData-Agent-Skill
+	url = https://github.com/twostraws/SwiftData-Agent-Skill.git
+[submodule "third-party/AvdLee__SwiftUI-Agent-Skill"]
+	path = third-party/AvdLee__SwiftUI-Agent-Skill
+	url = https://github.com/AvdLee/SwiftUI-Agent-Skill.git
+[submodule "third-party/AvdLee__Xcode-Build-Optimization-Agent-Skill"]
+	path = third-party/AvdLee__Xcode-Build-Optimization-Agent-Skill
+	url = https://github.com/AvdLee/Xcode-Build-Optimization-Agent-Skill.git
+[submodule "third-party/dadederk__iOS-Accessibility-Agent-Skill"]
+	path = third-party/dadederk__iOS-Accessibility-Agent-Skill
+	url = https://github.com/dadederk/iOS-Accessibility-Agent-Skill.git
+[submodule "third-party/Dimillian__Skills"]
+	path = third-party/Dimillian__Skills
+	url = https://github.com/Dimillian/Skills.git
+[submodule "third-party/dpearson2699__swift-ios-skills"]
+	path = third-party/dpearson2699__swift-ios-skills
+	url = https://github.com/dpearson2699/swift-ios-skills.git
+[submodule "third-party/ehmo__platform-design-skills"]
+	path = third-party/ehmo__platform-design-skills
+	url = https://github.com/ehmo/platform-design-skills.git
+[submodule "third-party/github__awesome-copilot"]
+	path = third-party/github__awesome-copilot
+	url = https://github.com/github/awesome-copilot.git
+	shallow = true
+[submodule "third-party/jamesrochabrun__skills"]
+	path = third-party/jamesrochabrun__skills
+	url = https://github.com/jamesrochabrun/skills.git
+[submodule "third-party/ldomaradzki__xcsift"]
+	path = third-party/ldomaradzki__xcsift
+	url = https://github.com/ldomaradzki/xcsift.git
+[submodule "third-party/nextlevelbuilder__ui-ux-pro-max-skill"]
+	path = third-party/nextlevelbuilder__ui-ux-pro-max-skill
+	url = https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git
+[submodule "third-party/rshankras__claude-code-apple-skills"]
+	path = third-party/rshankras__claude-code-apple-skills
+	url = https://github.com/rshankras/claude-code-apple-skills.git
+[submodule "third-party/tuist__agent-skills"]
+	path = third-party/tuist__agent-skills
+	url = https://github.com/tuist/agent-skills.git
+[submodule "third-party/twostraws__Swift-Concurrency-Agent-Skill"]
+	path = third-party/twostraws__Swift-Concurrency-Agent-Skill
+	url = https://github.com/twostraws/Swift-Concurrency-Agent-Skill.git
+[submodule "third-party/twostraws__Swift-Testing-Agent-Skill"]
+	path = third-party/twostraws__Swift-Testing-Agent-Skill
+	url = https://github.com/twostraws/Swift-Testing-Agent-Skill.git
+[submodule "third-party/twostraws__SwiftUI-Agent-Skill"]
+	path = third-party/twostraws__SwiftUI-Agent-Skill
+	url = https://github.com/twostraws/SwiftUI-Agent-Skill.git
+[submodule "third-party/wshobson__agents"]
+	path = third-party/wshobson__agents
+	url = https://github.com/wshobson/agents.git
