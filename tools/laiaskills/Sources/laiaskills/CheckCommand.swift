@@ -37,9 +37,12 @@ struct CheckCommand: ParsableCommand {
         }
 
         let patchNotes = patchOutlook(statuses, context: context, scratch: installer.hub)
+        let renames = offline ? [] : RenameDetector.check(context.submodules)
+        let pluginUpdates = ClaudePlugins.updates(environment: context.environment)
 
         if options.json {
-            try printJSON(Report(sources: statuses, installs: drifted, patches: patchNotes))
+            try printJSON(Report(sources: statuses, installs: drifted, patches: patchNotes, renames: renames,
+                                 claudePluginUpdates: pluginUpdates))
         } else {
             let ui = NooraUI()
             ui.table(
@@ -62,9 +65,20 @@ struct CheckCommand: ParsableCommand {
                 ui.table(headers: ["Patched skill", "Patch", "On the newest version"],
                          rows: patchNotes.map { [$0.skill, $0.patch, $0.outlook] })
             }
+            if !renames.isEmpty {
+                ui.table(headers: ["Renamed source", "Now at"], rows: renames.map { [$0.path, $0.to] })
+                ui.info("Point each at its new URL: "
+                    + renames.map { "git submodule set-url -- \($0.path) \($0.to)" }.joined(separator: "; ")
+                    + ". Then commit `.gitmodules` (with a pathspec). The old folder name under third-party/ can stay.")
+            }
+            if !pluginUpdates.isEmpty {
+                ui.table(headers: ["Claude plugin", "Installed", "In marketplace"],
+                         rows: pluginUpdates.map { [$0.plugin, $0.installed, $0.available] })
+                ui.info("Update with `/plugin update <plugin>` in Claude Code (refresh with `/plugin marketplace update` first).")
+            }
         }
 
-        if exitCode, statuses.contains(where: { $0.state == .outdated }) || !drifted.isEmpty {
+        if exitCode, statuses.contains(where: { $0.state == .outdated }) || !drifted.isEmpty || !renames.isEmpty {
             throw ExitCode(1)
         }
     }
@@ -85,6 +99,8 @@ struct CheckCommand: ParsableCommand {
         let sources: [SourceStatus]
         let installs: [Drift]
         let patches: [PatchNote]
+        let renames: [Rename]
+        let claudePluginUpdates: [ClaudePluginUpdate]
     }
 
     /// How each patch of a skill from an outdated source would fare on the newest version, when that

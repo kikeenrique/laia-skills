@@ -153,6 +153,71 @@ public enum UpstreamChecker {
     }
 }
 
+/// A source whose repository moved: its web page redirects to another owner or name.
+public struct Rename: Codable, Sendable, Equatable {
+    public let path: String
+    public let from: String
+    public let to: String
+}
+
+/// Finds renamed or transferred upstream repositories. Git follows the hosts' redirects silently, so the
+/// repository's web page is requested instead (with curl) and a permanent redirect to another path
+/// counts as a rename. Changes of letter case only are ignored: hosts treat those URLs as the same.
+public enum RenameDetector {
+    public static func check(_ submodules: [Submodule]) -> [Rename] {
+        let found = Renames(count: submodules.count)
+        DispatchQueue.concurrentPerform(iterations: submodules.count) { index in
+            let submodule = submodules[index]
+            guard let page = webURL(submodule.url),
+                  let result = try? Shell.run(["curl", "-s", "-o", "/dev/null", "--max-time", "10",
+                                               "-w", "%{http_code} %{redirect_url}", page]),
+                  result.succeeded else { return }
+            let parts = result.stdout.split(separator: " ", maxSplits: 1).map(String.init)
+            guard parts.count == 2, ["301", "308"].contains(parts[0]),
+                  let target = renamed(page: page, redirect: parts[1]) else { return }
+            let newURL = submodule.url.hasSuffix(".git") ? target + ".git" : target
+            found.set(index, Rename(path: submodule.path, from: submodule.url, to: newURL))
+        }
+        return found.values
+    }
+
+    /// The repository's web page for an https or `git@host:` remote, e.g. `https://github.com/o/r`.
+    static func webURL(_ remote: String) -> String? {
+        var url = remote
+        if url.hasPrefix("git@"), let colon = url.firstIndex(of: ":") {
+            url = "https://" + url[url.index(url.startIndex, offsetBy: 4)..<colon] + "/" + url[url.index(after: colon)...]
+        }
+        guard url.hasPrefix("https://") else { return nil }
+        if url.hasSuffix(".git") { url.removeLast(4) }
+        return url.hasSuffix("/") ? String(url.dropLast()) : url
+    }
+
+    /// The redirect target when it points at a different repository path (ignoring case).
+    static func renamed(page: String, redirect: String) -> String? {
+        var target = redirect.trimmingCharacters(in: .whitespacesAndNewlines)
+        if target.hasSuffix("/") { target.removeLast() }
+        guard target.hasPrefix("https://"), target.lowercased() != page.lowercased() else { return nil }
+        return target
+    }
+}
+
+private final class Renames: @unchecked Sendable {
+    private var storage: [Rename?]
+    private let lock = NSLock()
+
+    init(count: Int) { storage = Array(repeating: nil, count: count) }
+
+    func set(_ index: Int, _ value: Rename) {
+        lock.lock(); defer { lock.unlock() }
+        storage[index] = value
+    }
+
+    var values: [Rename] {
+        lock.lock(); defer { lock.unlock() }
+        return storage.compactMap { $0 }
+    }
+}
+
 private final class Results: @unchecked Sendable {
     private var storage: [SourceStatus?]
     private let lock = NSLock()

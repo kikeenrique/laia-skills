@@ -8,6 +8,12 @@
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
+    "claudePlugins": {
+      "type": "array",
+      "description": "Claude Code plugins expected to be installed, as `<plugin>@<marketplace>`. `laiaskills doctor` reports missing and undeclared ones; installing stays with `/plugin`. Leave out to not track plugins.",
+      "items": { "type": "string", "pattern": "^[^@\\s]+@[^@\\s]+$" },
+      "uniqueItems": true
+    },
     "skills": {
       "type": "object",
       "description": "Keyed by the skill's frontmatter `name`.",

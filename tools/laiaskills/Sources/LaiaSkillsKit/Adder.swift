@@ -101,6 +101,12 @@ public enum Adder {
         return entries
     }
 
+    /// The copy of `name` at `path` (relative to the source), for picking one of several copies by hand.
+    public static func find(_ name: String, at path: String, in available: [(name: String, path: String)]) -> (name: String, path: String)? {
+        let wanted = path.hasSuffix("/") ? String(path.dropLast()) : path
+        return available.first { SkillDiscovery.matches($0.name, name) && $0.path == wanted }
+    }
+
     /// The skill in `available` that `name` refers to, ignoring case. When a repo has several copies
     /// (translations under `docs/ja-JP/skills/`, per-agent copies under `.github/skills/`), the shortest
     /// path wins, which is the canonical `skills/<name>` in the layouts seen so far.

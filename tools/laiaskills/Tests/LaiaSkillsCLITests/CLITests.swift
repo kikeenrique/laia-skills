@@ -106,6 +106,26 @@ import Testing
         #expect(try setup.fixture.git("status", "--porcelain", in: "repo").isEmpty)
     }
 
+    @Test func addPathPicksOneOfSeveralCopies() throws {
+        let setup = try SkillsRepoFixture()
+        try setup.fixture.originRepo("origins/acme/multi", commits: [("README", nil)])
+        try setup.fixture.skill("origins/acme/multi/skills/gamma", name: "gamma")
+        try setup.fixture.write("origins/acme/multi/docs/ja-JP/skills/gamma/SKILL.md",
+                                "---\nname: gamma\ndescription: \"翻訳\"\n---\n")
+        try setup.fixture.git("add", ".", in: "origins/acme/multi")
+        try setup.fixture.git("commit", "--quiet", "-m", "gamma", in: "origins/acme/multi")
+        let url = "file://\(setup.fixture.url("origins/acme/multi").path)"
+
+        let wrong = try laiaskills(setup, "add", url, "--skill", "gamma", "--path", "nope", "--no-install")
+        #expect(wrong.status != 0)
+        #expect(wrong.stderr.contains("docs/ja-JP/skills/gamma"))
+
+        let add = try laiaskills(setup, "add", url, "--skill", "gamma", "--path", "docs/ja-JP/skills/gamma/", "--no-install")
+        #expect(add.status == 0, "\(add.stderr)")
+        #expect(try setup.fixture.read("repo/skills.json")
+            .contains(#""gamma": { "source": "third-party/acme__multi", "path": "docs/ja-JP/skills/gamma" }"#))
+    }
+
     @Test func upgradesAndCommitsAThirdPartySource() throws {
         let setup = try SkillsRepoFixture()
         #expect(try laiaskills(setup, "sync", "--yes").status == 0)

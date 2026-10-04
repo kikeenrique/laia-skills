@@ -21,6 +21,9 @@ struct AddCommand: ParsableCommand {
     @Option(name: .customLong("skill"), help: "Skill to add (repeatable). Without it, choose interactively.")
     var skills: [String] = []
 
+    @Option(help: "Folder of the skill inside the repo, when it has several copies (needs exactly one skill).")
+    var path: String?
+
     @Flag(help: "Download only the pinned snapshot (for large repos).")
     var shallow = false
 
@@ -37,8 +40,15 @@ struct AddCommand: ParsableCommand {
         guard !available.isEmpty else { throw EditError.noSkills(spec.submodulePath) }
 
         let requested = skills + (spec.skill.map { [$0] } ?? [])
+        if path != nil, requested.count != 1 { throw ValidationError("--path needs exactly one skill (--skill or owner/repo@skill).") }
         let chosen: [(name: String, path: String)]
-        if !requested.isEmpty {
+        if let path, let name = requested.first {
+            guard let match = Adder.find(name, at: path, in: available) else {
+                let copies = available.filter { SkillDiscovery.matches($0.name, name) }.map(\.path)
+                throw ValidationError("No skill `\(name)` at `\(path)`. Copies: \(copies.isEmpty ? "none" : copies.joined(separator: ", "))")
+            }
+            chosen = [match]
+        } else if !requested.isEmpty {
             chosen = try requested.map { name in
                 guard let match = Adder.find(name, in: available) else {
                     throw EditError.unknownSkillInSource(name, spec.submodulePath, available.map(\.name))
@@ -55,7 +65,10 @@ struct AddCommand: ParsableCommand {
         guard !chosen.isEmpty else { throw ValidationError("No skills chosen.") }
         let names = chosen.map { $0.name.lowercased() }
 
-        try SourceEditor.addSkills(Adder.entries(for: chosen, all: available, source: spec.submodulePath), repo: repo)
+        var entries = Adder.entries(for: chosen, all: available, source: spec.submodulePath)
+        // An explicit --path is kept even when the copy is the only one today.
+        if let path, let name = names.first { entries[name]?.path = Adder.find(name, at: path, in: available)?.path }
+        try SourceEditor.addSkills(entries, repo: repo)
         try PendingChanges.record(PendingChange(kind: .add, skills: names, source: spec.submodulePath, to: tag),
                                   repo: repo.root)
 

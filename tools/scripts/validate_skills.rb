@@ -417,7 +417,11 @@ def validate_laiaskills_configs(skill_dirs)
   manifest = load_json_object(manifest_path)
   if manifest
     rel = relative(manifest_path)
-    unexpected_keys(rel, manifest, %w[$schema skills])
+    unexpected_keys(rel, manifest, %w[$schema claudePlugins skills])
+    plugins = manifest["claudePlugins"]
+    unless plugins.nil? || (plugins.is_a?(Array) && plugins.all? { |id| id.is_a?(String) && id.match?(/\A[^@\s]+@[^@\s]+\z/) } && plugins.uniq == plugins)
+      error("#{rel}: `claudePlugins` must be a list of distinct `<plugin>@<marketplace>` strings")
+    end
     skills = manifest["skills"]
     if skills.is_a?(Hash)
       submodules = submodule_paths

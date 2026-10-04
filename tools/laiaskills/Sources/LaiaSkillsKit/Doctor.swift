@@ -91,6 +91,7 @@ public enum Doctor {
         findings += patchFindings(repo: repo, skills: skills, scratch: inspector.hub)
         findings += skillsCLIFindings(managedNames: managedNames, inspector: inspector, environment: environment)
         findings += claudePluginFindings(managedNames: managedNames.filter { !skips($0, claudeMirror) }, environment: environment)
+        findings += ClaudePlugins.findings(declared: repo.manifest.claudePlugins, environment: environment)
         return findings.sorted { ($0.severity, $0.check, $0.message) < ($1.severity, $1.check, $1.message) }
     }
 

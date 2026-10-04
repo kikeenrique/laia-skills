@@ -3,9 +3,13 @@ import Foundation
 /// `skills.json` at the repo root: which skills come from which source.
 public struct SkillsManifest: Codable, Sendable {
     public var skills: [String: SkillEntry]
+    /// Claude Code plugins expected to be installed (`<plugin>@<marketplace>`), so `doctor` can report
+    /// missing and unexpected ones. Installing them stays with `/plugin`. Nil: not tracked.
+    public var claudePlugins: [String]?
 
-    public init(skills: [String: SkillEntry]) {
+    public init(skills: [String: SkillEntry], claudePlugins: [String]? = nil) {
         self.skills = skills
+        self.claudePlugins = claudePlugins
     }
 }
 
@@ -25,10 +29,11 @@ extension SkillsManifest {
             }
             return "    \(quoted(name)): { \(fields.joined(separator: ", ")) }"
         }
+        let plugins = claudePlugins.map { "  \"claudePlugins\": [\($0.map(quoted).joined(separator: ", "))],\n" } ?? ""
         let text = """
         {
           "$schema": \(quoted(schema)),
-          "skills": {
+        \(plugins)  "skills": {
         \(lines.joined(separator: ",\n"))
           }
         }
