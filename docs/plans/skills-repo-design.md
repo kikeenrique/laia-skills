@@ -1,8 +1,8 @@
 # Skills repo and `laiaskills` — design
 
 Status: **phases 0–3 done**: the tool is implemented and tested (macOS and Linux CI), every installed
-skill (64) is managed by it, and third-party skills can carry local patches (5.8). Next: the first live
-AI re-check. See the [roadmap](#7-roadmap). Last updated 2026-10-04.
+skill (64) is managed by it, and third-party skills can carry local patches (5.8). Phase 4 (`browse` and `find`, 5.9) is designed, not built. See the
+[roadmap](#7-roadmap). Last updated 2026-10-05.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -38,7 +38,8 @@ Goals:
 
 Non-goals (v1):
 
-- Online catalogs (skills.sh, ClawHub). Their APIs are undocumented and scrape-prone.
+- Online catalogs (skills.sh, ClawHub) in the core. Their APIs are undocumented and scrape-prone. Since
+  decision 20, `find` is the one optional command that searches skills.sh; nothing else depends on it.
 - Managing Claude Code plugins/marketplaces — leave that to `/plugin`.
 - MCP servers, GUI, menu bar, daemon.
 - Distribution to other users. The tool runs from this repo only.
@@ -238,7 +239,8 @@ renders and prompts when attached to a TTY.
 | `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, missing mirror links, links in mirrors a skill skips, `skipMirrors` naming an unknown mirror, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names, local patches that don't apply or are no longer needed (5.8), Claude plugins declared in `claudePlugins` but not installed or installed but not declared |
 | `laiaskills patch <skill> -m <reason>` | Save the edits to a third-party skill's installed copy as `patches/<skill>/NNNN-<slug>.patch` (or `--from <file>`), stage it, and reinstall with it (5.8) |
 | `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL). Prints the plan; `--apply` adds the sources and skills (staged, not installed), `--shallow owner/repo` for large ones. After `sync`, `--prune` removes the lock entries of skills laiaskills installed and of skills no longer installed (asks first, or `--yes`; backs the lock file up to the backups folder). Entries for skills other tools still install stay |
-| `laiaskills browse <source>` | Optional (v2): Noora picker over a source's skills, preview `SKILL.md` |
+| `laiaskills browse [source]` | Planned (5.9): a source's skills with status and description, preview `SKILL.md`, add from a picker. Sources not added yet open as a preview clone under `.git/laiaskills/browse/`. `--skill`, `--refresh`, `--clean` |
+| `laiaskills find <query>` | Planned (5.9): search skills.sh, then browse a result. `--limit`. The only command that calls an online catalog |
 
 ### 5.6 Automated re-check of first-party skills
 
@@ -338,6 +340,102 @@ Submodules stay untouched; the fix is a patch applied to the installed copy.
   patches for first-party skills, and patches for skills not in `skills.json`.
 - Sending a fix upstream stays manual; the patch file can be attached to an upstream issue or PR as is.
 
+### 5.9 Browse and discovery (phase 4, planned)
+
+Commander was the browsing and discovery tool next to `laiaskills` (decisions 8–11). It was deleted on
+2026-10-05, so `laiaskills` takes over both jobs (decision 20): `browse` looks inside a source,
+`find` searches skills.sh. Both are read-only until you choose to add something, and adding always goes
+through the existing `add` flow (staged, recorded in `pending.json`, committed with `commit`).
+
+**`laiaskills browse [source]`**
+
+- No argument: the sources table (as in `sources`), then a picker to open one. Without a terminal it
+  prints the table only.
+- `source` is a submodule path, `owner/repo`, or a git URL. `owner/repo` matches an existing submodule
+  ignoring case. Anything else is opened as a **preview** (below), without adding a submodule.
+- One row per skill in the source: name, status, and description (from the `SKILL.md` frontmatter;
+  shortened in the table, full in `--json`). When a name has several copies, the row shows the copy
+  `add` would pick (shortest path, as in `Adder.find`) and how many copies there are.
+- Status values:
+
+  | Status | Meaning |
+  |---|---|
+  | `installed` | In `skills.json` from this source and installed (with `not synced` / `modified` as in `list`) |
+  | `in skills.json` | Listed but not installed (run `sync`) |
+  | `name taken` | A managed skill with the same name comes from another source; adding would conflict |
+  | `other tool` | The hub or a mirror has an unmanaged entry with this name (as in `list --all`) |
+  | `—` | Available |
+
+- **Interactive loop** (Noora): pick a skill, which prints its `SKILL.md` and its other files, then
+  flags any executables or `scripts/` (anything an audit should read first, see 5.8). Then choose
+  *Add*, *Back*, or *Done*. On *Done* with skills marked, confirm "Add X, Y from owner/repo?" and
+  run the add flow. Skills that are `installed`, `in skills.json`, or `name taken` cannot be marked.
+- **Non-interactive:** the table, or `--json`. `browse <source> --skill <name>` prints that skill's
+  `SKILL.md` instead (the same as the preview step). Adding stays explicit: `laiaskills add`.
+
+**Preview clones** (sources not added yet)
+
+- Location: `.git/laiaskills/browse/<owner>__<repo>/`, inside `.git/` next to `pending.json`, so it
+  is never committed and belongs to this repo, like everything else the tool keeps.
+- `git clone --depth 1` at the newest release tag (found with `git ls-remote`, as `add` does), or
+  the default branch head when there are no tags. Rows show the version as `v1.2.0 (preview)`.
+- Reused for 24 hours; `--refresh` fetches again. Previews older than 30 days are deleted at the start
+  of each `browse`, and `browse --clean` deletes them all. `add` deletes the preview of the source it
+  adds; the submodule is cloned normally rather than built from the preview, to keep `add` unchanged.
+- **Letter case:** `owner/repo` is stored as the host spells it today (AGENTS.md rule). For GitHub,
+  `browse` reads the canonical name from the repository page's `og:url` meta tag (one `curl`, the
+  same way `check` detects renames). If that fails it falls back to the name as typed. The preview
+  folder and any later `add` use the canonical name.
+
+**`laiaskills find <query>`**
+
+- Searches skills.sh: `GET https://skills.sh/api/search?q=<query>&limit=<n>` through `curl`, the
+  same way the rename check calls out. The response is decoded with `JSONDecoder`, so there is no new
+  dependency. The endpoint is undocumented. As observed on 2026-10-05 it returns
+  `{query, searchType, skills: [{id, source, skillId, name, installs}], count}`. A query under 2
+  characters gets a 400, and the search is fuzzy, so a query with no real match still returns loosely
+  related skills. Only `source` and `skillId` are required when decoding; everything else is optional.
+- Table, in API (relevance) order: skill (`skillId`), source (`owner/repo`), installs, and status
+  (`managed` when the skill is in `skills.json`, `source added` when its repo is already a
+  submodule, `—` otherwise). `--limit` (default 20), `--json`.
+- Interactive: pick a result to open `browse <source>` with that skill's `SKILL.md` already shown.
+  Non-interactive: the table plus a hint (`laiaskills browse owner/repo` or
+  `laiaskills add owner/repo@skill`).
+- **Isolation:** `find` is the only code that touches skills.sh. If the API changes or goes away, only
+  `find` breaks, with an error that points to `browse owner/repo`. `check`, `doctor`, and everything
+  else stay offline-capable and catalog-free (goal: no catalog dependency for the core).
+- skills.sh lowercases `source`. Status matching ignores case, and adding goes through `browse`, which
+  resolves the canonical name.
+- Install counts are popularity, not trust. A result is unvetted until previewed; the preview's
+  executables line is the prompt to audit.
+- The base URL can be overridden with `LAIASKILLS_CATALOG_URL`, for tests only (`file://` fixtures,
+  which curl reads), so the suite stays offline.
+
+**Code layout**
+
+| File | Contents |
+|---|---|
+| `LaiaSkillsKit/Browser.swift` | Preview clones (create, reuse, refresh, prune, clean), canonical-name lookup, per-skill rows with status and description |
+| `LaiaSkillsKit/Catalog.swift` | skills.sh client: URL building, `curl`, decoding, status matching |
+| `laiaskills/BrowseCommands.swift` | `browse` and `find`: arguments, interactive loop, rendering |
+| `laiaskills/UI.swift` | Adds `pick(_:options:) -> String` (Noora `singleChoicePrompt`) to the `UI` protocol |
+| `laiaskills/SourceCommands.swift` | The body of `AddCommand.run` becomes a shared function that `browse` calls |
+
+`Adder.skills(in:)` takes a folder URL instead of a submodule path, so previews and submodules share
+discovery.
+
+**Tests** (offline, about 15 new): status rows against the existing fixtures (installed, listed,
+name taken, other tool, duplicate copies). Preview clone from a local origin, covering tag vs
+branch head, reuse, `--refresh`, pruning, `--clean`, and `add` removing the preview. Catalog
+decoding: a full response, missing optional fields, and garbage input. `find` end to end against a
+`file://` fixture through `LAIASKILLS_CATALOG_URL`. `browse` end to end, non-interactive, for both
+table and JSON. The interactive loop is not tested (Noora prompts); its decisions (what can be
+marked, what gets added) are library functions that are tested.
+
+**Build order:** (1) `browse` over added sources, `pick`, and the shared add flow; (2) preview clones
+and canonical names; (3) `find`; (4) docs: this section to "done", AGENTS.md, README if it lists
+commands, and section 10.
+
 ## 6. Maintenance profile
 
 | Driver | Frequency | Mitigation |
@@ -392,7 +490,7 @@ In priority order.
 | 3 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
 | 4 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task |
 | 5 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
-| 6 | Optional: phase 4 `browse` | tool | Skills Manager already covers browsing |
+| 6 | Phase 4: `browse` and `find` | tool | No longer optional: Commander was deleted on 2026-10-05 (decision 20). Designed in 5.9; build in the order given there |
 | 7 | Optional: Docker or Podman locally | owner | Only for `mise run laiaskills:test-linux`; CI covers Linux |
 | 8 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
@@ -518,7 +616,11 @@ Numbers are kept stable so they can be referred to in discussion.
   on every install; submodules stay pristine and nothing third-party is copied into the repo. A patch
   the new upstream version already contains is dropped on upgrade; one that no longer applies stops the
   upgrade instead of silently losing the fix. See 5.8.
-- **(8–11) Migration items.** Other skill managers (Commander, `npx skills`) stay for discovery only and never install or update managed skills; `~/.agents/.skill-lock.json` was pruned; the skills missing from it were added by hand; `skill-creator` and `formatting-build-output` follow decision 18.
+- **(20) Browsing and discovery move into `laiaskills`.** Decided 2026-10-05, after Commander was
+  deleted. `browse` covers a source's skills, including repos not added yet (as a preview clone), and
+  `find` searches skills.sh. That reverses the old non-goal for that one command only: the catalog call
+  is isolated, so if it breaks only `find` breaks. Adding still goes through `add`. See 5.9.
+- **(8–11) Migration items.** Other skill managers (Commander, `npx skills`) stay for discovery only and never install or update managed skills (Commander has since been deleted, see decision 20); `~/.agents/.skill-lock.json` was pruned; the skills missing from it were added by hand; `skill-creator` and `formatting-build-output` follow decision 18.
 
 ## 9. Migration (done 2026-10-04)
 
@@ -544,12 +646,12 @@ What a typical GUI skill manager offers, and where each feature lands here.
 | Reveal in Finder | `show --open` | Covered |
 | Delete | `remove` | Covered |
 | Sources / marketplaces list | `sources` | Covered |
-| Per-source grid with Installed / Install | `browse` (v2), `add` picker | Deferred to v2 |
+| Per-source grid with Installed / Install | `browse`, `add` picker | Planned (5.9) |
 | Install from `owner/repo@skill`, URL, path | `add` | Covered; local paths only for first-party |
 | Agent selection | Hub + mirrors in `agents.json` | Covered globally, with a per-skill mirror opt-out (decision 18) |
 | Workspace / global scope | Global only | Not needed (decision 15) |
 | Shows installs made by other tools | `list --all`, `doctor` | Covered |
 | Local modifications that survive updates | `patch`, `patches/` | Covered beyond typical managers: re-tested on every upgrade (5.8) |
-| Online discovery (skills.sh and similar) | — | Out of scope |
+| Online discovery (skills.sh and similar) | `find` | Planned (5.9): skills.sh only, isolated |
 | Reads Claude `marketplace.json` | — | Out of scope; `SKILL.md` scan instead, plugins via `/plugin` |
 | GUI | Noora CLI | Out of scope |
