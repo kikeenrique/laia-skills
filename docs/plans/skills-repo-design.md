@@ -374,6 +374,7 @@ of third-party sources.
 | 2026-10-04 | **Test suite**: 76 tests (61 library, 15 end-to-end CLI), all offline; green on macOS and Linux CI through `7e09a92` |
 | 2026-10-04 | **Second patch**: `formatting-build-output` calls `xcsift` from PATH instead of `/usr/local/bin` |
 | 2026-10-04 | **First live AI re-check**: mise v2026.9.4 → v2026.10.2 (16 releases); plugin 0.3.0 → 0.4.0. The agent fixed what had gone stale (`pkgx` removed, trust rules, version pins) and added daemons, remote `include`, and `conf.d` folders, but skipped smaller features to keep the length. A second pass, checked against upstream docs, covered them in the reference files and fixed two more stale lines (`mise dot`, lockfile version 3). The prompt now separates the compact `SKILL.md` from reference files that may grow |
+| 2026-10-04 | **First routine third-party upgrade**: `ldomaradzki/xcsift` v1.5.1 → v1.5.2 and `wshobson/agents` (2 commits); no skill content changed. The xcsift patch was re-tested on the new version and kept |
 
 ### Pending
 
@@ -382,7 +383,7 @@ In priority order.
 | # | Task | Who | Notes |
 |---|---|---|---|
 | 1 | Push the local commits | owner | The xcsift patch, the re-check prompt, the mise 0.4.0 refresh, and roadmap updates; CI runs the validator and tests |
-| 2 | Re-check the other first-party pins with the updated prompt | tool + owner | `check` lists which `upstream/` pins are behind (e.g. AXe, cupertino, Replay, visionOSAgents); same flow as mise: run without `--commit`, verify against upstream, commit with the right bump |
+| 2 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
 | 3 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
 | 4 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task |
 | 5 | `doctor`: flag renamed upstream repos | tool | Promised in section 6: detect redirected submodule URLs (four sources had moved: ECC, krutikJain, two case changes) |
