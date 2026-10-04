@@ -37,6 +37,20 @@ import LaiaSkillsTestSupport
         #expect(skill.submodulePath == source.path)
     }
 
+    /// Some upstreams capitalize the name (`watchOS`); the skills.json key is the lowercase form.
+    @Test func matchesNamesIgnoringCase() throws {
+        let fixture = try Fixture()
+        try fixture.write("third-party/o__r/.git", "gitdir: elsewhere")
+        try fixture.skill("third-party/o__r/skills/watchos", name: "watchOS")
+        let skill = SkillResolver.resolve(name: "watchos", entry: SkillEntry(source: source.path),
+                                          repo: fixture.root, submodules: [source])
+        #expect(skill.problem == nil)
+
+        let available = Adder.skills(in: source.path, repo: fixture.root)
+        let found = try #require(Adder.find("watchos", in: available))
+        #expect(Array(Adder.entries(for: [found], all: available, source: source.path).keys) == ["watchos"])
+    }
+
     @Test func reportsAmbiguousAndMissingSkills() throws {
         let fixture = try Fixture()
         try fixture.write("third-party/o__r/.git", "gitdir: elsewhere")

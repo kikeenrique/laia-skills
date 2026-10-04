@@ -40,7 +40,7 @@ struct AddCommand: ParsableCommand {
         let chosen: [(name: String, path: String)]
         if !requested.isEmpty {
             chosen = try requested.map { name in
-                guard let match = available.first(where: { $0.name == name }) else {
+                guard let match = Adder.find(name, in: available) else {
                     throw EditError.unknownSkillInSource(name, spec.submodulePath, available.map(\.name))
                 }
                 return match
@@ -53,23 +53,24 @@ struct AddCommand: ParsableCommand {
             throw ValidationError("Pass --skill. Available: \(available.map(\.name).joined(separator: ", "))")
         }
         guard !chosen.isEmpty else { throw ValidationError("No skills chosen.") }
+        let names = chosen.map { $0.name.lowercased() }
 
         try SourceEditor.addSkills(Adder.entries(for: chosen, all: available, source: spec.submodulePath), repo: repo)
-        try PendingChanges.record(PendingChange(kind: .add, skills: chosen.map(\.name), source: spec.submodulePath, to: tag),
+        try PendingChanges.record(PendingChange(kind: .add, skills: names, source: spec.submodulePath, to: tag),
                                   repo: repo.root)
 
         if !noInstall {
             let context = try Context(options)
             var installer = Installer(repo: context.repo, environment: context.environment)
-            for skill in try select(chosen.map(\.name), from: context.skills) {
+            for skill in try select(names, from: context.skills) {
                 try installer.install(skill)
             }
         }
 
         if options.json {
-            return try printJSON(["source": spec.submodulePath, "tag": tag ?? "", "skills": chosen.map(\.name).joined(separator: ",")])
+            return try printJSON(["source": spec.submodulePath, "tag": tag ?? "", "skills": names.joined(separator: ",")])
         }
-        ui.success("Added \(chosen.map(\.name).joined(separator: ", ")) from \(spec.submodulePath)"
+        ui.success("Added \(names.joined(separator: ", ")) from \(spec.submodulePath)"
             + (tag.map { " at \($0)" } ?? "") + (noInstall ? "" : " and installed")
             + ". Staged; commit with `laiaskills commit`.")
     }

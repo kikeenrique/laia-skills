@@ -120,7 +120,7 @@ public enum Doctor {
                 guard let path = install["installPath"] as? String else { continue }
                 let names = claudePluginSkillNames(plugin: plugin, installPath: URL(fileURLWithPath: path),
                                                    marketplaces: marketplaces)
-                let duplicates = Set(names).intersection(managedNames).sorted()
+                let duplicates = Set(names.map { $0.lowercased() }).intersection(managedNames).sorted()
                 guard !duplicates.isEmpty else { continue }
                 findings.append(Finding(
                     severity: .warning, check: "claude-plugins",

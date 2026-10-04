@@ -89,14 +89,20 @@ public enum Adder {
         return SkillDiscovery.allSkills(under: root).map { ($0.name, relativePath(of: $0.folder, to: root)) }
     }
 
-    /// skills.json entries for the chosen skills; `path` is only set for names found more than once.
+    /// skills.json entries for the chosen skills, keyed by the lowercased name; `path` is only set for
+    /// names found more than once.
     public static func entries(for chosen: [(name: String, path: String)], all: [(name: String, path: String)],
                                source: String) -> [String: SkillEntry] {
         var entries: [String: SkillEntry] = [:]
         for skill in chosen {
-            let duplicated = all.filter { $0.name == skill.name }.count > 1
-            entries[skill.name] = SkillEntry(source: source, path: duplicated ? skill.path : nil)
+            let duplicated = all.filter { SkillDiscovery.matches($0.name, skill.name) }.count > 1
+            entries[skill.name.lowercased()] = SkillEntry(source: source, path: duplicated ? skill.path : nil)
         }
         return entries
+    }
+
+    /// The skill in `available` that `name` refers to, ignoring case.
+    public static func find(_ name: String, in available: [(name: String, path: String)]) -> (name: String, path: String)? {
+        available.first { SkillDiscovery.matches($0.name, name) }
     }
 }

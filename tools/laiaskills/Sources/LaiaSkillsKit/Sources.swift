@@ -59,9 +59,15 @@ public enum SkillDiscovery {
     /// Folders never searched: VCS data, dependencies, test fixtures.
     static let skippedFolders: Set<String> = [".git", "node_modules", ".build", "evals", "tests", "Tests"]
 
-    /// All skill folders under `root` whose frontmatter `name` equals `name`.
+    /// All skill folders under `root` whose frontmatter `name` matches `name`.
     public static func folders(named name: String, under root: URL, skipping extraFolders: Set<String> = []) -> [URL] {
-        allSkills(under: root, skipping: extraFolders).filter { $0.name == name }.map(\.folder)
+        allSkills(under: root, skipping: extraFolders).filter { matches($0.name, name) }.map(\.folder)
+    }
+
+    /// Whether a frontmatter `name` is the skill `name`. Ignores case: names should be lowercase, but some
+    /// upstreams write e.g. `watchOS`, which other installers file under `watchos` as well.
+    public static func matches(_ frontmatterName: String?, _ name: String) -> Bool {
+        frontmatterName?.lowercased() == name.lowercased()
     }
 
     public static func allSkills(under root: URL, skipping extraFolders: Set<String> = []) -> [(name: String, folder: URL)] {
@@ -148,7 +154,9 @@ public enum SkillResolver {
             let plugins = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
             let matches = plugins.sorted().compactMap { plugin -> (String, URL)? in
                 let folder = root.appendingPathComponent(plugin).appendingPathComponent("skills").appendingPathComponent(name)
-                guard SkillDiscovery.frontmatterName(of: folder.appendingPathComponent("SKILL.md")) == name else { return nil }
+                guard SkillDiscovery.matches(SkillDiscovery.frontmatterName(of: folder.appendingPathComponent("SKILL.md")), name) else {
+                    return nil
+                }
                 return (plugin, folder.standardizedFileURL)
             }
             guard let match = matches.first else { return failure("no first-party skill named `\(name)`") }
@@ -169,7 +177,7 @@ public enum SkillResolver {
         if let path = entry.path {
             let folder = sourceRoot.appendingPathComponent(path).standardizedFileURL
             let found = SkillDiscovery.frontmatterName(of: folder.appendingPathComponent("SKILL.md"))
-            guard found == name else {
+            guard SkillDiscovery.matches(found, name) else {
                 return failure(found.map { "`\(path)` holds skill `\($0)`, not `\(name)`" } ?? "no SKILL.md at `\(path)`", submodule: entry.source)
             }
             return ResolvedSkill(name: name, entry: entry, folder: folder, problem: nil, submodulePath: entry.source, plugin: nil)

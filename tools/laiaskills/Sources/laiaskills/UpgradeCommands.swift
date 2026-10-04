@@ -228,13 +228,14 @@ struct ImportCommand: ParsableCommand {
             ui.info("Adding \(group.source)…")
             let tag = try Adder.addSource(spec, repo: context.repo.root, shallow: shallow.contains(key))
             let available = Adder.skills(in: spec.submodulePath, repo: context.repo.root)
-            let chosen = group.skills.compactMap { name in available.first { $0.name == name } }
-            let missing = Set(group.skills).subtracting(chosen.map(\.name))
+            let chosen = group.skills.compactMap { name in Adder.find(name, in: available) }
+            let missing = Set(group.skills).subtracting(chosen.map { $0.name.lowercased() })
             if !missing.isEmpty { ui.warning(["\(group.source): not found upstream: \(missing.sorted().joined(separator: ", "))"]) }
             guard !chosen.isEmpty else { continue }
             let repo = try options.repository()
             try SourceEditor.addSkills(Adder.entries(for: chosen, all: available, source: spec.submodulePath), repo: repo)
-            try PendingChanges.record(PendingChange(kind: .add, skills: chosen.map(\.name), source: spec.submodulePath, to: tag),
+            try PendingChanges.record(PendingChange(kind: .add, skills: chosen.map { $0.name.lowercased() },
+                                                    source: spec.submodulePath, to: tag),
                                       repo: repo.root)
         }
         ui.success("Imported. Next: `laiaskills sync` to install, then `laiaskills commit`.")
