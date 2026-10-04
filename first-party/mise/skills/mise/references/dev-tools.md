@@ -60,6 +60,8 @@ Use `os` restrictions for platform-specific tools:
 mytool = { version = "latest", os = ["linux/x64", "macos/arm64"] }
 ```
 
+`os = "unix"` matches every platform except Windows.
+
 ## Backends
 
 Prefer registry names when available:
@@ -94,7 +96,7 @@ Backend preference order:
 
 `packslip:` takes a host and path without `https://`; GitHub may be abbreviated (`packslip:jdx/hk`). Releases can carry version-matched completions, man pages, and agent skills. mise remembers accepted signers; inspect with `mise packslip pins` and reset one with `mise packslip forget <project>` only after confirming the publisher announced the change.
 
-The `pkgx:` backend is experimental (`[settings] experimental = true`) and installs pantry packages by project name: `"pkgx:stedolan.github.io/jq" = "1.7.1"`.
+The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools to `packslip`, `aqua`, or `github`. The experimental `spinel:` backend (2026.10.2) compiles a Ruby CLI from GitHub source into a native binary and needs the `spinel` compiler and a C compiler; it may be removed, so avoid it for team config.
 
 ### GitHub Asset Selection
 
@@ -106,6 +108,25 @@ The `pkgx:` backend is experimental (`[settings] experimental = true`) and insta
 - `matching` narrows candidates by case-sensitive substring while keeping platform autodetection; `matching_regex` does the same with a regex. Both are ignored (silently) when `asset_pattern` is set, because that replaces autodetection entirely.
 - `additional_asset_patterns` overlays supplemental archives onto the primary asset's install directory.
 - `github_attestations = false` disables attestation verification; `version_order = "semver"` changes tag ordering.
+
+### Other Backend Options
+
+```toml
+[tools]
+"aqua:domcyrus/rustnet" = { version = "latest", libc = "musl" }   # or "glibc"/"gnu"; strict, no fallback
+"gem:internal-cli" = { version = "latest", source = "https://{{ env.GEM_TOKEN }}@gems.example.com/acme" }
+"npm:@gmickel/gno" = { version = "2.3.0", allow_exotic_deps = ["xlsx"] }   # git/file/tarball deps aube blocks
+"http:my-tool" = { version = "1.0.0", url = "file:///opt/archives/my-tool.tar.gz", checksum = "sha256:..." }
+"pypi:azure-cli" = { version = "latest", with = ["pip"], dependency_prereleases = "allow" }
+"pypi:ansible" = { version = "latest", expose = ["ansible-core"] }   # expose extra packages' entry points
+```
+
+- `pypi:` is the Python CLI backend (uv first, pipx fallback); `pipx:` remains a supported alias but is a distinct tool identity. `with`, `expose` (uv 0.8.5+), and `dependency_prereleases` (`disallow`/`allow`/`if-necessary`/`explicit`) need uv; `uvx = false` switches the tool to pipx.
+- Git subdirectories use pip's fragment, quoted, with the ref after `@`: `mise use 'pypi:git+https://github.com/o/repo#subdirectory=cli@main'` (the `.git` suffix is optional; GitHub shorthand works too).
+- aqua `libc` overrides the `libc` setting for that tool and is recorded in the lockfile; reinstall with `mise install --force` to switch an installed version.
+- A `file://` URL is recorded in `mise.lock` as written, so it only works where that path exists.
+
+Find and filter: `mise search npm:<name>` also queries that package registry (`npm:`, `cargo:`, `gem:`, `dotnet:`), `mise search --all` searches every backend; `mise ls --backend go --backend cargo` filters and `mise ls --grouped` groups by backend.
 
 ## npm Backend Safety
 
@@ -206,7 +227,7 @@ mise settings add idiomatic_version_file_enable_tools node
 mise settings add idiomatic_version_file_disable_files node:package.json
 ```
 
-mise reads fields that state the version a project is *built with*, not compatibility floors. `package.json` `devEngines` and `packageManager` are read; `engines` is not. In `go.mod`, `toolchain goX.Y.Z` is read while the `go X.Y` floor is deprecated and removed in mise 2026.11.0 (as is `cmake_minimum_required`); `idiomatic_version_file_ignore_minimum_versions` opts into the final behavior early.
+mise reads fields that state the version a project is *built with*, not compatibility floors. `package.json` `devEngines` and `packageManager` are read; `engines` is not. In `go.mod` (and `go.work`, which wins when a workspace is active), `toolchain goX.Y.Z` is read while the `go X.Y` floor is deprecated and removed in mise 2026.11.0 (as is `cmake_minimum_required`); `idiomatic_version_file_ignore_minimum_versions` opts into the final behavior early.
 
 ## Ruby
 
@@ -214,7 +235,7 @@ mise installs a precompiled Ruby binary when one exists and otherwise falls back
 
 ## Auto Install
 
-`mise exec` and `mise run` can auto-install missing tools when auto-install settings are enabled. For deterministic CI, prefer:
+`mise exec` and `mise run` can auto-install missing tools when auto-install settings are enabled. The shell "command not found" handler (`not_found_auto_install`, default on) installs configured registry tools; `not_found_auto_install_registry = true` (default off) also installs an *unconfigured* tool when exactly one registry entry provides the command, adding it to the global config. For deterministic CI, prefer:
 
 ```bash
 mise install --locked

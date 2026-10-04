@@ -18,6 +18,19 @@ Project paths, highest precedence first:
 
 All non-hidden TOML files in a `conf.d/` directory load in alphabetical order. Dotted fragment names such as `x.base.toml` are deprecated — rename them with hyphens before mise 2027.8.10, when the suffix after the first dot starts selecting an environment.
 
+A folder inside any `conf.d/` (global, system, or project) is also a fragment: mise reads only its `mise.toml`, `mise.local.toml`, `mise.<env>.toml`, and `mise.<env>.local.toml` (not recursively), and the folder is the config root for its relative paths, `{{ config_root }}`, and tasks. Folder fragments load after single-file fragments in the same directory. It replaces the deprecated `[bootstrap].config_roots` (move `bundles/git` to `mise/conf.d/git`, or symlink it).
+
+`include` merges a remote fragment into the including file, ranked just below it:
+
+```toml
+include = [
+  "git::https://github.com/myorg/platform.git//mise.toml?ref=main",
+  "oci::ghcr.io/myorg/platform-config@sha256:<digest>",
+]
+```
+
+Included files cannot nest `include`, set `[settings]` or monorepo keys, or define `[tasks]` (use `task_config.includes`). They follow the including file's trust; paranoid mode requires a full commit sha or OCI digest. Fetched fragments are cached under `MISE_CACHE_DIR`.
+
 Dot-prefixed forms such as `.mise.toml` are also accepted. Use the CLI for the installed version's exact resolution:
 
 ```bash
@@ -113,6 +126,8 @@ env = ["development"]
 ```
 
 `MISE_ENV` cannot be set in `mise.toml` because it decides which config files are loaded. Multiple environments can be comma-separated, with later ones taking precedence.
+
+For a personal selection, use an untracked `.miserc.local.toml` in the project (add it to your global git ignore), or `miserc.local.toml` in `MISE_CONFIG_DIR` for the whole machine. Local files override only the fields they set (`env` replaces the list; `env = []` clears it). Lookup order: each directory upward (`.miserc.local.toml`, `.miserc.toml`, `.config/miserc.toml`), then `~/.config/mise/miserc.local.toml`, `~/.config/mise/miserc.toml`, `/etc/mise/miserc.toml`. `-E`/`MISE_ENV` still win, and `--no-config` skips miserc discovery.
 
 Precedence for env-specific local files:
 

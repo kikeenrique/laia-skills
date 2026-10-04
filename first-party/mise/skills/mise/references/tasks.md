@@ -27,6 +27,27 @@ mise-tasks/build
 mise-tasks/test
 ```
 
+A `[tasks.<name>]` block for a file task (`hello` matches `hello.sh` and `hello.js`; `"hello.sh"` matches one) adds metadata like `description`, `env`, `depends` and keeps the script. Adding `run`, `run_windows`, or `file` **replaces** the script: the file task stops existing under its own name.
+
+## Task Templates
+
+`[task_templates.<name>]` holds shared fields (`run`, `tools`, `env`, `depends`, `usage`, …); a task opts in with `extends` and overrides what differs. Templates alone are not runnable.
+
+```toml
+[task_templates.rust]
+tools = { rust = "1.90" }
+env = { RUST_BACKTRACE = "1" }
+usage = 'flag "--release"'      # concatenated before the task's own usage
+
+[tasks.check]
+extends = "rust"
+run = "cargo check"
+```
+
+File tasks use a header: `#MISE extends="rust"` (the script stays the command; the template's `run` is ignored).
+
+Share usage flags across tasks with a `.usage.kdl` flagset: `#USAGE include file="../shared.usage.kdl"` then `#USAGE use "common"`. In file tasks, relative include paths resolve from the task file's directory, and `$NAME`/`${NAME}` env refs work (inherited env, `MISE_CONFIG_ROOT`, `MISE_PROJECT_ROOT`, `MISE_TASK_DIR`, `MISE_TASK_FILE` — not task `env`). TOML tasks use `include file="{{ config_root }}/shared.usage.kdl"`.
+
 ## Run Tasks
 
 ```bash
@@ -127,6 +148,40 @@ tools.node = "22"
 run = "npm test"
 ```
 
+## Daemons
+
+Experimental (`experimental = true`, and [pitchfork](https://pitchfork.jdx.dev/) must be installed). `[daemons]` declares long-running processes — service presets such as PostgreSQL or Redis, a `run` command, or an existing `task` — and a task can require them:
+
+```toml
+[daemons]
+postgres = "18"            # preset; exports DATABASE_URL and keeps data between runs
+
+[daemons.api]
+run = "exec npm run dev"
+ready_port = 3000
+
+[tasks.dev]
+daemons = "postgres"
+run = "npm run dev"
+```
+
+Presets: `postgres`, `redis`, `cockroachdb`, `nats`, `spicedb` (local-development auth only). Useful keys:
+
+```toml
+[daemons.postgres]
+preset = "postgres"
+version = "18"
+port = "auto"               # default port in the main checkout, derived offset in linked worktrees
+data_dir = ".data/postgres" # per-checkout data instead of $MISE_STATE_DIR (gitignore it)
+
+[daemons.db]                # share one server across checkouts, separate database each
+provider = "local-postgres" # defined in global config as [daemon_providers.local-postgres]
+```
+
+Named preset ports are exported as `<DAEMON>_<PORT_NAME>` (e.g. `CRDB_HTTP_PORT`). Global providers support the postgres, cockroachdb, and nats presets and are managed with `mise daemons providers ls/start/stop/restart <name>`.
+
+`mise run dev` starts and waits for the daemon, which keeps running after the task exits. Manage them with `mise daemons ls/start/stop/logs/urls`. See the Daemons doc in [sources.md](sources.md) for presets, `[daemon_groups]`, `[daemons_settings]`, and per-worktree URLs.
+
 ## Incremental Tasks
 
 Use `sources` and `outputs` to skip work when inputs did not change:
@@ -139,6 +194,8 @@ outputs = ["dist/**"]
 ```
 
 If a dependency with `sources` reruns because its inputs changed, dependent tasks rerun too.
+
+`sources` and `outputs` can use parsed usage values, resolved per invocation: with `usage = 'arg "<target>"'`, write `sources = ["src/{{usage.target}}/**"]` and `outputs = ["dist/{{usage.target}}"]`.
 
 Source exclusions use the same `!` convention as gitignore and watchexec. Entries are evaluated in order, so later positive entries can re-include a path. Escape a literal leading bang as `"\\!important.txt"` in TOML.
 
@@ -164,6 +221,8 @@ mise '//packages/frontend:*'
 mise :build          # current config root
 ```
 
+Shorten a deep root with `[monorepo.path_aliases]`, e.g. `"123" = "foo/bar/baz/abc/123"`, so `mise run //123:build` works (single segment, must point at a listed config root; the full path stays canonical).
+
 Dependency paths starting with `./` resolve relative to the task that declares them, so `depends = [{ task = "./...:test", optional = true }]` matches the current project and its descendants. The experimental workspace graph, `--affected`, and upstream `^` dependencies are in [workspaces-and-caching.md](workspaces-and-caching.md).
 
 ## Watch
@@ -177,6 +236,18 @@ mise watch serve --watch src --exts ts --restart
 ```
 
 `mise watch` uses task `sources` by default and follows dependency sources for watched tasks. `--no-vcs-ignore`, `--no-project-ignore`, and `--no-global-ignore` widen what is watched. Extra flags are passed through to watchexec, so check `mise watch --help` for the installed version.
+
+## OpenTelemetry
+
+Experimental. Export traces of `mise run` (a root span with setup such as tool installs, plus per-task and monorepo-root spans) to any OTLP collector:
+
+```toml
+[settings]
+otel.enabled = true   # MISE_OTEL_ENABLED
+otel.logs = true      # optional: also ship task stdout/stderr as OTLP logs (privacy boundary)
+```
+
+Configure the endpoint with standard variables such as `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`; without `otel.enabled`, mise ignores them.
 
 ## Windows
 

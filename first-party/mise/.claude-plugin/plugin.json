@@ -1,7 +1,7 @@
 {
   "$schema": "https://code.claude.com/schemas/plugin.json",
   "name": "mise",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "mise-en-place workflows for dev tools, project config, environments, tasks and task caching, machine bootstrap and dotfiles, plugins/backends, dependency providers, tool stubs, MCP, lockfiles, CI, and troubleshooting.",
   "author": { "name": "Enrique Garcia" },
   "homepage": "https://github.com/kikeenrique/laia-skills",

@@ -67,7 +67,7 @@ Machine-wide software goes in `[bootstrap.packages]`; per-project, version-switc
 
 ## Packages
 
-Entries are `"manager:package" = "<version>"`; `"latest"` accepts an already-installed version rather than upgrading. Table form adds `os` (same names as `[tools]`) and, for pacman, `state = "absent"`.
+Entries are `"manager:package" = "<version>"`; `"latest"` accepts an already-installed version rather than upgrading. Table form adds `os` (same names as `[tools]`) and, for some managers, `state = "absent"`.
 
 ```toml
 [bootstrap.packages]
@@ -77,9 +77,20 @@ Entries are `"manager:package" = "<version>"`; `"latest"` accepts an already-ins
 "winget:BurntSushi.ripgrep.MSVC" = { os = "windows" }
 ```
 
-Managers: `apk`, `apt`, `aur`, `dnf`, `pacman`, `brew`, `brew-cask`, `flatpak`, `flatpak-user`, `nix`, `mas`, `winget`, plus package plugins. Entries for a manager unavailable on the current platform are skipped, so one config works everywhere.
+Managers: `apk`, `apt`, `aur`, `dnf`, `zypper`, `pacman`, `brew`, `brew-cask`, `macos-app`, `flatpak`, `flatpak-user`, `nix`, `mas`, `scoop`, `winget`, plus package plugins. Entries for a manager unavailable on the current platform are skipped, so one config works everywhere. `pacman`, `scoop`, and `zypper` support `state = "absent"`.
 
-`brew`/`brew-cask` do **not** require Homebrew to be installed: mise pours bottles into the canonical prefix itself. Third-party taps use the fully qualified name; add non-inferable tap URLs under `[bootstrap.brew.taps]`.
+`brew`/`brew-cask` do **not** require Homebrew to be installed: mise pours bottles into the canonical prefix itself. Third-party taps use the fully qualified name; add non-inferable tap URLs under `[bootstrap.brew.taps]`. A cask entry can set its own install directory: `"brew-cask:1password" = { appdir = "/Applications" }`.
+
+`macos-app` installs a `.app` with no cask from a pinned download (all four fields required; no `latest`, no pruning):
+
+```toml
+[bootstrap.packages."macos-app:example"]
+version = "1.2.3"
+url = "https://example.com/Example-{{version}}-arm64.dmg"
+sha256 = "<64 hex chars>"
+artifact = "Example.app"
+os = "macos/arm64"
+```
 
 ```bash
 mise bootstrap packages status --missing
@@ -114,6 +125,22 @@ mise bootstrap --update          # refresh package metadata and declared repos f
 
 `--only` does not pull in prerequisites: `--only services` will not install the packages that provide them.
 
+Files and directories a package manager needs (apt keyrings, repo definitions) can run early with `phase = "pre-packages"` on their `[bootstrap.files."<path>"]` / `[bootstrap.directories."<path>"]` entry: they apply after accounts and plugins, before the `pre-packages` hook (default phase is `"post-packages"`). Follow with `mise bootstrap --update` to refresh package metadata.
+
+## Platform Units And Defaults
+
+- systemd units (`[bootstrap.linux.systemd.units.<name>]`) accept `before`, `binds_to`, `part_of`, and `conflicts` (lists of unit names) next to `after`/`wants`/`requires`, and service-only `exec_start_pre` / `exec_start_post` lists (one `ExecStartPre=`/`ExecStartPost=` line each).
+- LaunchAgents accept `process_type` = `Background`, `Standard`, `Adaptive`, or `Interactive` (exact launchd spelling; anything else is an error).
+- For `defaults -currentHost` preferences, use an explicit entry with `host = "current"` (default `"any"`):
+
+```toml
+[[bootstrap.macos.defaults_entries]]
+domain = "NSGlobalDomain"
+key = "com.apple.mouse.tapBehavior"
+host = "current"
+value = 1
+```
+
 ## Hooks
 
 Phases: `pre/post-packages`, `pre/post-repos`, `pre/post-dotfiles`, `pre/post-defaults`, `pre/post-user`, `pre/post-tools`, and `final`. Values are a command string, an array of strings, or a table with `run`. Hooks run in the current process environment, so wrap tool usage in `mise exec --`.
@@ -146,7 +173,9 @@ Every mutating run records a pair of history checkpoints (tracked files before a
 | Global mise config (`config.toml`, `conf.d/`, `tasks/`) | `mise bootstrap --adopt <repo>` |
 | Tracked dotfile history (setup repository) | `mise bootstrap --adopt <repo>` |
 
-`--from` clones into `$MISE_DATA_DIR/bootstrap-repo` (`--from-dir` overrides) and trusts the supplied repository for that invocation — review it first. `--adopt` clones into `$MISE_CONFIG_DIR`. Both accept `-E <env>` to select `mise.<env>.toml` / `config.<env>.toml`, and `--update` to fast-forward an existing checkout.
+`--from` clones into `$MISE_DATA_DIR/bootstrap-repo` (`--from-dir` overrides; append `?ref=<branch|tag|commit>` to the URL to check out a ref, e.g. `git::https://github.com/example/dotfiles.git?ref=v1`) and trusts the supplied repository for that invocation — review it first. `--adopt` clones into `$MISE_CONFIG_DIR`. Both accept `-E <env>` to select `mise.<env>.toml` / `config.<env>.toml`, and `--update` to fast-forward an existing checkout. The old `--from-git` alias was removed in 2026.10.0; use `--from`.
+
+To drop an optional module, `mise bootstrap unapply <env>… [--dry-run]` removes the managed files, directories, user services, and dotfile entries that config environment contributes (based on the current config, not run history).
 
 ## Remote
 

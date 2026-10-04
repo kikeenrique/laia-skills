@@ -39,6 +39,8 @@ Implementation notes:
 - `BackendListVersions` must return versions sorted ascending, oldest to newest. mise does not sort them afterward.
 - `BackendInstall` receives `ctx.tool`, `ctx.version`, `ctx.install_path`, `ctx.download_path`, and `ctx.options`.
 - `BackendExecEnv` returns env vars such as PATH entries for the installed tool.
+- Optional hooks: `BackendListTools` (`hooks/backend_list_tools.lua`, a small `{tools = {{name, description}}}` catalog surfaced in `mise search`, completion, and the `mise use` selector), `BackendSearchTools` (per-query search of a large catalog via `ctx.query`), and `BackendUninstall` (`hooks/backend_uninstall.lua`, cleanup outside `install_path` on uninstall/upgrade/prune; an error keeps the install).
+- Shelling out: prefer `cmd.exec` (captured, never blocks parallel installs; accepts `{ timeout = 30 }` in seconds and raises on expiry). `os.execute` streams output and `cmd.stream` also connects stdin for interactive children; both hold mise's terminal lock.
 - Use the official template when creating a new repository.
 
 ## Tool Plugins

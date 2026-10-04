@@ -15,8 +15,8 @@ Use these official docs when exact behavior, flags, or current defaults matter:
 - packslip Backend: https://mise.jdx.dev/dev-tools/backends/packslip.html
 - packslip Resources: https://mise.jdx.dev/dev-tools/packslip-resources.html
 - packslip Verification: https://mise.jdx.dev/dev-tools/packslip-verification.html
-- pkgx Backend: https://mise.jdx.dev/dev-tools/backends/pkgx.html
 - Tool Stubs: https://mise.jdx.dev/dev-tools/tool-stubs.html
+- Daemons: https://mise.jdx.dev/daemons.html
 - Dependency Providers: https://mise.jdx.dev/dev-tools/deps.html
 - Registry: https://mise.jdx.dev/registry.html
 - Environments: https://mise.jdx.dev/environments/

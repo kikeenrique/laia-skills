@@ -44,8 +44,11 @@ Tool-level postinstall commands receive:
 - `MISE_TOOL_NAME`
 - `MISE_TOOL_VERSION`
 - `MISE_TOOL_INSTALL_PATH`
+- `MISE_CONFIG_FILE`, `MISE_CONFIG_ROOT`, `MISE_PROJECT_ROOT`, and the tool's `install_env`
 
-Project-level `postinstall` receives `MISE_INSTALLED_TOOLS` as JSON. It also runs when `mise install` finds nothing to install, with `MISE_INSTALLED_TOOLS="[]"` — guard on that if the hook should only act on real installs.
+The string form runs only on a fresh install or repair. To run it on every explicit `mise install`, even when the version is already installed, use `postinstall = { run = "npm install -g corepack", when = "always" }`.
+
+Project-level `postinstall` receives `MISE_INSTALLED_TOOLS` as a JSON array of `{name, version, requested_version, backend, install_path}` — `requested_version` is the selector before resolution (`latest`, `20`, `lts`, `ref:main`), `backend` the canonical id such as `core:node`. It also runs when `mise install` finds nothing to install, with `MISE_INSTALLED_TOOLS="[]"` — guard on that if the hook should only act on real installs.
 
 `preinstall`/`postinstall` run with the project root as cwd; the invocation directory stays in `MISE_ORIGINAL_CWD`.
 
@@ -122,7 +125,7 @@ mise generate task-docs
 mise generate task-stubs
 mise generate tool-stub ./bin/my-tool --url https://example.com/tool.tar.gz
 mise generate tool-stub ./bin/my-tool --lock
-mise generate tool-stub ./bin/bootstrap-tool --url https://example.com/tool.tar.gz --bootstrap --bootstrap-version 2026.9.4
+mise generate tool-stub ./bin/bootstrap-tool --url https://example.com/tool.tar.gz --bootstrap --bootstrap-version 2026.10.2
 ```
 
 `mise generate install-script` writes a committable wrapper that downloads mise for contributors who do not have it. It was renamed from `mise generate bootstrap`; the old name still works but is deprecated and removed in mise 2027.9.0.

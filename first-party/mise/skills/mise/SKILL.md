@@ -32,7 +32,7 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 | Edit `mise.toml`, config precedence, local files, or config environments | [config.md](references/config.md) |
 | Manage tool versions, backends, registry tools, or `.tool-versions` migration | [dev-tools.md](references/dev-tools.md) |
 | Add env vars, dotenv loading, templates, or exported env output | [environments.md](references/environments.md) |
-| Define, run, debug, or optimize `mise run` tasks, including monorepo targets | [tasks.md](references/tasks.md) |
+| Define, run, debug, or optimize `mise run` tasks, including monorepo targets and `[daemons]` | [tasks.md](references/tasks.md) |
 | Cache task artifacts, infer a workspace graph, or run only affected projects | [workspaces-and-caching.md](references/workspaces-and-caching.md) |
 | Set up a whole machine: OS packages, shell activation, repos, services, macOS defaults | [bootstrap.md](references/bootstrap.md) |
 | Track, link, copy, template, or sync dotfiles | [dotfiles.md](references/dotfiles.md) |

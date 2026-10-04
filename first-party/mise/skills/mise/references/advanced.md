@@ -17,9 +17,13 @@ mise lock --platform linux-x64,macos-arm64
 mise lock --upgrade                     # migrate a legacy (version 0) lockfile
 mise lock --bump [tool] [--dry-run --json]
 mise install --locked
+mise lock --sidecars [--json]           # list native dependency sidecar dirs; writes nothing
+mise backends switch [tool] [--dry-run] # move lock entries to the registry's new backend
 ```
 
-New lockfiles use `lockfile_version = 1`, which records each original request in `specifiers` so overlapping requests such as `"1"` and `"1.0.0"` resolve reliably. Unversioned lockfiles stay at version 0 until `mise lock --upgrade`.
+New lockfiles use the current format (`lockfile_version = 3`); older lockfiles keep their format during ordinary updates so collaborators on older mise can still read them, until `mise lock --upgrade`. Version 1 records each original request in `specifiers` so overlapping requests such as `"1"` and `"1.0.0"` resolve reliably; version 2 references native npm (aube) and uv dependency graphs in sidecar directories (`.mise/locks/<tool>/<version>/` next to `mise.lock` — commit them); version 3 records forge repository IDs for Packslip signatures. Older mise rejects newer lockfile versions.
+
+When the registry moves a tool to another backend, mise keeps installing from the backend recorded in `mise.lock` and warns; `mise backends switch` relocks and reinstalls from the new backend (`--global` for the global lockfile).
 
 `mise lock --bump` re-resolves fuzzy selectors (`latest`, `lts`, `"22"`) against the newest matching versions and rewrites the lockfile without installing anything and without touching `mise.toml`. Exact pins are untouched — use `mise upgrade --bump` for those. `--global`/`--local` pick the lockfile; `--json` emits machine-readable changes for scheduled dependency-bump PRs.
 
@@ -73,7 +77,7 @@ node = "24"
 
 Trust gates config features that can execute code: templates, env directives, tool-option tables, and `path:` plugin versions.
 
-- **Safe files load without trust**: those containing only `min_version`, `[tools]` entries with plain version strings or arrays, and `[tasks]` without templates or tool options.
+- **Safe files load without trust**: those containing only `min_version`, `[tools]` entries with plain version strings or arrays, and `[tasks]` without templates or tool options. Since mise 2026.10.0, inline options in a tool name (`"tool[opt=value]"`, also in `.tool-versions`) and remote `include` entries require trust too.
 - **Auto-trust**: in normal mode `mise run`, a naked `mise <task>`, `mise install`, `mise exec`, and `mise watch` automatically trust the active config, because they exist to execute project-defined behavior. Other commands still require trust.
 - **Worktrees**: trust is shared across git worktrees when the equivalent path in the main checkout is trusted. Paranoid mode disables that sharing and requires explicit content-bound trust everywhere.
 - **CI**: detected CI assumes configs are trusted unless paranoid mode is on.
@@ -198,7 +202,7 @@ MISE_NO_HOOKS=1
 MISE_EXPERIMENTAL=1
 ```
 
-Self-update is separate from `mise upgrade`. For standalone installs, `mise settings auto_update=true` (global-only, skipped in CI) checks periodically before eligible interactive commands. Organizations can point self-updates at a mirror:
+Self-update is separate from `mise upgrade`. For standalone installs, `mise settings auto_update=true` (global-only, skipped in CI) checks periodically before eligible interactive commands. `mise self-update` and the `mise.run` installer pick the newest stable release at least 24h old: override with `self_update.minimum_release_age`, `MISE_SELF_UPDATE_MINIMUM_RELEASE_AGE=7d`, or `--minimum-release-age`. Organizations can point self-updates at a mirror:
 
 ```toml
 [settings.self_update]
@@ -269,3 +273,17 @@ mise ls --monorepo
 - Use `mise env --json-extended` to inspect env source details.
 - Use `MISE_NO_CONFIG=1`, `MISE_NO_ENV=1`, or `MISE_NO_HOOKS=1` to isolate config, env, or hook problems.
 - Put `mise activate` late in shell rc files unless intentionally allowing later `PATH` changes to override mise.
+- Table cells and task command lines are truncated to terminal width; `truncate = false` (`MISE_TRUNCATE=0`) or a per-command `--no-truncate` shows full values. AI agents already get untruncated output.
+
+### Project Diagnostics
+
+`mise doctor` diagnoses mise itself; `mise doctor project [--json]` runs checks the project declares, with its tools and env (never automatically, not sandboxed, output discarded — put guidance in `hint`):
+
+```toml
+[doctor.checks.openssl]
+description = "OpenSSL development files are discoverable"
+run = "pkg-config --exists openssl"
+hint = "Run `mise bootstrap packages apply`."
+timeout = "5s"              # default 10s
+os = ["linux", "macos"]     # also: dir, shell
+```
