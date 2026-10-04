@@ -1,0 +1,24 @@
+Reason: call xcsift from PATH instead of /usr/local/bin
+Date: 2026-10-04
+
+diff --git a/SKILL.md b/SKILL.md
+index 8bf674a..0bd7714 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: formatting-build-output
+-description: Use /usr/local/bin/xcsift for all Swift and Xcode build commands. Pipe xcodebuild build, xcodebuild test, swift build, swift test through xcsift to get structured TOON output with compile errors, warnings, test failures, code coverage, slow tests, and build timing. Essential for parsing Xcode build output, diagnosing compile errors, analyzing test results, and measuring code coverage in any Swift or Xcode project.
++description: Use the xcsift CLI (from PATH) for all Swift and Xcode build commands. Pipe xcodebuild build, xcodebuild test, swift build, swift test through xcsift to get structured TOON output with compile errors, warnings, test failures, code coverage, slow tests, and build timing. Essential for parsing Xcode build output, diagnosing compile errors, analyzing test results, and measuring code coverage in any Swift or Xcode project.
+ version: 1.0.4
+ ---
+ 
+@@ -115,7 +115,7 @@ failed_tests[2]{suite,test,file,line,message,duration}:
+ |---------|----------|
+ | No errors shown but build failed | Add `2>&1` to capture stderr |
+ | Coverage shows `null` | Add `--enable-code-coverage` (SPM) or `-enableCodeCoverage YES` (xcodebuild) |
+-| "xcsift not found" | Install: `brew install xcsift` or `swift build -c release && cp .build/release/xcsift /usr/local/bin/` |
++| "xcsift not found" | Install: `brew install xcsift`, `mise use -g github:ldomaradzki/xcsift`, or build it (`swift build -c release`) and put `.build/release/xcsift` on your PATH |
+ | Coverage for wrong target | xcsift auto-filters to tested target; use `--coverage-path` to override |
+ | Config not loading | Check `.xcsift.toml` in CWD or `~/.config/xcsift/config.toml` |
+ 
