@@ -1,0 +1,25 @@
+Reason: use printf -v instead of eval on user input (security audit)
+Date: 2026-10-04
+
+diff --git a/scripts/generate_ios_component.sh b/scripts/generate_ios_component.sh
+index d8083d5..872389e 100755
+--- a/scripts/generate_ios_component.sh
++++ b/scripts/generate_ios_component.sh
+@@ -43,7 +43,7 @@ prompt_input() {
+             continue
+         fi
+ 
+-        eval "$var_name='$input'"
++        printf -v "$var_name" '%s' "$input"
+         break
+     done
+ }
+@@ -58,7 +58,7 @@ prompt_select() {
+     PS3="Select (1-${#options[@]}): "
+     select opt in "${options[@]}"; do
+         if [ -n "$opt" ]; then
+-            eval "$var_name='$opt'"
++            printf -v "$var_name" '%s' "$opt"
+             break
+         else
+             print_error "Invalid selection. Try again."
