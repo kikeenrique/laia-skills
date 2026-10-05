@@ -239,7 +239,7 @@ renders and prompts when attached to a TTY.
 | `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, missing mirror links, links in mirrors a skill skips, `skipMirrors` naming an unknown mirror, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names, local patches that don't apply or are no longer needed (5.8), Claude plugins declared in `claudePlugins` but not installed or installed but not declared |
 | `laiaskills patch <skill> -m <reason>` | Save the edits to a third-party skill's installed copy as `patches/<skill>/NNNN-<slug>.patch` (or `--from <file>`), stage it, and reinstall with it (5.8) |
 | `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL). Prints the plan; `--apply` adds the sources and skills (staged, not installed), `--shallow owner/repo` for large ones. After `sync`, `--prune` removes the lock entries of skills laiaskills installed and of skills no longer installed (asks first, or `--yes`; backs the lock file up to the backups folder). Entries for skills other tools still install stay |
-| `laiaskills browse [source]` | Planned (5.9): a source's skills with status and description, preview `SKILL.md`, add from a picker. Sources not added yet open as a preview clone under `.git/laiaskills/browse/`. `--skill`, `--refresh`, `--clean` |
+| `laiaskills browse [source]` | Planned (5.9): a source's skills with status and description, preview `SKILL.md`, add from a picker. Sources not added yet are read from a throwaway clone in `tmp/laiaskills-browse/`, deleted on exit. `--skill` |
 | `laiaskills find <query>` | Planned (5.9): search skills.sh, then browse a result. `--limit`. The only command that calls an online catalog |
 
 ### 5.6 Automated re-check of first-party skills
@@ -375,13 +375,23 @@ through the existing `add` flow (staged, recorded in `pending.json`, committed w
 
 **Preview clones** (sources not added yet)
 
-- Location: `.git/laiaskills/browse/<owner>__<repo>/`, inside `.git/` next to `pending.json`, so it
-  is never committed and belongs to this repo, like everything else the tool keeps.
-- `git clone --depth 1` at the newest release tag (found with `git ls-remote`, as `add` does), or
-  the default branch head when there are no tags. Rows show the version as `v1.2.0 (preview)`.
-- Reused for 24 hours; `--refresh` fetches again. Previews older than 30 days are deleted at the start
-  of each `browse`, and `browse --clean` deletes them all. `add` deletes the preview of the source it
-  adds; the submodule is cloned normally rather than built from the preview, to keep `add` unchanged.
+A repo that isn't a submodule yet still has to be read to list its skills. Adding and then removing it
+would touch `.gitmodules` and the index just to look, and reading files over HTTP would break the
+no-GitHub-API rule (5.7) and Codeberg. So `browse` makes a throwaway clone that lasts only for the run.
+
+- **Location:** `<repo>/tmp/laiaskills-browse/<owner>__<repo>/`, in the repo's untracked `tmp/`
+  (the same convention as the test fixtures; never the system temp folder). With `--repo`, it goes in
+  that repo's `tmp/`. The validator only scans `first-party/`, so the nested clone is never picked up.
+- **Small download:** `git clone --depth 1 --filter=blob:none --no-checkout` at the newest release tag
+  (found with `git ls-remote`, as `add` does), or the default branch head when there are no tags. Then
+  a sparse checkout of `**/SKILL.md` only, so a single batched fetch brings just those files: a few KB,
+  even for the 111 MB `awesome-copilot`. Existing discovery (`Adder.skills(in:)`) works on that folder
+  unchanged. A skill's file list and executable bits come from `git ls-tree` (mode `100755`) without
+  downloading the files. Rows show the version as `v1.2.0 (preview)`.
+- **Lifetime:** deleted when `browse` exits, including on errors. Whatever a crash or Ctrl-C leaves in
+  `tmp/laiaskills-browse/` is deleted at the start of the next `browse`, so no signal handler is needed. Nothing is reused or cached,
+  so there is no `--refresh` or `--clean`. Browsing an unadded repo again re-clones it, which takes a
+  few seconds. `add` clones the submodule normally and never reuses the preview.
 - **Letter case:** `owner/repo` is stored as the host spells it today (AGENTS.md rule). For GitHub,
   `browse` reads the canonical name from the repository page's `og:url` meta tag (one `curl`, the
   same way `check` detects renames). If that fails it falls back to the name as typed. The preview
@@ -415,7 +425,7 @@ through the existing `add` flow (staged, recorded in `pending.json`, committed w
 
 | File | Contents |
 |---|---|
-| `LaiaSkillsKit/Browser.swift` | Preview clones (create, reuse, refresh, prune, clean), canonical-name lookup, per-skill rows with status and description |
+| `LaiaSkillsKit/Browser.swift` | Throwaway preview clones (blobless clone, sparse checkout, cleanup), canonical-name lookup, per-skill rows with status and description |
 | `LaiaSkillsKit/Catalog.swift` | skills.sh client: URL building, `curl`, decoding, status matching |
 | `laiaskills/BrowseCommands.swift` | `browse` and `find`: arguments, interactive loop, rendering |
 | `laiaskills/UI.swift` | Adds `pick(_:options:) -> String` (Noora `singleChoicePrompt`) to the `UI` protocol |
@@ -424,9 +434,10 @@ through the existing `add` flow (staged, recorded in `pending.json`, committed w
 `Adder.skills(in:)` takes a folder URL instead of a submodule path, so previews and submodules share
 discovery.
 
-**Tests** (offline, about 15 new): status rows against the existing fixtures (installed, listed,
+**Tests** (offline, about 12 new): status rows against the existing fixtures (installed, listed,
 name taken, other tool, duplicate copies). Preview clone from a local origin, covering tag vs
-branch head, reuse, `--refresh`, pruning, `--clean`, and `add` removing the preview. Catalog
+branch head, only `SKILL.md` checked out, the clone deleted after the run, and leftovers from a
+crashed run cleaned up. Catalog
 decoding: a full response, missing optional fields, and garbage input. `find` end to end against a
 `file://` fixture through `LAIASKILLS_CATALOG_URL`. `browse` end to end, non-interactive, for both
 table and JSON. The interactive loop is not tested (Noora prompts); its decisions (what can be
