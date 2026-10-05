@@ -104,15 +104,21 @@ public enum SkillDiscovery {
         frontmatterValue("name", in: text)
     }
 
-    /// A top-level scalar from the YAML frontmatter, unquoted. Enough for `name` and `description`.
+    /// A top-level scalar from the YAML frontmatter, unquoted. Enough for `name` and `description`,
+    /// including block scalars (`>`, `|-`, …), whose indented lines are joined with spaces.
     public static func frontmatterValue(_ key: String, in text: String) -> String? {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else { return nil }
-        for line in lines.dropFirst() {
+        for (index, line) in lines.enumerated().dropFirst() {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed == "---" { return nil }
             guard line.hasPrefix("\(key):") else { continue }
             var value = trimmed.dropFirst(key.count + 1).trimmingCharacters(in: .whitespaces)
+            if let marker = value.first, marker == ">" || marker == "|", value.count <= 2 {
+                let block = lines[(index + 1)...].prefix { $0.isEmpty || $0.first == " " || $0.first == "\t" }
+                value = block.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: " ")
+                return value.isEmpty ? nil : value
+            }
             if value.count >= 2, let first = value.first, first == "\"" || first == "'", value.last == first {
                 value = String(value.dropFirst().dropLast())
             }

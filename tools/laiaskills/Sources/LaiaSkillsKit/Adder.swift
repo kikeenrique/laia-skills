@@ -76,8 +76,8 @@ public enum Adder {
     }
 
     /// Stable release tags on the remote, read with `git ls-remote` (nothing is downloaded).
-    static func remoteReleaseTags(_ git: Git) throws -> [ReleaseVersion] {
-        try git.run("ls-remote", "--tags", "--refs", "origin").split(separator: "\n").compactMap { line in
+    static func remoteReleaseTags(_ git: Git, remote: String = "origin") throws -> [ReleaseVersion] {
+        try git.run("ls-remote", "--tags", "--refs", remote).split(separator: "\n").compactMap { line in
             guard let ref = line.split(separator: "\t").last, ref.hasPrefix("refs/tags/") else { return nil }
             return ReleaseVersion(tag: String(ref.dropFirst("refs/tags/".count)))
         }
@@ -85,8 +85,12 @@ public enum Adder {
 
     /// Skills inside a source: name and folder relative to the source.
     public static func skills(in sourcePath: String, repo: URL) -> [(name: String, path: String)] {
-        let root = repo.appendingPathComponent(sourcePath)
-        return SkillDiscovery.allSkills(under: root).map { ($0.name, relativePath(of: $0.folder, to: root)) }
+        skills(under: repo.appendingPathComponent(sourcePath))
+    }
+
+    /// Skills under any checkout, e.g. a browse preview clone.
+    public static func skills(under root: URL) -> [(name: String, path: String)] {
+        SkillDiscovery.allSkills(under: root).map { ($0.name, relativePath(of: $0.folder, to: root)) }
     }
 
     /// skills.json entries for the chosen skills, keyed by the lowercased name; `path` is only set for

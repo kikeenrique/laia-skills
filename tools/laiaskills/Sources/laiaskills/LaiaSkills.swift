@@ -8,7 +8,8 @@ struct LaiaSkills: ParsableCommand {
         commandName: "laiaskills",
         abstract: "Manage agent skills pinned in this repo and installed into ~/.agents/skills.",
         subcommands: [
-            ListCommand.self, ShowCommand.self, SourcesCommand.self, CheckCommand.self, DoctorCommand.self,
+            ListCommand.self, ShowCommand.self, SourcesCommand.self, BrowseCommand.self, FindCommand.self,
+            CheckCommand.self, DoctorCommand.self,
             SyncCommand.self, InstallCommand.self, RemoveCommand.self, AddCommand.self,
             UpgradeCommand.self, CommitCommand.self, ImportCommand.self, PatchCommand.self,
         ]

@@ -63,22 +63,8 @@ struct AddCommand: ParsableCommand {
             throw ValidationError("Pass --skill. Available: \(available.map(\.name).joined(separator: ", "))")
         }
         guard !chosen.isEmpty else { throw ValidationError("No skills chosen.") }
-        let names = chosen.map { $0.name.lowercased() }
-
-        var entries = Adder.entries(for: chosen, all: available, source: spec.submodulePath)
-        // An explicit --path is kept even when the copy is the only one today.
-        if let path, let name = names.first { entries[name]?.path = Adder.find(name, at: path, in: available)?.path }
-        try SourceEditor.addSkills(entries, repo: repo)
-        try PendingChanges.record(PendingChange(kind: .add, skills: names, source: spec.submodulePath, to: tag),
-                                  repo: repo.root)
-
-        if !noInstall {
-            let context = try Context(options)
-            var installer = Installer(repo: context.repo, environment: context.environment)
-            for skill in try select(names, from: context.skills) {
-                try installer.install(skill)
-            }
-        }
+        let names = try addChosen(chosen, available: available, spec: spec, tag: tag, explicitPath: path,
+                                  install: !noInstall, options: options, repo: repo)
 
         if options.json {
             return try printJSON(["source": spec.submodulePath, "tag": tag ?? "", "skills": names.joined(separator: ",")])
@@ -87,6 +73,31 @@ struct AddCommand: ParsableCommand {
             + (tag.map { " at \($0)" } ?? "") + (noInstall ? "" : " and installed")
             + ". Staged; commit with `laiaskills commit`.")
     }
+}
+
+/// Writes the skills.json entries for skills chosen from a source `Adder.addSource` has added, records the
+/// pending change, and installs them. Shared by `add` and `browse`. Returns the lowercased names.
+func addChosen(_ chosen: [(name: String, path: String)], available: [(name: String, path: String)],
+               spec: SourceSpec, tag: String?, explicitPath: String?, install: Bool,
+               options: GlobalOptions, repo: Repository) throws -> [String] {
+    let names = chosen.map { $0.name.lowercased() }
+    var entries = Adder.entries(for: chosen, all: available, source: spec.submodulePath)
+    // An explicit --path is kept even when the copy is the only one today.
+    if let explicitPath, let name = names.first {
+        entries[name]?.path = Adder.find(name, at: explicitPath, in: available)?.path
+    }
+    try SourceEditor.addSkills(entries, repo: repo)
+    try PendingChanges.record(PendingChange(kind: .add, skills: names, source: spec.submodulePath, to: tag),
+                              repo: repo.root)
+
+    if install {
+        let context = try Context(options)
+        var installer = Installer(repo: context.repo, environment: context.environment)
+        for skill in try select(names, from: context.skills) {
+            try installer.install(skill)
+        }
+    }
+    return names
 }
 
 struct SourcesCommand: ParsableCommand {
@@ -109,11 +120,16 @@ struct SourcesCommand: ParsableCommand {
     }
 
     func run() throws {
-        let context = try Context(options)
+        let rows = Self.rows(try Context(options))
+        if options.json { return try printJSON(rows) }
+        Self.render(rows, ui: NooraUI())
+    }
+
+    static func rows(_ context: Context) -> [Row] {
         let statuses = Dictionary(uniqueKeysWithValues: UpstreamChecker.statuses(
             of: context.submodules, repo: context.repo.root, fetch: false
         ).map { ($0.path, $0) })
-        let rows = context.submodules.map { submodule -> Row in
+        return context.submodules.map { submodule -> Row in
             let used = context.repo.manifest.skills.values.filter { $0.source == submodule.path }.count
             let status = statuses[submodule.path]
             let pinned = status?.note == "not checked out" ? "not checked out" : status?.pinnedLabel ?? "—"
@@ -127,9 +143,10 @@ struct SourcesCommand: ParsableCommand {
                 skillsAvailable: Adder.skills(in: submodule.path, repo: context.repo.root).count
             )
         }.sorted { ($0.kind, $0.path) < ($1.kind, $1.path) }
+    }
 
-        if options.json { return try printJSON(rows) }
-        NooraUI().table(
+    static func render(_ rows: [Row], ui: UI) {
+        ui.table(
             headers: ["Source", "Kind", "Pinned", "Branch", "Shallow", "Skills used"],
             rows: rows.map { [$0.path, $0.kind, $0.pinned, $0.branch, $0.shallow ? "yes" : "no",
                               $0.pinned == "not checked out" ? "—" : "\($0.skillsUsed) of \($0.skillsAvailable)"] }

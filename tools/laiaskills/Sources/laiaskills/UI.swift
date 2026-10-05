@@ -18,6 +18,8 @@ protocol UI {
     func confirm(_ question: String, default answer: Bool) -> Bool
     /// Lets the user pick several options. Only valid when `isInteractive`.
     func choose(_ question: String, options: [String]) -> [String]
+    /// Lets the user pick one option ("/" filters long lists). Only valid when `isInteractive`.
+    func pick(_ question: String, options: [String]) -> String
     /// True when both stdin and stdout are a terminal, so prompts can be shown.
     var isInteractive: Bool { get }
 }
@@ -37,6 +39,11 @@ struct NooraUI: UI {
 
     func choose(_ question: String, options: [String]) -> [String] {
         noora.multipleChoicePrompt(question: "\(question)", options: options)
+    }
+
+    func pick(_ question: String, options: [String]) -> String {
+        noora.singleChoicePrompt(question: "\(question)", options: options, filterMode: .toggleable,
+                                 autoselectSingleChoice: false)
     }
 
     func table(headers: [String], rows: [[String]]) {

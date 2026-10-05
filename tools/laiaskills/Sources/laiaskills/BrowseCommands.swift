@@ -1,0 +1,284 @@
+import ArgumentParser
+import Foundation
+import LaiaSkillsKit
+
+struct BrowseCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "browse",
+        abstract: "Look inside a source: its skills, their status and descriptions; preview and add them.",
+        discussion: """
+        SOURCE is a submodule path, owner/repo (owner/repo@skill opens that skill), or a git URL. A repo \
+        that isn't a submodule yet is read from a throwaway clone under tmp/laiaskills-browse/, deleted \
+        when browse exits. Without SOURCE, lists the sources to pick from. Adding goes through the same \
+        steps as `add`: staged, then `laiaskills commit`.
+        """
+    )
+
+    @OptionGroup var options: GlobalOptions
+
+    @Argument(help: "Submodule path, owner/repo, owner/repo@skill, or a git URL.")
+    var source: String?
+
+    @Option(help: "Print this skill's SKILL.md and files instead of the list.")
+    var skill: String?
+
+    @Flag(help: "When adding a new source, download only the pinned snapshot (for large repos).")
+    var shallow = false
+
+    func run() throws {
+        let ui = NooraUI()
+        let session = BrowseSession(options: options, ui: ui, shallow: shallow)
+        if let source { return try session.run(source, focus: skill) }
+
+        let rows = SourcesCommand.rows(try Context(options))
+        if options.json { return try printJSON(rows) }
+        guard ui.isInteractive else {
+            SourcesCommand.render(rows, ui: ui)
+            return ui.info("Open one with `laiaskills browse <source>`.")
+        }
+        let picked = ui.pick("Which source?", options: rows.map(\.path))
+        try session.run(picked, focus: skill)
+    }
+}
+
+struct FindCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "find",
+        abstract: "Search skills.sh for skills, then browse a result.",
+        discussion: """
+        Uses skills.sh's undocumented search API; this is the only command that calls an online catalog. \
+        Results are in skills.sh's relevance order. Install counts are popularity, not a review: preview a \
+        skill (and its scripts) before adding it.
+        """
+    )
+
+    @OptionGroup var options: GlobalOptions
+
+    @Argument(help: "What to search for.")
+    var query: [String]
+
+    @Option(help: "Maximum number of results.")
+    var limit = 20
+
+    @Flag(help: "When adding a new source, download only the pinned snapshot (for large repos).")
+    var shallow = false
+
+    struct Row: Codable {
+        let skill: String
+        let source: String
+        let installs: Int?
+        let status: String
+    }
+
+    func run() throws {
+        let results = try Catalog.search(query.joined(separator: " "), limit: limit)
+        let context = try Context(options)
+        let rows = results.map {
+            Row(skill: $0.skillId, source: $0.source, installs: $0.installs,
+                status: Catalog.status(of: $0, skills: context.repo.manifest.skills, submodules: context.submodules))
+        }
+        if options.json { return try printJSON(rows) }
+
+        let ui = NooraUI()
+        guard !rows.isEmpty else { return ui.info("No skills found.") }
+        guard ui.isInteractive else {
+            ui.table(headers: ["Skill", "Source", "Installs", "Status"],
+                     rows: rows.map { [$0.skill, $0.source, $0.installs.map(String.init) ?? "—", $0.status] })
+            return ui.info("Look inside with `laiaskills browse owner/repo`, or `laiaskills add owner/repo@skill`.")
+        }
+        let labels = rows.map { row in
+            "\(row.skill)  \(row.source)  \(row.installs.map { "\($0) installs" } ?? "")"
+                + (row.status == "—" ? "" : "  [\(row.status)]")
+        }
+        let picked = ui.pick("Which skill?", options: labels)
+        guard let index = labels.firstIndex(of: picked) else { return }
+        guard rows[index].status != Catalog.notARepo else {
+            throw ValidationError("\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos.")
+        }
+        try BrowseSession(options: options, ui: ui, shallow: shallow).run(rows[index].source, focus: rows[index].skill)
+    }
+}
+
+/// One `browse` of one source: resolve it (added submodule or preview clone), then list, preview, and add.
+struct BrowseSession {
+    let options: GlobalOptions
+    let ui: UI
+    let shallow: Bool
+
+    /// What is being browsed.
+    struct Target {
+        /// How to add from it; nil when it can't be added from (e.g. a first-party `upstream/` pin).
+        let spec: SourceSpec?
+        /// The submodule path its skills are (or would be) listed under.
+        let path: String
+        let label: String
+        let checkout: URL
+        let version: String
+        let preview: PreviewClone?
+    }
+
+    struct Report: Codable {
+        let source: String
+        let version: String
+        let preview: Bool
+        let skills: [BrowseRow]
+    }
+
+    struct Details: Codable {
+        let source: String
+        let skill: BrowseRow
+        let text: String?
+        let files: [SkillFile]
+    }
+
+    func run(_ argument: String, focus: String?) throws {
+        let context = try Context(options)
+        PreviewClone.cleanLeftovers(repo: context.repo.root)
+        let (target, named) = try resolve(argument, context)
+        defer { target.preview?.remove() }
+
+        let installer = Installer(repo: context.repo, environment: context.environment)
+        let rows = Browser.rows(under: target.checkout, source: target.path, skills: context.skills,
+                                installer: installer, inspector: context.inspector)
+        guard !rows.isEmpty else { throw EditError.noSkills(target.label) }
+
+        var focused: BrowseRow?
+        if let wanted = focus ?? named {
+            focused = rows.first { $0.name == wanted.lowercased() }
+            if focused == nil, !ui.isInteractive || options.json {
+                throw EditError.unknownSkillInSource(wanted, target.label, rows.map(\.name))
+            }
+            if focused == nil { ui.warning(["No skill `\(wanted)` in \(target.label); showing all of them."]) }
+        }
+
+        if options.json {
+            if let focused { return try printJSON(details(focused, target)) }
+            return try printJSON(Report(source: target.label, version: target.version,
+                                        preview: target.preview != nil, skills: rows))
+        }
+        if let focused, !ui.isInteractive { return try show(focused, target) }
+        guard ui.isInteractive else {
+            ui.line("\(target.label) \(target.version)")
+            ui.table(headers: ["Skill", "Status", "Description", "Path"], rows: rows.map { row in
+                [row.name, row.statusLabel, shorten(row.description ?? "—", to: 70),
+                 row.path + (row.copies > 1 ? " (\(row.copies) copies)" : "")]
+            })
+            let addHint = target.spec.map { spec in
+                let source = spec.url.hasPrefix("https://github.com/") ? "\(spec.owner)/\(spec.repository)" : spec.url
+                return "; add with `laiaskills add \(source) --skill <name>`"
+            } ?? ""
+            return ui.info("Preview one with `--skill <name>`\(addHint).")
+        }
+        try loop(rows, target, focused: focused, context: context)
+    }
+
+    // MARK: Resolving the source
+
+    private func resolve(_ argument: String, _ context: Context) throws -> (Target, String?) {
+        let trimmed = argument.hasSuffix("/") ? String(argument.dropLast()) : argument
+        if let submodule = context.submodules.first(where: { $0.path == trimmed }) {
+            let spec = (try? SourceSpec(submodule.url)).flatMap { $0.submodulePath == submodule.path ? $0 : nil }
+            return (try added(submodule, spec: spec, context), nil)
+        }
+        let typed = try SourceSpec(trimmed)
+        if let submodule = context.submodules.first(where: { $0.path.lowercased() == typed.submodulePath.lowercased() }) {
+            return (try added(submodule, spec: (try? SourceSpec(submodule.url)) ?? typed, context), typed.skill)
+        }
+        let spec = Browser.canonical(typed)
+        if let submodule = context.submodules.first(where: { $0.path.lowercased() == spec.submodulePath.lowercased() }) {
+            return (try added(submodule, spec: spec, context), typed.skill)
+        }
+        let preview = try PreviewClone.make(spec, repo: context.repo.root)
+        let target = Target(spec: spec, path: spec.submodulePath, label: "\(spec.owner)/\(spec.repository)",
+                            checkout: preview.folder, version: preview.versionLabel, preview: preview)
+        return (target, typed.skill)
+    }
+
+    private func added(_ submodule: Submodule, spec: SourceSpec?, _ context: Context) throws -> Target {
+        let checkout = context.repo.root.appendingPathComponent(submodule.path)
+        guard FileManager.default.fileExists(atPath: checkout.appendingPathComponent(".git").path) else {
+            throw ValidationError("`\(submodule.path)` is not checked out (git submodule update --init \(submodule.path)).")
+        }
+        let status = UpstreamChecker.statuses(of: [submodule], repo: context.repo.root, fetch: false).first
+        return Target(spec: submodule.isFirstPartyUpstream ? nil : spec, path: submodule.path, label: submodule.path,
+                      checkout: checkout, version: status?.pinnedLabel ?? "—", preview: nil)
+    }
+
+    // MARK: Showing a skill
+
+    private func details(_ row: BrowseRow, _ target: Target) throws -> Details {
+        let file = target.checkout.appendingPathComponent(row.path).appendingPathComponent("SKILL.md")
+        return Details(source: target.label, skill: row, text: try? String(contentsOf: file, encoding: .utf8),
+                       files: try Browser.files(of: row.path, in: target.checkout))
+    }
+
+    private func show(_ row: BrowseRow, _ target: Target) throws {
+        let details = try details(row, target)
+        ui.line("\n" + (details.text ?? "(no SKILL.md)"))
+        ui.info("\(row.name): \(row.status == .available ? "available" : row.statusLabel), \(details.files.count) files at \(row.path)"
+            + (row.copies > 1 ? " (one of \(row.copies) copies; add picks this one)" : ""))
+        let audit = details.files.filter(\.needsAudit).map(\.path)
+        if !audit.isEmpty { ui.warning(["Scripts to read before adding: \(audit.joined(separator: ", "))"]) }
+    }
+
+    // MARK: Interactive loop
+
+    private func loop(_ rows: [BrowseRow], _ target: Target, focused: BrowseRow?, context: Context) throws {
+        let done = "Done"
+        var marked: [String] = []
+        var current = focused
+        while true {
+            if current == nil {
+                let labels = rows.map { row in
+                    (marked.contains(row.name) ? "✓ " : "") + "\(row.name)  [\(row.statusLabel)]  "
+                        + shorten(row.description ?? "", to: 60)
+                }
+                let picked = ui.pick("\(target.label) \(target.version): preview which skill?", options: labels + [done])
+                guard let index = labels.firstIndex(of: picked) else { break }
+                current = rows[index]
+            }
+            guard let row = current else { break }
+            try show(row, target)
+            current = nil
+
+            var actions = ["Back", done]
+            if target.spec == nil {
+                ui.info("Skills can't be added from \(target.label).")
+            } else if !row.status.canAdd {
+                ui.info("\(row.name) can't be added: \(row.statusLabel).")
+            } else {
+                actions.insert(marked.contains(row.name) ? "Unmark" : "Mark to add", at: 0)
+            }
+            switch ui.pick(row.name, options: actions) {
+            case "Mark to add": marked.append(row.name)
+            case "Unmark": marked.removeAll { $0 == row.name }
+            case done: return try add(marked, target, context: context)
+            default: continue
+            }
+        }
+        try add(marked, target, context: context)
+    }
+
+    private func add(_ names: [String], _ target: Target, context: Context) throws {
+        guard !names.isEmpty, let spec = target.spec else { return }
+        guard ui.confirm("Add \(names.joined(separator: ", ")) from \(target.label)?", default: true) else { return }
+        let tag = try Adder.addSource(spec, repo: context.repo.root, shallow: shallow)
+        let available = Adder.skills(in: spec.submodulePath, repo: context.repo.root)
+        let chosen = try names.map { name in
+            guard let match = Adder.find(name, in: available) else {
+                throw EditError.unknownSkillInSource(name, spec.submodulePath, available.map(\.name))
+            }
+            return match
+        }
+        let added = try addChosen(chosen, available: available, spec: spec, tag: tag, explicitPath: nil,
+                                  install: true, options: options, repo: context.repo)
+        ui.success("Added \(added.joined(separator: ", ")) from \(spec.submodulePath)" + (tag.map { " at \($0)" } ?? "")
+            + " and installed. Staged; commit with `laiaskills commit`.")
+    }
+}
+
+/// Cuts text to `length` characters on one line, with an ellipsis.
+func shorten(_ text: String, to length: Int) -> String {
+    let line = text.replacingOccurrences(of: "\n", with: " ")
+    return line.count <= length ? line : String(line.prefix(length - 1)) + "…"
+}

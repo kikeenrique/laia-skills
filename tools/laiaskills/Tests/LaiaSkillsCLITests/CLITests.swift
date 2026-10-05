@@ -276,8 +276,13 @@ struct Run {
 
 /// Runs the binary with the fixture's HOME, against the fixture repo.
 func laiaskills(_ setup: SkillsRepoFixture, _ arguments: String...) throws -> Run {
-    let result = try Shell.run(["HOME=\(setup.home.path)", binary.path] + arguments + ["--repo", setup.repo.path],
-                               in: setup.repo)
+    try laiaskills(setup, environment: [:], arguments)
+}
+
+/// Same, with extra environment variables (e.g. a catalog fixture).
+func laiaskills(_ setup: SkillsRepoFixture, environment: [String: String], _ arguments: [String]) throws -> Run {
+    let variables = (["HOME": setup.home.path].merging(environment) { $1 }).sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
+    let result = try Shell.run(variables + [binary.path] + arguments + ["--repo", setup.repo.path], in: setup.repo)
     return Run(status: result.status, stdout: result.stdout, stderr: result.stderr)
 }
 
