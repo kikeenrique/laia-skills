@@ -499,6 +499,7 @@ of third-party sources.
 | 2026-10-05 | **Pushed** through `c9b7891`; CI runs the validator and tests on every push |
 | 2026-10-05 | **Phase 4 designed** (5.9, decision 20): Commander was deleted, so `browse` (a source's skills with status and previews; unadded repos read from a throwaway blobless clone in `tmp/laiaskills-browse/`) and `find` (skills.sh search, isolated) move into `laiaskills`. The skills.sh endpoint and GitHub's canonical casing (`og:url`) were checked live |
 | 2026-10-05 | **Phase 4 built**: `browse` and `find` (5.9). Tried on real repos (an added source, a recased `owner/repo`, unadded `anthropics/skills`, a live skills.sh search) and interactively in a pseudo-terminal, adding a skill in a throwaway repo. Surfaced and fixed: block-scalar descriptions (`>`, `|-`) read as the marker only; skills.sh lists websites as sources (`not a repo`). 97 tests (76 library, 21 end to end) |
+| 2026-10-05 | **Phase 4 pushed, CI green on Linux** (run 37333321744): the `browse` and `find` tests pass on Ubuntu 26.04. Local Docker or Podman runs are dropped from the roadmap; CI is the Linux check (`laiaskills:test-linux` stays for anyone who has a container runtime) |
 
 ### Pending
 
@@ -508,10 +509,10 @@ In priority order.
 |---|---|---|---|
 | 1 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
 | 2 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task running `check --exit-code` |
-| 3 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
-| 4 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
-| 5 | Optional: Claude Code sandbox | owner | Not enabled on this machine (checked 2026-10-05). If turned on, the network allowlist needs at least `github.com`, `codeberg.org`, and (for `find`) `skills.sh` |
-| 6 | Optional: Docker or Podman locally | owner | Only for `mise run laiaskills:test-linux`; CI covers Linux (and the new `browse` tests run there on the next push) |
+| 3 | Try `browse` interactively | owner | The picker loop has no automated test (Noora needs a terminal); it was only driven with scripted keystrokes. One real run, e.g. `mise run laiaskills browse anthropics/skills` |
+| 4 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
+| 5 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
+| 6 | Optional: Claude Code sandbox | owner | Not enabled on this machine (checked 2026-10-05). If turned on, the network allowlist needs at least `github.com`, `codeberg.org`, and (for `find`) `skills.sh` |
 | 7 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
 ### Implementation notes
