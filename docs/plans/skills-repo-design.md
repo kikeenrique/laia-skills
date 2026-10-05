@@ -1,8 +1,8 @@
 # Skills repo and `laiaskills` — design
 
 Status: **phases 0–3 done**: the tool is implemented and tested (macOS and Linux CI), every installed
-skill (64) is managed by it, and third-party skills can carry local patches (5.8). Phase 4 (`browse` and `find`, 5.9) is designed, not built. See the
-[roadmap](#7-roadmap). Last updated 2026-10-05.
+skill (64) is managed by it, and third-party skills can carry local patches (5.8). Phase 4 (`browse`
+and `find`, 5.9) is designed, not built. See the [roadmap](#7-roadmap). Last updated 2026-10-05.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -306,7 +306,7 @@ non-interactively; the tool keeps control of git, validation, and committing.
 - Shell out to `git`; no libgit2, no GitHub API → no tokens, no rate limits, Codeberg works.
 - All Noora calls behind one `UI` protocol so a breaking Noora minor touches one file.
 - Run via a mise task in this repo (`mise run laiaskills check`), no install or notarization needed.
-- Tests (57, offline): `LaiaSkillsKitTests` covers the library with real git repos and submodules;
+- Tests (83, offline: 67 library, 16 end to end): `LaiaSkillsKitTests` covers the library with real git repos and submodules;
   `LaiaSkillsCLITests` runs the built binary end to end with a fake `HOME`, a shell script standing in
   for the AI agent. Shared fixtures live in `LaiaSkillsTestSupport`, under the repo's
   `tmp/laiaskills-tests/`, and give every git process an identity so commits work on CI.
@@ -462,9 +462,10 @@ commands, and section 10.
 | Upstream repo deleted | Low | Pinned commit survives locally; fork critical sources |
 | Swift toolchain / strict concurrency | Low | Mostly synchronous code, subprocess git |
 | AI agent CLI flags or behaviour change (re-check) | Medium | Command in `recheck.json`; result guarded by allowed paths + validator |
+| skills.sh search API changes or disappears (`find`, planned) | Medium | Undocumented endpoint, isolated in `find`; lenient decoding; `browse owner/repo` keeps working (5.9) |
 
-Size after phase 3 and local patches: about 3,600 lines of Swift (including doc comments) plus 1,300
-lines of tests, well over the original "under 1k" estimate, mostly from the write commands, guards,
+Size after phase 3, local patches, and source health checks: about 3,800 lines of Swift (including doc
+comments) plus 1,400 lines of tests, well over the original "under 1k" estimate, mostly from the write commands, guards,
 and cross-platform handling. Expected upkeep is still a few hours per month, plus the routine upgrade
 of third-party sources.
 
@@ -487,8 +488,10 @@ of third-party sources.
 | 2026-10-04 | **Test suite**: 76 tests (61 library, 15 end-to-end CLI), all offline; green on macOS and Linux CI through `7e09a92` |
 | 2026-10-04 | **Second patch**: `formatting-build-output` calls `xcsift` from PATH instead of `/usr/local/bin` |
 | 2026-10-04 | **First live AI re-check**: mise v2026.9.4 → v2026.10.2 (16 releases); plugin 0.3.0 → 0.4.0. The agent fixed what had gone stale (`pkgx` removed, trust rules, version pins) and added daemons, remote `include`, and `conf.d` folders, but skipped smaller features to keep the length. A second pass, checked against upstream docs, covered them in the reference files and fixed two more stale lines (`mise dot`, lockfile version 3). The prompt now separates the compact `SKILL.md` from reference files that may grow |
-| 2026-10-05 | **Source health**: `check` reports renamed upstream repos (a 301 from the repo's web page; git follows it silently) and Claude plugin updates; `add --path` picks one of several copies; `claudePlugins` in `skills.json` declares the expected Claude plugins (`swift-lsp`), and `doctor` reports missing and undeclared ones. 83 tests |
 | 2026-10-04 | **First routine third-party upgrade**: `ldomaradzki/xcsift` v1.5.1 → v1.5.2 and `wshobson/agents` (2 commits); no skill content changed. The xcsift patch was re-tested on the new version and kept |
+| 2026-10-05 | **Source health**: `check` reports renamed upstream repos (a 301 from the repo's web page; git follows it silently) and Claude plugin updates; `add --path` picks one of several copies; `claudePlugins` in `skills.json` declares the expected Claude plugins (`swift-lsp`), and `doctor` reports missing and undeclared ones. 83 tests (67 library, 16 end to end) |
+| 2026-10-05 | **Pushed** through `c9b7891`; CI runs the validator and tests on every push |
+| 2026-10-05 | **Phase 4 designed** (5.9, decision 20): Commander was deleted, so `browse` (a source's skills with status and previews; unadded repos read from a throwaway blobless clone in `tmp/laiaskills-browse/`) and `find` (skills.sh search, isolated) move into `laiaskills`. The skills.sh endpoint and GitHub's canonical casing (`og:url`) were checked live |
 
 ### Pending
 
@@ -496,12 +499,12 @@ In priority order.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Push the local commits | owner | Renamed-repo check, `add --path`, Claude plugin tracking, and roadmap updates; CI runs the validator and tests |
+| 1 | Phase 4: build `browse` and `find` | tool | Designed in 5.9 (decision 20); no longer optional now that Commander is gone. Build in the order given there: `browse` over added sources, then throwaway preview clones and canonical names, then `find`, then docs. About 12 new tests |
 | 2 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
 | 3 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
 | 4 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task |
 | 5 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
-| 6 | Phase 4: `browse` and `find` | tool | No longer optional: Commander was deleted on 2026-10-05 (decision 20). Designed in 5.9; build in the order given there |
+| 6 | Optional: Claude Code sandbox | owner | Not enabled on this machine (checked 2026-10-05). If turned on, the network allowlist needs at least `github.com`, `codeberg.org`, and (for `find`) `skills.sh` |
 | 7 | Optional: Docker or Podman locally | owner | Only for `mise run laiaskills:test-linux`; CI covers Linux |
 | 8 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 

@@ -65,9 +65,11 @@ file); see `mise run laiaskills --help`. A skill can skip an agent's folder with
 `skills.json`, for one that agent already gets another way, and `"claudePlugins"` lists the Claude
 Code plugins that should be installed, so `doctor` can spot missing or unexpected ones.
 
-Status: the commands are implemented and tested (`mise run laiaskills:test`, also on Linux CI), and
-all 64 installed skills (27 authored here, 37 third-party) are managed by laiaskills. Design, decisions,
-and the roadmap of done and pending work:
+Status: the commands are implemented and tested (`mise run laiaskills:test`, 83 tests, also on Linux
+CI), and all 64 installed skills (27 authored here, 37 third-party) are managed by laiaskills. Next:
+`browse` (look inside a source, including repos not added yet, and add from a picker) and `find`
+(search skills.sh), designed but not built yet. Design, decisions, and the roadmap of done and
+pending work:
 [docs/plans/skills-repo-design.md](docs/plans/skills-repo-design.md#7-roadmap).
 
 ## Versioning
