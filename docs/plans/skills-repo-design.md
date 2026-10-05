@@ -1,8 +1,9 @@
 # Skills repo and `laiaskills` — design
 
-Status: **phases 0–3 done**: the tool is implemented and tested (macOS and Linux CI), every installed
-skill (64) is managed by it, and third-party skills can carry local patches (5.8). Phase 4 (`browse`
-and `find`, 5.9) is designed, not built. See the [roadmap](#7-roadmap). Last updated 2026-10-05.
+Status: **phases 0–4 done**: the tool is implemented and tested (macOS and Linux CI), every installed
+skill (64) is managed by it, third-party skills can carry local patches (5.8), and `browse` and `find`
+replace Commander for looking at and discovering skills (5.9). See the [roadmap](#7-roadmap). Last
+updated 2026-10-05.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -239,8 +240,8 @@ renders and prompts when attached to a TTY.
 | `laiaskills doctor` | Broken mirror links, mirror entries that bypass the hub, missing mirror links, links in mirrors a skill skips, `skipMirrors` naming an unknown mirror, state-file entries whose hub folder is missing, foreign entries shadowing managed names, stale `~/.agents/.skill-lock.json` entries, sources with no skills, unresolvable or ambiguous names, local patches that don't apply or are no longer needed (5.8), Claude plugins declared in `claudePlugins` but not installed or installed but not declared |
 | `laiaskills patch <skill> -m <reason>` | Save the edits to a third-party skill's installed copy as `patches/<skill>/NNNN-<slug>.patch` (or `--from <file>`), stage it, and reinstall with it (5.8) |
 | `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL). Prints the plan; `--apply` adds the sources and skills (staged, not installed), `--shallow owner/repo` for large ones. After `sync`, `--prune` removes the lock entries of skills laiaskills installed and of skills no longer installed (asks first, or `--yes`; backs the lock file up to the backups folder). Entries for skills other tools still install stay |
-| `laiaskills browse [source]` | Planned (5.9): a source's skills with status and description, preview `SKILL.md`, add from a picker. Sources not added yet are read from a throwaway clone in `tmp/laiaskills-browse/`, deleted on exit. `--skill` |
-| `laiaskills find <query>` | Planned (5.9): search skills.sh, then browse a result. `--limit`. The only command that calls an online catalog |
+| `laiaskills browse [source]` | A source's skills with status and description; preview `SKILL.md` and scripts; mark and add from a picker (5.9). Sources not added yet are read from a throwaway clone in `tmp/laiaskills-browse/`, deleted on exit. Without `source`, pick one from the sources table. `--skill`, `--shallow` |
+| `laiaskills find <query>` | Search skills.sh, then browse a result (5.9). `--limit`, `--shallow`. The only command that calls an online catalog |
 
 ### 5.6 Automated re-check of first-party skills
 
@@ -306,7 +307,7 @@ non-interactively; the tool keeps control of git, validation, and committing.
 - Shell out to `git`; no libgit2, no GitHub API → no tokens, no rate limits, Codeberg works.
 - All Noora calls behind one `UI` protocol so a breaking Noora minor touches one file.
 - Run via a mise task in this repo (`mise run laiaskills check`), no install or notarization needed.
-- Tests (83, offline: 67 library, 16 end to end): `LaiaSkillsKitTests` covers the library with real git repos and submodules;
+- Tests (97, offline: 76 library, 21 end to end): `LaiaSkillsKitTests` covers the library with real git repos and submodules;
   `LaiaSkillsCLITests` runs the built binary end to end with a fake `HOME`, a shell script standing in
   for the AI agent. Shared fixtures live in `LaiaSkillsTestSupport`, under the repo's
   `tmp/laiaskills-tests/`, and give every git process an identity so commits work on CI.
@@ -340,7 +341,7 @@ Submodules stay untouched; the fix is a patch applied to the installed copy.
   patches for first-party skills, and patches for skills not in `skills.json`.
 - Sending a fix upstream stays manual; the patch file can be attached to an upstream issue or PR as is.
 
-### 5.9 Browse and discovery (phase 4, planned)
+### 5.9 Browse and discovery (phase 4, done 2026-10-05)
 
 Commander was the browsing and discovery tool next to `laiaskills` (decisions 8–11). It was deleted on
 2026-10-05, so `laiaskills` takes over both jobs (decision 20): `browse` looks inside a source,
@@ -353,9 +354,10 @@ through the existing `add` flow (staged, recorded in `pending.json`, committed w
   prints the table only.
 - `source` is a submodule path, `owner/repo`, or a git URL. `owner/repo` matches an existing submodule
   ignoring case. Anything else is opened as a **preview** (below), without adding a submodule.
-- One row per skill in the source: name, status, and description (from the `SKILL.md` frontmatter;
-  shortened in the table, full in `--json`). When a name has several copies, the row shows the copy
-  `add` would pick (shortest path, as in `Adder.find`) and how many copies there are.
+- One row per skill in the source, sorted by name: name, status, and description (from the `SKILL.md`
+  frontmatter, including `>` and `|` block scalars; shortened in the table, full in `--json`). When a
+  name has several copies, the row shows the copy `add` would pick (shortest path, as in
+  `Adder.find`) and how many copies there are.
 - Status values:
 
   | Status | Meaning |
@@ -366,12 +368,14 @@ through the existing `add` flow (staged, recorded in `pending.json`, committed w
   | `other tool` | The hub or a mirror has an unmanaged entry with this name (as in `list --all`) |
   | `—` | Available |
 
-- **Interactive loop** (Noora): pick a skill, which prints its `SKILL.md` and its other files, then
-  flags any executables or `scripts/` (anything an audit should read first, see 5.8). Then choose
-  *Add*, *Back*, or *Done*. On *Done* with skills marked, confirm "Add X, Y from owner/repo?" and
-  run the add flow. Skills that are `installed`, `in skills.json`, or `name taken` cannot be marked.
-- **Non-interactive:** the table, or `--json`. `browse <source> --skill <name>` prints that skill's
-  `SKILL.md` instead (the same as the preview step). Adding stays explicit: `laiaskills add`.
+- **Interactive loop** (Noora single choice, `/` filters): pick a skill, which prints its `SKILL.md`,
+  its file count, and any executables or `scripts/` (anything an audit should read first, see 5.8).
+  Then choose *Mark to add* (or *Unmark*), *Back*, or *Done*. On *Done* with skills marked, confirm
+  "Add X, Y from owner/repo?" and run the add flow (`addChosen`, shared with `add`; `--shallow`
+  passes through). Skills that are `installed`, `in skills.json`, or `name taken` cannot be marked,
+  and nothing can be added from a first-party `upstream/` pin. Marked skills show a ✓ in the list.
+- **Non-interactive:** the table and a hint, or `--json`. `--skill <name>` (or `owner/repo@skill`)
+  prints that skill's `SKILL.md` and files instead. Adding stays explicit: `laiaskills add`.
 
 **Preview clones** (sources not added yet)
 
@@ -379,19 +383,23 @@ A repo that isn't a submodule yet still has to be read to list its skills. Addin
 would touch `.gitmodules` and the index just to look, and reading files over HTTP would break the
 no-GitHub-API rule (5.7) and Codeberg. So `browse` makes a throwaway clone that lasts only for the run.
 
-- **Location:** `<repo>/tmp/laiaskills-browse/<owner>__<repo>/`, in the repo's untracked `tmp/`
-  (the same convention as the test fixtures; never the system temp folder). With `--repo`, it goes in
-  that repo's `tmp/`. The validator only scans `first-party/`, so the nested clone is never picked up.
+- **Location:** `<repo>/tmp/laiaskills-browse/<owner>__<repo>-<random>/`, in the repo's untracked
+  `tmp/` (the same convention as the test fixtures; never the system temp folder). With `--repo`, it
+  goes in that repo's `tmp/`. The random suffix keeps two browses of the same repo apart. The validator
+  only scans `first-party/`, so the nested clone is never picked up.
 - **Small download:** `git clone --depth 1 --filter=blob:none --no-checkout` at the newest release tag
   (found with `git ls-remote`, as `add` does), or the default branch head when there are no tags. Then
-  a sparse checkout of `**/SKILL.md` only, so a single batched fetch brings just those files: a few KB,
-  even for the 111 MB `awesome-copilot`. Existing discovery (`Adder.skills(in:)`) works on that folder
-  unchanged. A skill's file list and executable bits come from `git ls-tree` (mode `100755`) without
-  downloading the files. Rows show the version as `v1.2.0 (preview)`.
-- **Lifetime:** deleted when `browse` exits, including on errors. Whatever a crash or Ctrl-C leaves in
-  `tmp/laiaskills-browse/` is deleted at the start of the next `browse`, so no signal handler is needed. Nothing is reused or cached,
-  so there is no `--refresh` or `--clean`. Browsing an unadded repo again re-clones it, which takes a
-  few seconds. `add` clones the submodule normally and never reuses the preview.
+  `git sparse-checkout set --no-cone SKILL.md` and `git checkout`, so a single batched fetch brings
+  just the `SKILL.md` files (6 KB for `twostraws/SwiftUI-Agent-Skill`). Existing discovery
+  (`Adder.skills(under:)`) works on that folder unchanged. A skill's file list and executable bits come
+  from `git ls-tree` (mode `100755`) without downloading the files. Rows show the version as
+  `v1.2.0 (preview)`.
+- **Lifetime:** deleted when `browse` exits, including on errors, along with `tmp/laiaskills-browse/`
+  once it is empty. Whatever a crash or Ctrl-C leaves behind is deleted by a later `browse` once it is
+  more than an hour old (so a browse running in another terminal keeps its clone); no signal handler is
+  needed. Nothing is reused or cached, so there is no `--refresh` or `--clean`. Browsing an unadded repo
+  again re-clones it, which takes a few seconds. `add` clones the submodule normally and never reuses
+  the preview.
 - **Letter case:** `owner/repo` is stored as the host spells it today (AGENTS.md rule). For GitHub,
   `browse` reads the canonical name from the repository page's `og:url` meta tag (one `curl`, the
   same way `check` detects renames). If that fails it falls back to the name as typed. The preview
@@ -405,9 +413,11 @@ no-GitHub-API rule (5.7) and Codeberg. So `browse` makes a throwaway clone that 
   `{query, searchType, skills: [{id, source, skillId, name, installs}], count}`. A query under 2
   characters gets a 400, and the search is fuzzy, so a query with no real match still returns loosely
   related skills. Only `source` and `skillId` are required when decoding; everything else is optional.
-- Table, in API (relevance) order: skill (`skillId`), source (`owner/repo`), installs, and status
-  (`managed` when the skill is in `skills.json`, `source added` when its repo is already a
-  submodule, `—` otherwise). `--limit` (default 20), `--json`.
+- Table, in API (relevance) order: skill (`skillId`), source (`owner/repo`), installs, and status:
+  `managed` when the skill is in `skills.json` from that repo, `name taken` when the name comes from
+  another source, `source added` when only its repo is a submodule, `not a repo` for results whose
+  source is a website (skills.sh also lists `.well-known` endpoints, e.g. `uizze.sh`), `—`
+  otherwise. `--limit` (default 20), `--json`.
 - Interactive: pick a result to open `browse <source>` with that skill's `SKILL.md` already shown.
   Non-interactive: the table plus a hint (`laiaskills browse owner/repo` or
   `laiaskills add owner/repo@skill`).
@@ -418,34 +428,31 @@ no-GitHub-API rule (5.7) and Codeberg. So `browse` makes a throwaway clone that 
   resolves the canonical name.
 - Install counts are popularity, not trust. A result is unvetted until previewed; the preview's
   executables line is the prompt to audit.
-- The base URL can be overridden with `LAIASKILLS_CATALOG_URL`, for tests only (`file://` fixtures,
-  which curl reads), so the suite stays offline.
+- The endpoint can be overridden with `LAIASKILLS_CATALOG_URL`, for tests only (`file://` fixtures;
+  curl ignores the query string there), so the suite stays offline.
 
 **Code layout**
 
 | File | Contents |
 |---|---|
-| `LaiaSkillsKit/Browser.swift` | Throwaway preview clones (blobless clone, sparse checkout, cleanup), canonical-name lookup, per-skill rows with status and description |
-| `LaiaSkillsKit/Catalog.swift` | skills.sh client: URL building, `curl`, decoding, status matching |
-| `laiaskills/BrowseCommands.swift` | `browse` and `find`: arguments, interactive loop, rendering |
-| `laiaskills/UI.swift` | Adds `pick(_:options:) -> String` (Noora `singleChoicePrompt`) to the `UI` protocol |
-| `laiaskills/SourceCommands.swift` | The body of `AddCommand.run` becomes a shared function that `browse` calls |
+| `LaiaSkillsKit/Browser.swift` | `BrowseRow` and `BrowseStatus` (with `canAdd`), `Browser.rows`, `Browser.files` (`ls-tree`), `Browser.canonical` (`og:url`), and `PreviewClone` (make, remove, `cleanLeftovers`) |
+| `LaiaSkillsKit/Catalog.swift` | skills.sh client: URL building, `curl`, lenient decoding, status matching |
+| `laiaskills/BrowseCommands.swift` | `browse`, `find`, and `BrowseSession` (resolve the source, list, preview, interactive loop, add) |
+| `laiaskills/UI.swift` | `pick(_:options:)` (Noora `singleChoicePrompt`, filter toggled with `/`) |
+| `laiaskills/SourceCommands.swift` | `addChosen`, the tail of `add` shared with `browse`; `SourcesCommand.rows`/`render`, reused by `browse` without an argument |
 
-`Adder.skills(in:)` takes a folder URL instead of a submodule path, so previews and submodules share
-discovery.
+`Adder.skills(under:)` takes a folder, so previews and submodules share discovery.
 
-**Tests** (offline, about 12 new): status rows against the existing fixtures (installed, listed,
-name taken, other tool, duplicate copies). Preview clone from a local origin, covering tag vs
-branch head, only `SKILL.md` checked out, the clone deleted after the run, and leftovers from a
-crashed run cleaned up. Catalog
-decoding: a full response, missing optional fields, and garbage input. `find` end to end against a
-`file://` fixture through `LAIASKILLS_CATALOG_URL`. `browse` end to end, non-interactive, for both
-table and JSON. The interactive loop is not tested (Noora prompts); its decisions (what can be
-marked, what gets added) are library functions that are tested.
-
-**Build order:** (1) `browse` over added sources, `pick`, and the shared add flow; (2) preview clones
-and canonical names; (3) `find`; (4) docs: this section to "done", AGENTS.md, README if it lists
-commands, and section 10.
+**Tests:** 14 new, all offline (97 in total: 76 library, 21 end to end). Status rows (name taken,
+available, other tool, listed, installed, duplicate copies, a folded description). Preview clones from
+a local origin: newest tag vs branch head, only `SKILL.md` checked out, `ls-tree` file list with the
+executable bit, deletion after the run, and leftover cleanup by age. `og:url` parsing and frontmatter
+block scalars. Catalog decoding (full, partial, garbage), query encoding, too-short queries, and
+case-insensitive status. End to end: `browse` of an added source and of an unadded repo (JSON, table,
+`--skill`, an unknown skill, the repo left untouched), and `find` against a `file://` fixture, including
+the failure message. The interactive loop has no automated test (Noora needs a terminal); it was run
+by hand in a pseudo-terminal: preview, *Mark to add*, *Done*, confirm, and the skill was staged and
+installed in a throwaway repo.
 
 ## 6. Maintenance profile
 
@@ -462,10 +469,9 @@ commands, and section 10.
 | Upstream repo deleted | Low | Pinned commit survives locally; fork critical sources |
 | Swift toolchain / strict concurrency | Low | Mostly synchronous code, subprocess git |
 | AI agent CLI flags or behaviour change (re-check) | Medium | Command in `recheck.json`; result guarded by allowed paths + validator |
-| skills.sh search API changes or disappears (`find`, planned) | Medium | Undocumented endpoint, isolated in `find`; lenient decoding; `browse owner/repo` keeps working (5.9) |
+| skills.sh search API changes or disappears (`find`) | Medium | Undocumented endpoint, isolated in `find`; lenient decoding; `browse owner/repo` keeps working (5.9) |
 
-Size after phase 3, local patches, and source health checks: about 3,800 lines of Swift (including doc
-comments) plus 1,400 lines of tests, well over the original "under 1k" estimate, mostly from the write commands, guards,
+Size after phase 4: about 4,300 lines of Swift (including doc comments) plus 1,700 lines of tests, well over the original "under 1k" estimate, mostly from the write commands, guards,
 and cross-platform handling. Expected upkeep is still a few hours per month, plus the routine upgrade
 of third-party sources.
 
@@ -492,6 +498,7 @@ of third-party sources.
 | 2026-10-05 | **Source health**: `check` reports renamed upstream repos (a 301 from the repo's web page; git follows it silently) and Claude plugin updates; `add --path` picks one of several copies; `claudePlugins` in `skills.json` declares the expected Claude plugins (`swift-lsp`), and `doctor` reports missing and undeclared ones. 83 tests (67 library, 16 end to end) |
 | 2026-10-05 | **Pushed** through `c9b7891`; CI runs the validator and tests on every push |
 | 2026-10-05 | **Phase 4 designed** (5.9, decision 20): Commander was deleted, so `browse` (a source's skills with status and previews; unadded repos read from a throwaway blobless clone in `tmp/laiaskills-browse/`) and `find` (skills.sh search, isolated) move into `laiaskills`. The skills.sh endpoint and GitHub's canonical casing (`og:url`) were checked live |
+| 2026-10-05 | **Phase 4 built**: `browse` and `find` (5.9). Tried on real repos (an added source, a recased `owner/repo`, unadded `anthropics/skills`, a live skills.sh search) and interactively in a pseudo-terminal, adding a skill in a throwaway repo. Surfaced and fixed: block-scalar descriptions (`>`, `|-`) read as the marker only; skills.sh lists websites as sources (`not a repo`). 97 tests (76 library, 21 end to end) |
 
 ### Pending
 
@@ -499,14 +506,13 @@ In priority order.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Phase 4: build `browse` and `find` | tool | Designed in 5.9 (decision 20); no longer optional now that Commander is gone. Build in the order given there: `browse` over added sources, then throwaway preview clones and canonical names, then `find`, then docs. About 12 new tests |
-| 2 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
-| 3 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
-| 4 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task |
-| 5 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
-| 6 | Optional: Claude Code sandbox | owner | Not enabled on this machine (checked 2026-10-05). If turned on, the network allowlist needs at least `github.com`, `codeberg.org`, and (for `find`) `skills.sh` |
-| 7 | Optional: Docker or Podman locally | owner | Only for `mise run laiaskills:test-linux`; CI covers Linux |
-| 8 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
+| 1 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
+| 2 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task running `check --exit-code` |
+| 3 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
+| 4 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
+| 5 | Optional: Claude Code sandbox | owner | Not enabled on this machine (checked 2026-10-05). If turned on, the network allowlist needs at least `github.com`, `codeberg.org`, and (for `find`) `skills.sh` |
+| 6 | Optional: Docker or Podman locally | owner | Only for `mise run laiaskills:test-linux`; CI covers Linux (and the new `browse` tests run there on the next push) |
+| 7 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
 ### Implementation notes
 
@@ -566,6 +572,14 @@ In priority order.
    - Commit by hand only with a pathspec (`git commit -- <paths>`): `laiaskills` stages its own
      changes (patches, `skills.json`, pins), and a bare `git commit` sweeps them into an unrelated
      commit.
+5. **Browse and find** (5.9): notes from implementing them.
+   - A `--no-checkout` clone followed by `sparse-checkout set` alone leaves the working tree empty; an
+     explicit `git checkout` is what fetches the `SKILL.md` blobs, in one batch.
+   - `curl` ignores the query string of a `file://` URL, so one fixture file serves any search and
+     `find` is tested end to end offline.
+   - Noora appends its own colon to a prompt's question, so questions carry none.
+   - Discovery returns folders in path order, which put translated copies (`docs/ja/…`) first; browse
+     rows are sorted by name instead.
 
 ## 8. Decisions
 
@@ -660,12 +674,12 @@ What a typical GUI skill manager offers, and where each feature lands here.
 | Reveal in Finder | `show --open` | Covered |
 | Delete | `remove` | Covered |
 | Sources / marketplaces list | `sources` | Covered |
-| Per-source grid with Installed / Install | `browse`, `add` picker | Planned (5.9) |
+| Per-source grid with Installed / Install | `browse`, `add` picker | Covered (5.9), including repos not added yet |
 | Install from `owner/repo@skill`, URL, path | `add` | Covered; local paths only for first-party |
 | Agent selection | Hub + mirrors in `agents.json` | Covered globally, with a per-skill mirror opt-out (decision 18) |
 | Workspace / global scope | Global only | Not needed (decision 15) |
 | Shows installs made by other tools | `list --all`, `doctor` | Covered |
 | Local modifications that survive updates | `patch`, `patches/` | Covered beyond typical managers: re-tested on every upgrade (5.8) |
-| Online discovery (skills.sh and similar) | `find` | Planned (5.9): skills.sh only, isolated |
+| Online discovery (skills.sh and similar) | `find` | Covered (5.9): skills.sh only, isolated |
 | Reads Claude `marketplace.json` | — | Out of scope; `SKILL.md` scan instead, plugins via `/plugin` |
 | GUI | Noora CLI | Out of scope |

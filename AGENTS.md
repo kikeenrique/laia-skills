@@ -95,11 +95,13 @@ Swift package in `tools/laiaskills/` (Swift 6.4+, must build and pass tests on *
 - Re-pinning a first-party `upstream/` is done with `laiaskills upgrade` (it re-checks the skill with the agent in `tools/config/recheck.json`, prompt in `tools/config/prompts/recheck.md`) and `laiaskills commit` (bumps the plugin version).
 - `add`, `remove`, `upgrade`, `import --apply`, and `patch` stage their changes and record them in `.git/laiaskills/pending.json`; `laiaskills commit` writes the messages. When committing anything else by hand, always use a pathspec (`git commit -m … -- <paths>`): a bare `git commit` sweeps those staged changes into the wrong commit.
 - Patch-related code lives in `Patches.swift`. `git apply` runs with `GIT_CEILING_DIRECTORIES` so it never discovers an enclosing repo (fixtures live inside this one).
+- `browse` and `find` live in `Browser.swift`, `Catalog.swift`, and `BrowseCommands.swift`. `find` is the only code that calls skills.sh (undocumented API); keep it that way, so nothing else depends on a catalog. Its tests point `LAIASKILLS_CATALOG_URL` at a `file://` fixture. `browse` reads repos that aren't added yet from a throwaway clone in `tmp/laiaskills-browse/`, deleted on exit.
 
 ## Third-party skills
 
 Third-party skills are never copied into the repo; `skills.json` maps each to a submodule under `third-party/`, and `laiaskills` installs copies into `~/.agents/skills`.
 
+- **Discover:** `mise run laiaskills find <query>` searches skills.sh; `mise run laiaskills browse <owner>/<repo>` lists a repo's skills (descriptions, status, scripts to audit) without adding it, and can add from its picker in a terminal. Read a skill's scripts before adding it.
 - **Add:** `mise run laiaskills add <owner>/<repo> --skill <name>` (pins the newest release; `--shallow` for large repos), then `mise run laiaskills commit`. Use the repo's current GitHub name and casing. When a repo has several copies of a skill (translations, per-agent folders), the shortest path wins; check the `path` written to `skills.json`, or pick one with `--path <folder>`.
 - **Renamed upstream:** `laiaskills check` reports sources whose repo moved; apply it with `git submodule set-url -- <path> <new-url>` and commit `.gitmodules` with a pathspec.
 - **Claude plugins:** list the ones that should be installed in `claudePlugins` in `skills.json`; `doctor` reports missing and undeclared ones, `check` reports updates.
