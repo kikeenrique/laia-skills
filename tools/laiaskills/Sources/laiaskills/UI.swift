@@ -18,8 +18,9 @@ protocol UI {
     func confirm(_ question: String, default answer: Bool) -> Bool
     /// Lets the user pick several options. Only valid when `isInteractive`.
     func choose(_ question: String, options: [String]) -> [String]
-    /// Lets the user pick one option ("/" filters long lists). Only valid when `isInteractive`.
-    func pick(_ question: String, options: [String]) -> String
+    /// Lets the user pick one option ("/" filters long lists). `enter` says what picking does, in the key
+    /// hints ("enter preview"). Only valid when `isInteractive`.
+    func pick(_ question: String, options: [String], enter: String) -> String
     /// True when both stdin and stdout are a terminal, so prompts can be shown.
     var isInteractive: Bool { get }
 }
@@ -41,9 +42,41 @@ struct NooraUI: UI {
         noora.multipleChoicePrompt(question: "\(question)", options: options)
     }
 
-    func pick(_ question: String, options: [String]) -> String {
-        noora.singleChoicePrompt(question: "\(question)", options: options, filterMode: .toggleable,
-                                 autoselectSingleChoice: false)
+    func pick(_ question: String, options: [String], enter: String) -> String {
+        // Noora's key hints end in a generic "enter confirm"; name the action instead.
+        Noora(content: Self.content(enter: enter))
+            .singleChoicePrompt(question: "\(question)", options: options, filterMode: .toggleable,
+                                autoselectSingleChoice: false)
+    }
+
+    private static func content(enter action: String) -> Content {
+        let base = Content.default
+        func hint(_ text: String) -> String {
+            text.replacingOccurrences(of: "enter confirm", with: "enter \(action)")
+        }
+        return Content(
+            errorAlertTitle: base.errorAlertTitle,
+            errorAlertRecommendedTitle: base.errorAlertRecommendedTitle,
+            warningAlertTitle: base.warningAlertTitle,
+            warningAlertRecommendedTitle: base.warningAlertRecommendedTitle,
+            successAlertTitle: base.successAlertTitle,
+            successAlertRecommendedTitle: base.successAlertRecommendedTitle,
+            infoAlertTitle: base.infoAlertTitle,
+            infoAlertRecommendedTitle: base.infoAlertRecommendedTitle,
+            choicePromptFilterTitle: base.choicePromptFilterTitle,
+            choicePromptInstructionWithoutFilter: hint(base.choicePromptInstructionWithoutFilter),
+            choicePromptInstructionWithFilter: hint(base.choicePromptInstructionWithFilter),
+            choicePromptInstructionIsFiltering: hint(base.choicePromptInstructionIsFiltering),
+            multipleChoicePromptFilterTitle: base.multipleChoicePromptFilterTitle,
+            multipleChoicePromptErrorTitle: base.multipleChoicePromptErrorTitle,
+            multipleChoicePromptInstructionWithoutFilter: base.multipleChoicePromptInstructionWithoutFilter,
+            multipleChoicePromptInstructionWithFilter: base.multipleChoicePromptInstructionWithFilter,
+            multipleChoicePromptInstructionIsFiltering: base.multipleChoicePromptInstructionIsFiltering,
+            textPromptValidationErrorsTitle: base.textPromptValidationErrorsTitle,
+            yesOrNoChoicePromptInstruction: base.yesOrNoChoicePromptInstruction,
+            yesOrNoChoicePromptPositiveText: base.yesOrNoChoicePromptPositiveText,
+            yesOrNoChoicePromptNegativeText: base.yesOrNoChoicePromptNegativeText
+        )
     }
 
     func table(headers: [String], rows: [[String]]) {

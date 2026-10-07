@@ -36,7 +36,8 @@ struct BrowseCommand: ParsableCommand {
             SourcesCommand.render(rows, ui: ui)
             return ui.info("Open one with `laiaskills browse <source>`.")
         }
-        let picked = ui.pick("Which source?", options: rows.map(\.path))
+        let picked = ui.pick("Sources in skills.json", options: rows.map(\.path) + [quit], enter: "open")
+        guard picked != quit else { return }
         try session.run(picked, focus: skill)
     }
 }
@@ -71,7 +72,8 @@ struct FindCommand: ParsableCommand {
     }
 
     func run() throws {
-        let results = try Catalog.search(query.joined(separator: " "), limit: limit)
+        let phrase = query.joined(separator: " ")
+        let results = try Catalog.search(phrase, limit: limit)
         let context = try Context(options)
         let rows = results.map {
             Row(skill: $0.skillId, source: $0.source, installs: $0.installs,
@@ -90,7 +92,7 @@ struct FindCommand: ParsableCommand {
             "\(row.skill)  \(row.source)  \(row.installs.map { "\($0) installs" } ?? "")"
                 + (row.status == "—" ? "" : "  [\(row.status)]")
         }
-        let picked = ui.pick("Which skill?", options: labels)
+        let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: labels + [quit], enter: "preview")
         guard let index = labels.firstIndex(of: picked) else { return }
         guard rows[index].status != Catalog.notARepo else {
             throw ValidationError("\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos.")
@@ -98,6 +100,9 @@ struct FindCommand: ParsableCommand {
         try BrowseSession(options: options, ui: ui, shallow: shallow).run(rows[index].source, focus: rows[index].skill)
     }
 }
+
+/// The last option of a top-level picker: leaves without doing anything.
+private let quit = "Quit"
 
 /// One `browse` of one source: resolve it (added submodule or preview clone), then list, preview, and add.
 struct BrowseSession {
@@ -233,7 +238,8 @@ struct BrowseSession {
                     (marked.contains(row.name) ? "✓ " : "") + "\(row.name)  [\(row.statusLabel)]  "
                         + shorten(row.description ?? "", to: 60)
                 }
-                let picked = ui.pick("\(target.label) \(target.version): preview which skill?", options: labels + [done])
+                let picked = ui.pick("Skills in \(target.label) \(target.version)", options: labels + [done],
+                                     enter: "preview")
                 guard let index = labels.firstIndex(of: picked) else { break }
                 current = rows[index]
             }
@@ -249,7 +255,7 @@ struct BrowseSession {
             } else {
                 actions.insert(marked.contains(row.name) ? "Unmark" : "Mark to add", at: 0)
             }
-            switch ui.pick(row.name, options: actions) {
+            switch ui.pick(row.name, options: actions, enter: "choose") {
             case "Mark to add": marked.append(row.name)
             case "Unmark": marked.removeAll { $0 == row.name }
             case done: return try add(marked, target, context: context)
