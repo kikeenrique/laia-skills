@@ -251,7 +251,8 @@ struct BrowseSession {
         while true {
             if current == nil {
                 let labels = alignedColumns(rows.map { row in
-                    [(marked.contains(row.name) ? "✓ " : "  ") + row.name, "[\(row.statusLabel)]",
+                    [(marked.contains(row.name) ? "✓ " : "  ") + row.name,
+                     row.status == .available ? "" : "[\(row.statusLabel)]",
                      shorten(row.description ?? "", to: 60)]
                 })
                 let picked = ui.pick("Skills in \(target.label) \(target.version)", options: labels + [done],
@@ -260,25 +261,45 @@ struct BrowseSession {
                 current = rows[index]
             }
             guard let row = current else { break }
-            try show(row, target)
             current = nil
+            let details = try details(row, target)
+            summarize(row, details, target)
 
-            var actions = ["Back", done]
-            if target.spec == nil {
-                ui.info("Skills can't be added from \(target.label).")
-            } else if !row.status.canAdd {
-                ui.info("\(row.name) can't be added: \(row.statusLabel).")
-            } else {
-                actions.insert(marked.contains(row.name) ? "Unmark" : "Mark to add", at: 0)
-            }
-            switch ui.pick(row.name, options: actions, enter: "choose") {
-            case "Mark to add": marked.append(row.name)
-            case "Unmark": marked.removeAll { $0 == row.name }
-            case done: return try add(marked, target, context: context)
-            default: continue
+            // Stay on this skill until the user moves on: reading or marking it comes back here.
+            let read = "Read SKILL.md", others = "Other skills in \(target.label)"
+            menu: while true {
+                var actions = details.text == nil ? [] : [read]
+                if target.spec != nil, row.status.canAdd {
+                    actions.append(marked.contains(row.name) ? "Unmark" : "Mark to add")
+                }
+                actions += [others, done]
+                switch ui.pick("What next with \(row.name)?", options: actions, enter: "choose") {
+                case read: ui.page(target.checkout.appendingPathComponent(row.path).appendingPathComponent("SKILL.md"))
+                case "Mark to add": marked.append(row.name)
+                case "Unmark": marked.removeAll { $0 == row.name }
+                case done: return try add(marked, target, context: context)
+                default: break menu
+                }
             }
         }
         try add(marked, target, context: context)
+    }
+
+    /// The interactive preview: what the skill is and whether it can be added, without its full text.
+    private func summarize(_ row: BrowseRow, _ details: Details, _ target: Target) {
+        var facts = ["\(target.label) \(target.version)", row.status == .available ? "not added" : row.statusLabel]
+        if row.copies > 1 { facts.append("one of \(row.copies) copies; add picks this one") }
+        var body = [row.description ?? "(no description)"]
+        var notes = ["\(details.files.count) files in \(row.path)"]
+        if target.spec == nil {
+            notes.append("skills can't be added from \(target.label)")
+        } else if row.status == .nameTaken {
+            notes.append("can't be added: a managed skill from another source has this name")
+        }
+        body.append(notes.joined(separator: " · "))
+        let audit = details.files.filter(\.needsAudit).map(\.path)
+        ui.summary(title: row.name, subtitle: facts.joined(separator: " · "), body: body,
+                   warning: audit.isEmpty ? nil : "Scripts to read before adding: \(audit.joined(separator: ", "))")
     }
 
     private func add(_ names: [String], _ target: Target, context: Context) throws {

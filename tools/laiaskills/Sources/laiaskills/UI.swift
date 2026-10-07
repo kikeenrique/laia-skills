@@ -21,6 +21,11 @@ protocol UI {
     /// Lets the user pick one option ("/" filters long lists). `enter` says what picking does, in the key
     /// hints ("enter preview"). Only valid when `isInteractive`.
     func pick(_ question: String, options: [String], enter: String) -> String
+    /// A short block: a highlighted title, a muted subtitle, body lines, and an optional warning.
+    func summary(title: String, subtitle: String, body: [String], warning: String?)
+    /// Shows a file in the user's pager ($PAGER, else less) and returns when they leave it.
+    /// Only valid when `isInteractive`.
+    func page(_ file: URL)
     /// Asks for a line of text, trimmed; empty when nothing was typed. Only valid when `isInteractive`.
     func ask(_ prompt: String, description: String) -> String
     /// True when both stdin and stdout are a terminal, so prompts can be shown.
@@ -42,6 +47,33 @@ struct NooraUI: UI {
 
     func choose(_ question: String, options: [String]) -> [String] {
         noora.multipleChoicePrompt(question: "\(question)", options: options)
+    }
+
+    func summary(title: String, subtitle: String, body: [String], warning: String?) {
+        print("\n" + noora.format("\(.primary(title))"))
+        print(noora.format("\(.muted(subtitle))"))
+        for line in body { print("\n" + line) }
+        if let warning { print("\n" + noora.format("\(.danger("! \(warning)"))")) }
+        print("")
+    }
+
+    func page(_ file: URL) {
+        let pager = ProcessInfo.processInfo.environment["PAGER"].flatMap { $0.isEmpty ? nil : $0 } ?? "less"
+        // The file is passed as an argument, never spliced into the command.
+        let arguments = ["/bin/sh", "-c", "\(pager) \"$1\"", "sh", file.path]
+        var argv = arguments.map { strdup($0) } + [nil]
+        defer { argv.forEach { free($0) } }
+        // posix_spawn, not Process: Process puts the child in its own process group, and a pager outside
+        // the terminal's foreground group is stopped as soon as it reads the keyboard. Ctrl-C belongs to
+        // the pager while it runs.
+        let interrupt = signal(SIGINT, SIG_IGN)
+        defer { signal(SIGINT, interrupt) }
+        var pid = pid_t()
+        guard posix_spawn(&pid, "/bin/sh", nil, nil, &argv, environ) == 0 else {
+            return self.error("Couldn't start the pager `\(pager)`.")
+        }
+        var status: Int32 = 0
+        waitpid(pid, &status, 0)
     }
 
     func ask(_ prompt: String, description: String) -> String {

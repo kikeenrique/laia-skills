@@ -368,9 +368,12 @@ through the existing `add` flow (staged, recorded in `pending.json`, committed w
   | `other tool` | The hub or a mirror has an unmanaged entry with this name (as in `list --all`) |
   | `—` | Available |
 
-- **Interactive loop** (Noora single choice, `/` filters): pick a skill, which prints its `SKILL.md`,
-  its file count, and any executables or `scripts/` (anything an audit should read first, see 5.8).
-  Then choose *Mark to add* (or *Unmark*), *Back*, or *Done*. On *Done* with skills marked, confirm
+- **Interactive loop** (Noora single choice, `/` filters): pick a skill, which prints a short summary
+  (name; source, version, and status; description; file count) and warns about any executables or
+  `scripts/` (anything an audit should read first, see 5.8). Then *What next?*: *Read SKILL.md* (opens
+  it in `$PAGER`, else `less`, and comes back), *Mark to add* (or *Unmark*), *Other skills in
+  <source>*, or *Done*. The pager is started with `posix_spawn`, not `Process`, which would put it
+  in a background process group where it stops on its first keyboard read. On *Done* with skills marked, confirm
   "Add X, Y from owner/repo?" and run the add flow (`addChosen`, shared with `add`; `--shallow`
   passes through). Skills that are `installed`, `in skills.json`, or `name taken` cannot be marked,
   and nothing can be added from a first-party `upstream/` pin. Marked skills show a ✓ in the list.
