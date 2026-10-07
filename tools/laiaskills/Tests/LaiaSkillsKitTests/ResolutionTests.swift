@@ -16,6 +16,14 @@ import LaiaSkillsTestSupport
         #expect(found.map { relativePath(of: $0, to: fixture.root) } == ["src/skills/a"])
     }
 
+    @Test func aSkillAtTheRepoRootHasAnEmptyPath() throws {
+        let fixture = try Fixture()
+        try fixture.write("repo/SKILL.md", "---\nname: root-skill\ndescription: At the root.\n---\n")
+        let skills = Adder.skills(under: fixture.url("repo"))
+        #expect(skills.map(\.path) == [""])
+        #expect(relativePath(of: fixture.url("repo"), to: fixture.url("repo")) == "")
+    }
+
     @Test func resolvesFirstPartySkill() throws {
         let fixture = try Fixture()
         try fixture.skill("first-party/mise/skills/mise", name: "mise")

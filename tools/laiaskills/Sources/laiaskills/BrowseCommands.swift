@@ -102,6 +102,7 @@ struct FindCommand: ParsableCommand {
             }, rightAligned: [2])
             // First, so it's on screen however long the list is.
             let newSearch = "← New search"
+            ui.clearScreen()
             let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: [newSearch] + labels, enter: "choose")
             guard let index = labels.firstIndex(of: picked) else { continue }
             guard rows[index].status != Catalog.notARepo else {
@@ -255,6 +256,7 @@ struct BrowseSession {
                      row.status == .available ? "" : "[\(row.statusLabel)]",
                      shorten(row.description ?? "", to: 60)]
                 })
+                ui.clearScreen()
                 let picked = ui.pick("Skills in \(target.label) \(target.version)", options: labels + [done],
                                      enter: "preview")
                 guard let index = labels.firstIndex(of: picked) else { break }
@@ -263,6 +265,7 @@ struct BrowseSession {
             guard let row = current else { break }
             current = nil
             let details = try details(row, target)
+            ui.clearScreen()
             summarize(row, details, target)
 
             // Stay on this skill until the user moves on: reading or marking it comes back here.
@@ -290,7 +293,8 @@ struct BrowseSession {
         var facts = ["\(target.label) \(target.version)", row.status == .available ? "not added" : row.statusLabel]
         if row.copies > 1 { facts.append("one of \(row.copies) copies; add picks this one") }
         var body = [row.description ?? "(no description)"]
-        var notes = ["\(details.files.count) files in \(row.path)"]
+        let files = details.files.count == 1 ? "1 file" : "\(details.files.count) files"
+        var notes = [row.path.isEmpty ? "\(files) at the repo root" : "\(files) in \(row.path)"]
         if target.spec == nil {
             notes.append("skills can't be added from \(target.label)")
         } else if row.status == .nameTaken {

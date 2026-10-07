@@ -204,6 +204,8 @@ public enum SkillResolver {
 public func relativePath(of url: URL, to base: URL) -> String {
     let path = url.standardizedFileURL.path
     let basePath = base.standardizedFileURL.path
+    // A skill at a repo's root (`SKILL.md` next to the README) is the base itself.
+    if path == basePath { return "" }
     guard path.hasPrefix(basePath + "/") else { return path }
     return String(path.dropFirst(basePath.count + 1))
 }

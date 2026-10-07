@@ -21,6 +21,8 @@ protocol UI {
     /// Lets the user pick one option ("/" filters long lists). `enter` says what picking does, in the key
     /// hints ("enter preview"). Only valid when `isInteractive`.
     func pick(_ question: String, options: [String], enter: String) -> String
+    /// Starts a new screen: clears what's visible (scrollback stays). Only valid when `isInteractive`.
+    func clearScreen()
     /// A short block: a highlighted title, a muted subtitle, body lines, and an optional warning.
     func summary(title: String, subtitle: String, body: [String], warning: String?)
     /// Shows a file in the user's pager ($PAGER, else less) and returns when they leave it.
@@ -47,6 +49,11 @@ struct NooraUI: UI {
 
     func choose(_ question: String, options: [String]) -> [String] {
         noora.multipleChoicePrompt(question: "\(question)", options: options)
+    }
+
+    func clearScreen() {
+        // Noora has no call for this; it's the standard sequence `clear` sends: cursor home, erase screen.
+        print("\u{1B}[H\u{1B}[2J", terminator: "")
     }
 
     func summary(title: String, subtitle: String, body: [String], warning: String?) {
