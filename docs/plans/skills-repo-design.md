@@ -2,8 +2,8 @@
 
 Status: **phases 0–4 done**: the tool is implemented and tested (macOS and Linux CI), every installed
 skill (64) is managed by it, third-party skills can carry local patches (5.8), and `browse` and `find`
-replace Commander for looking at and discovering skills (5.9). See the [roadmap](#7-roadmap). Last
-updated 2026-10-05.
+replace Commander for looking at and discovering skills (5.9), reworked on 2026-10-07 after the
+owner's first interactive run. See the [roadmap](#7-roadmap). Last updated 2026-10-07.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -241,7 +241,7 @@ renders and prompts when attached to a TTY.
 | `laiaskills patch <skill> -m <reason>` | Save the edits to a third-party skill's installed copy as `patches/<skill>/NNNN-<slug>.patch` (or `--from <file>`), stage it, and reinstall with it (5.8) |
 | `laiaskills import` | One-off migration from `~/.agents/.skill-lock.json` (GitHub entries directly; local-path entries via the source clone's `origin` URL). Prints the plan; `--apply` adds the sources and skills (staged, not installed), `--shallow owner/repo` for large ones. After `sync`, `--prune` removes the lock entries of skills laiaskills installed and of skills no longer installed (asks first, or `--yes`; backs the lock file up to the backups folder). Entries for skills other tools still install stay |
 | `laiaskills browse [source]` | A source's skills with status and description; preview `SKILL.md` and scripts; mark and add from a picker (5.9). Sources not added yet are read from a throwaway clone in `tmp/laiaskills-browse/`, deleted on exit. Without `source`, pick one from the sources table. `--skill`, `--shallow` |
-| `laiaskills find <query>` | Search skills.sh, then browse a result (5.9). `--limit`, `--shallow`. The only command that calls an online catalog |
+| `laiaskills find [query]` | Search skills.sh, then browse results (5.9). In a terminal, no query opens a search screen; scripts and `--json` need one. `--limit`, `--shallow`. The only command that calls an online catalog |
 
 ### 5.6 Automated re-check of first-party skills
 
@@ -307,7 +307,9 @@ non-interactively; the tool keeps control of git, validation, and committing.
 - Shell out to `git`; no libgit2, no GitHub API → no tokens, no rate limits, Codeberg works.
 - All Noora calls behind one `UI` protocol so a breaking Noora minor touches one file.
 - Run via a mise task in this repo (`mise run laiaskills check`), no install or notarization needed.
-- Tests (97, offline: 76 library, 21 end to end): `LaiaSkillsKitTests` covers the library with real git repos and submodules;
+- Commands are synchronous except `find`, `browse`, and the root command, which are
+  `AsyncParsableCommand` because Noora's spinner (`progressStep`) is async.
+- Tests (99, offline: 77 library, 22 end to end): `LaiaSkillsKitTests` covers the library with real git repos and submodules;
   `LaiaSkillsCLITests` runs the built binary end to end with a fake `HOME`, a shell script standing in
   for the AI agent. Shared fixtures live in `LaiaSkillsTestSupport`, under the repo's
   `tmp/laiaskills-tests/`, and give every git process an identity so commits work on CI.
@@ -341,7 +343,7 @@ Submodules stay untouched; the fix is a patch applied to the installed copy.
   patches for first-party skills, and patches for skills not in `skills.json`.
 - Sending a fix upstream stays manual; the patch file can be attached to an upstream issue or PR as is.
 
-### 5.9 Browse and discovery (phase 4, done 2026-10-05)
+### 5.9 Browse and discovery (phase 4, done 2026-10-05; interaction reworked 2026-10-07)
 
 Commander was the browsing and discovery tool next to `laiaskills` (decisions 8–11). It was deleted on
 2026-10-05, so `laiaskills` takes over both jobs (decision 20): `browse` looks inside a source,
@@ -366,17 +368,24 @@ through the existing `add` flow (staged, recorded in `pending.json`, committed w
   | `in skills.json` | Listed but not installed (run `sync`) |
   | `name taken` | A managed skill with the same name comes from another source; adding would conflict |
   | `other tool` | The hub or a mirror has an unmanaged entry with this name (as in `list --all`) |
-  | `—` | Available |
+  | `—` | Available (`--json` and the plain table; the picker leaves it blank) |
 
-- **Interactive loop** (Noora single choice, `/` filters): pick a skill, which prints a short summary
-  (name; source, version, and status; description; file count) and warns about any executables or
-  `scripts/` (anything an audit should read first, see 5.8). Then *What next?*: *Read SKILL.md* (opens
-  it in `$PAGER`, else `less`, and comes back), *Mark to add* (or *Unmark*), *Other skills in
-  <source>*, or *Done*. The pager is started with `posix_spawn`, not `Process`, which would put it
-  in a background process group where it stops on its first keyboard read. On *Done* with skills marked, confirm
-  "Add X, Y from owner/repo?" and run the add flow (`addChosen`, shared with `add`; `--shallow`
-  passes through). Skills that are `installed`, `in skills.json`, or `name taken` cannot be marked,
-  and nothing can be added from a first-party `upstream/` pin. Marked skills show a ✓ in the list.
+- **Interactive loop** (Noora single choice, `/` filters; see *Interaction* below):
+  1. *Skills in <source> <version>*: one aligned row per skill (name, status, description), plus *Done*.
+  2. Picking a skill clears the screen and prints a short summary: the name, then source, version, and
+     status, the description, the file count (`at the repo root` for a skill whose `SKILL.md` sits
+     there), and a warning listing any executables or `scripts/` (anything an audit should read first,
+     see 5.8). The full `SKILL.md` is not printed.
+  3. *What next with <skill>?*: *Read SKILL.md* (opens it in `$PAGER`, else `less`, then back to this
+     menu), *Mark to add* or *Unmark* (stays on this menu), *Other skills in <source>* (back to step 1),
+     or *Done*.
+  4. On *Done* with skills marked, confirm "Add X, Y from owner/repo?" and run the add flow
+     (`addChosen`, shared with `add`; `--shallow` passes through). Quitting from the skill list also
+     counts as *Done*. Skills that are `installed`, `in skills.json`, or `name taken` cannot be marked,
+     and nothing can be added from a first-party `upstream/` pin. Marked skills show a ✓ in the list.
+- The pager is started with `posix_spawn`, not Foundation's `Process`: `Process` puts the child in its
+  own process group, and a pager outside the terminal's foreground group is stopped by the system on
+  its first keyboard read. Ctrl-C is ignored by `laiaskills` while the pager runs.
 - **Non-interactive:** the table and a hint, or `--json`. `--skill <name>` (or `owner/repo@skill`)
   prints that skill's `SKILL.md` and files instead. Adding stays explicit: `laiaskills add`.
 
@@ -421,9 +430,20 @@ no-GitHub-API rule (5.7) and Codeberg. So `browse` makes a throwaway clone that 
   another source, `source added` when only its repo is a submodule, `unsupported` for results whose
   source is a website, not a git repo (skills.sh also lists `.well-known` endpoints, e.g. `uizze.sh`), `—`
   otherwise. `--limit` (default 20), `--json`.
-- Interactive: pick a result to open `browse <source>` with that skill's `SKILL.md` already shown.
-  Non-interactive: the table plus a hint (`laiaskills browse owner/repo` or
-  `laiaskills add owner/repo@skill`).
+- Interactive:
+  1. Without a query, a search screen: *Find skills on skills.sh*, the line "You can search for a
+     skill by name or topic, e.g. swiftui. Leave empty to quit.", and a `Search for:` input. An empty
+     search quits; a one-letter search or one with no results comes back here with a message.
+  2. The search runs behind a spinner, then *skills.sh results for "<query>"*: `← New search` first (so
+     it's on screen however long the list is), then one aligned row per result: skill, source,
+     installs with thousands separators, right-aligned, and the status in brackets (blank for `—`).
+  3. Picking a result opens `browse <source>` focused on that skill (its summary, step 2 of the browse
+     loop). A repo that isn't added is cloned behind a spinner ("Downloading owner/repo to preview it").
+  4. When that browse ends, `find` returns to the same results, with statuses recomputed if something
+     was added and a line above the list saying what. `← New search` goes back to step 1. Picking an
+     `unsupported` result explains why it can't be added and stays on the results.
+- Non-interactive: the table plus a hint (`laiaskills browse owner/repo` or
+  `laiaskills add owner/repo@skill`). A query is required.
 - **Isolation:** `find` is the only code that touches skills.sh. If the API changes or goes away, only
   `find` breaks, with an error that points to `browse owner/repo`. `check`, `doctor`, and everything
   else stay offline-capable and catalog-free (goal: no catalog dependency for the core).
@@ -434,6 +454,24 @@ no-GitHub-API rule (5.7) and Codeberg. So `browse` makes a throwaway clone that 
 - The endpoint can be overridden with `LAIASKILLS_CATALOG_URL`, for tests only (`file://` fixtures;
   curl ignores the query string there), so the suite stays offline.
 
+**Interaction** (both commands, from the owner's first run on 2026-10-07)
+
+- Every list, preview, and the search screen start on a cleared screen (`ESC[H ESC[2J`, what `clear`
+  sends; Noora has no call for it). Scrollback is kept. Messages that must survive a step, such as
+  "Added …", are printed after the clear.
+- Picker headers say what the list is (*Skills in …*, *skills.sh results for …*, *What next with …?*).
+- Key hints are set per prompt through Noora's `Content` and name the action:
+  `↑↓ move • / filter • enter preview • ctrl+c quit` (`enter open`, `enter choose` where that fits).
+- Rows are padded into columns by `alignedColumns` (the same code as the plain tables), since Noora's
+  picker takes plain strings.
+- Slow steps (the skills.sh search, the preview clone) run behind Noora's `progressStep` spinner via
+  `ui.progress`. Never with `--json` or without a terminal, so that output stays clean.
+- Noora limits, checked against its latest `main`: the list picker has no key to cancel or go back
+  (Esc only clears a `/` filter), so going back is a menu row (`← New search`, *Other skills in …*,
+  *Done*) and Ctrl-C quits. A text prompt draws its description below the input, so the search screen
+  prints its heading and explanation itself. `selectableTable` has Esc and real headers but no filter
+  and fixed hints; it was considered and not used.
+
 **Code layout**
 
 | File | Contents |
@@ -441,21 +479,23 @@ no-GitHub-API rule (5.7) and Codeberg. So `browse` makes a throwaway clone that 
 | `LaiaSkillsKit/Browser.swift` | `BrowseRow` and `BrowseStatus` (with `canAdd`), `Browser.rows`, `Browser.files` (`ls-tree`), `Browser.canonical` (`og:url`), and `PreviewClone` (make, remove, `cleanLeftovers`) |
 | `LaiaSkillsKit/Catalog.swift` | skills.sh client: URL building, `curl`, lenient decoding, status matching |
 | `laiaskills/BrowseCommands.swift` | `browse`, `find`, and `BrowseSession` (resolve the source, list, preview, interactive loop, add) |
-| `laiaskills/UI.swift` | `pick(_:options:)` (Noora `singleChoicePrompt`, filter toggled with `/`) |
+| `laiaskills/UI.swift` | `pick` (Noora `singleChoicePrompt`, `/` filter, per-prompt key hints), `ask` (`textPrompt`), `progress` (`progressStep`), `summary`, `page` (`posix_spawn` of the pager), `clearScreen`, `alignedColumns`, `grouped` |
 | `laiaskills/SourceCommands.swift` | `addChosen`, the tail of `add` shared with `browse`; `SourcesCommand.rows`/`render`, reused by `browse` without an argument |
 
 `Adder.skills(under:)` takes a folder, so previews and submodules share discovery.
 
-**Tests:** 14 new, all offline (97 in total: 76 library, 21 end to end). Status rows (name taken,
+**Tests:** 16 for this phase, all offline (99 in total: 77 library, 22 end to end). Status rows (name taken,
 available, other tool, listed, installed, duplicate copies, a folded description). Preview clones from
 a local origin: newest tag vs branch head, only `SKILL.md` checked out, `ls-tree` file list with the
 executable bit, deletion after the run, and leftover cleanup by age. `og:url` parsing and frontmatter
 block scalars. Catalog decoding (full, partial, garbage), query encoding, too-short queries, and
 case-insensitive status. End to end: `browse` of an added source and of an unadded repo (JSON, table,
 `--skill`, an unknown skill, the repo left untouched), and `find` against a `file://` fixture, including
-the failure message. The interactive loop has no automated test (Noora needs a terminal); it was run
-by hand in a pseudo-terminal: preview, *Mark to add*, *Done*, confirm, and the skill was staged and
-installed in a throwaway repo.
+the failure message, and `find` without a query and without a terminal. A skill at a repo's root gets
+an empty path. The interactive screens have no automated test (Noora needs a terminal). They were
+driven in a pseudo-terminal with scripted keystrokes (preview, *Mark to add*, *Done*, confirm, staged
+and installed in a throwaway repo; later search → results → cloned preview → pager → back to results →
+new search), and used by the owner on 2026-10-07.
 
 ## 6. Maintenance profile
 
@@ -464,17 +504,17 @@ installed in a throwaway repo.
 | Skills move/renamed inside source repos | High | Identity by name, re-discovered on every run |
 | Source repo layouts vary | Medium | Generic `SKILL.md` scan, optional `path` |
 | Agent directory conventions change | Medium | `tools/config/agents.json` |
-| Noora 0.x breaking minors | Medium | `.upToNextMinor` pin, single `UI` layer |
+| Noora 0.x breaking minors | Medium | `.upToNextMinor` pin, single `UI` layer; `pick` rebuilds Noora's `Content` (all its fields) for per-prompt key hints, so a new `Content` field is a one-line fix there |
 | Upstream repo renamed (e.g. `everything-claude-code` → `affaan-m/ECC`) | Medium | GitHub redirects old URLs and git follows them silently; `check` requests each repo's web page and reports a redirect to another path, with the `git submodule set-url` command to apply it |
 | Repos ship several copies of a skill (translations, per-agent folders) | Medium | `add` prefers the shortest path (`skills/<name>`); `path` in `skills.json` overrides |
 | A skill folder turns into a Claude plugin (nested copy, `.claude-plugin/`) | Low | Copies leave both out (5.4) |
 | Local patches go stale when upstream changes | Medium | `check` warns ahead; `upgrade` drops patches upstream absorbed and stops on conflicts (5.8) |
 | Upstream repo deleted | Low | Pinned commit survives locally; fork critical sources |
-| Swift toolchain / strict concurrency | Low | Mostly synchronous code, subprocess git |
+| Swift toolchain / strict concurrency | Low | Mostly synchronous code, subprocess git; only `find`/`browse` are async, for the spinner |
 | AI agent CLI flags or behaviour change (re-check) | Medium | Command in `recheck.json`; result guarded by allowed paths + validator |
 | skills.sh search API changes or disappears (`find`) | Medium | Undocumented endpoint, isolated in `find`; lenient decoding; `browse owner/repo` keeps working (5.9) |
 
-Size after phase 4: about 4,300 lines of Swift (including doc comments) plus 1,700 lines of tests, well over the original "under 1k" estimate, mostly from the write commands, guards,
+Size after phase 4 and the 2026-10-07 rework: about 4,600 lines of Swift (including doc comments) plus 1,700 lines of tests, well over the original "under 1k" estimate, mostly from the write commands, guards,
 and cross-platform handling. Expected upkeep is still a few hours per month, plus the routine upgrade
 of third-party sources.
 
@@ -503,8 +543,9 @@ of third-party sources.
 | 2026-10-05 | **Phase 4 designed** (5.9, decision 20): Commander was deleted, so `browse` (a source's skills with status and previews; unadded repos read from a throwaway blobless clone in `tmp/laiaskills-browse/`) and `find` (skills.sh search, isolated) move into `laiaskills`. The skills.sh endpoint and GitHub's canonical casing (`og:url`) were checked live |
 | 2026-10-05 | **Phase 4 built**: `browse` and `find` (5.9). Tried on real repos (an added source, a recased `owner/repo`, unadded `anthropics/skills`, a live skills.sh search) and interactively in a pseudo-terminal, adding a skill in a throwaway repo. Surfaced and fixed: block-scalar descriptions (`>`, `|-`) read as the marker only; skills.sh lists websites as sources (`not a repo`). 97 tests (76 library, 21 end to end) |
 | 2026-10-05 | **Phase 4 pushed, CI green on Linux** (run 37333321744): the `browse` and `find` tests pass on Ubuntu 26.04. Local Docker or Podman runs are dropped from the roadmap; CI is the Linux check (`laiaskills:test-linux` stays for anyone who has a container runtime) |
-| 2026-10-07 | **First real `find` run** (`find tuist`) surfaced three prompt problems, all fixed: the header ("Which skill?") didn't say what the list was, there was no way out, and Noora's "enter confirm" hint didn't say what enter does. Pickers now have descriptive headers and their own key hints (`↑↓ move • / filter • enter preview • ctrl+c quit`), set through Noora's `Content`. Noora has no quit key of its own; ctrl+c, which it handles, was just never listed. `find` without a query opens a search box (Noora's `textPrompt`) and returns to it after each preview; an empty search ends it. Scripts and `--json` still need a query. Each list and preview starts on a cleared screen. Also fixed: a skill at a repo's root (`SKILL.md` next to the README) got an absolute path instead of `""`, so it showed no description, the wrong files, and couldn't be installed |
-| 2026-10-07 | **`find` and `browse` tried interactively by the owner** (roadmap item closed). From that run: browsing a result returns to the same results; the search box has a title and its own screen; searching skills.sh and cloning a repo for a preview show Noora's spinner (`progressStep`, so the root command, `find`, and `browse` are now `AsyncParsableCommand`; no spinner with `--json` or without a terminal) |
+| 2026-10-07 | **`find` and `browse` tried interactively by the owner** (roadmap item closed). The first real run found them hard to use, and the interaction was reworked within Noora's API (5.9, *Interaction*): descriptive picker headers; per-prompt key hints naming the action and Ctrl-C (`↑↓ move • / filter • enter preview • ctrl+c quit`); rows aligned into columns, install counts with thousands separators; a search screen (`find` without a query) that explains itself; `← New search` at the top of the results; browsing a result returns to the same results; a short skill summary instead of the whole `SKILL.md`, with *Read SKILL.md* in the pager; a cleared screen per step; spinners for the skills.sh search and the preview clone (the root command, `find`, and `browse` became `AsyncParsableCommand`); website sources marked `unsupported`. 11 local commits, `83b46f1`..`1c6c614` |
+| 2026-10-07 | **Bugs found on the way**: a skill at a repo's root (`SKILL.md` next to the README) got an absolute path instead of `""`, so `browse` showed no description and the wrong files, and its pin could not be resolved for install. The pager hung because Foundation's `Process` starts it in a background process group; it is now started with `posix_spawn`. A one-letter search ended `find` instead of asking again. 99 tests (77 library, 22 end to end) |
+| 2026-10-07 | **Tuist skills source confirmed**: `tuist/agent-skills` 0.3.0 stays. `tuist/agent-plugin` has the same 12 skills (two renamed) plus Tuist's MCP server in the vendor-neutral Agent Plugins format, and no releases. The MCP server can be added on its own if needed |
 
 ### Pending
 
@@ -512,12 +553,14 @@ In priority order.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
-| 2 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task running `check --exit-code` |
-| 3 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
-| 4 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
-| 5 | Optional: Claude Code sandbox | owner | Not enabled on this machine (checked 2026-10-05). If turned on, the network allowlist needs at least `github.com`, `codeberg.org`, and (for `find`) `skills.sh` |
-| 6 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
+| 1 | Push the 2026-10-07 rework and check Linux CI | owner | 11 local commits (`83b46f1`..`1c6c614`). The first Linux build of the async commands and of the pager's `posix_spawn`/`strdup`/`environ` (Glibc), only built on macOS so far |
+| 2 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
+| 3 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task running `check --exit-code` |
+| 4 | Replay: Linux crash with `URLSession.download(for:)` | owner + tool | Notes in `tmp/replay/replay-linux-download-crash.md`: a force-unwrap in swift-corelibs-foundation, reached because `PlaybackURLProtocol` serves the body from memory. Observed on Replay 0.4.0; re-test on the pinned 0.6.0, then report to `mattt/Replay` or document the limitation in the `replay` skill |
+| 5 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run. `visionos-agents` is pinned to `main`, not a tag: pin a release once upstream tags one |
+| 6 | Optional: top up the cupertino doc index | owner | The corpus is frozen at bundle v1.4.0 (crawled 2026-06-20, WWDC26 beta era) and upstream is dormant. When stale iOS 27 docs hurt: one batched overnight `cupertino fetch`, then a single `save` (about 40 minutes whatever the size) |
+| 7 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
+| 8 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
 ### Implementation notes
 
@@ -585,6 +628,17 @@ In priority order.
    - Noora appends its own colon to a prompt's question, so questions carry none.
    - Discovery returns folders in path order, which put translated copies (`docs/ja/…`) first; browse
      rows are sorted by name instead.
+6. **Interaction rework** (2026-10-07): notes from the owner's first interactive run.
+   - Scripted pseudo-terminal runs had passed, but a person found the screens hard to read. The
+     interactive screens need a human try before they count as done.
+   - A row at the bottom of a long picker list can scroll out of view: an exit row there went unseen,
+     which is why `← New search` is the first row.
+   - `textPrompt` with `collapseOnAnswer` redraws the answer as "<prompt>: <answer>", so a prompt that
+     ends in a colon (`Search for:`) is not collapsed.
+   - `relativePath(of:to:)` returns `""` for the base folder itself; before, it returned the absolute
+     path, which broke skills at a repo's root everywhere a pin path is built.
+   - Long-running work inside an interactive command goes through `ui.progress`, which runs it directly
+     without a terminal; `browse` adds a `--json` guard (`slow`) so the spinner never mixes into JSON.
 
 ## 8. Decisions
 
