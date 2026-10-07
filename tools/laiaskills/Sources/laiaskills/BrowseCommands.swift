@@ -100,7 +100,9 @@ struct FindCommand: ParsableCommand {
                 "\(row.skill)  \(row.source)  \(row.installs.map { "\($0) installs" } ?? "")"
                     + (row.status == "—" ? "" : "  [\(row.status)]")
             }
-            let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: labels, enter: "preview")
+            // First, so it's on screen however long the list is.
+            let newSearch = "← New search"
+            let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: [newSearch] + labels, enter: "choose")
             guard let index = labels.firstIndex(of: picked) else { continue }
             guard rows[index].status != Catalog.notARepo else {
                 ui.warning(["\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos."])
