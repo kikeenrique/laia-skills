@@ -28,7 +28,10 @@ struct BrowseCommand: ParsableCommand {
     func run() throws {
         let ui = NooraUI()
         let session = BrowseSession(options: options, ui: ui, shallow: shallow)
-        if let source { return try session.run(source, focus: skill) }
+        if let source {
+            try session.run(source, focus: skill)
+            return
+        }
 
         let rows = SourcesCommand.rows(try Context(options))
         if options.json { return try printJSON(rows) }
@@ -85,36 +88,61 @@ struct FindCommand: ParsableCommand {
             return ui.info("Look inside with `laiaskills browse owner/repo`, or `laiaskills add owner/repo@skill`.")
         }
 
-        // Search, preview a result, then back to the search box; an empty search ends it.
+        // Search, then pick results to browse; each browse comes back to the same results. "New search"
+        // goes back to the search box, and an empty search ends it.
         var next = given
         while true {
             let phrase = next.isEmpty ? ui.ask("Search skills.sh", description: "Leave empty to quit.") : next
             next = ""
             guard !phrase.isEmpty else { return }
-            let rows = try rows(for: phrase, context)
-            guard !rows.isEmpty else {
-                ui.info("No skills found for \"\(phrase)\".")
+            let results: [CatalogResult]
+            do {
+                results = try Catalog.search(phrase, limit: limit)
+            } catch CatalogError.queryTooShort {
+                ui.line("Search for at least 2 characters.\n")
                 continue
             }
-            let labels = alignedColumns(rows.map { row in
-                [row.skill, row.source, row.installs.map { "\(grouped($0)) installs" } ?? "",
-                 row.status == "—" ? "" : "[\(row.status)]"]
-            }, rightAligned: [2])
-            // First, so it's on screen however long the list is.
-            let newSearch = "← New search"
-            ui.clearScreen()
-            let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: [newSearch] + labels, enter: "choose")
-            guard let index = labels.firstIndex(of: picked) else { continue }
-            guard rows[index].status != Catalog.notARepo else {
-                ui.warning(["\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos."])
+            guard !results.isEmpty else {
+                ui.line("No skills found for \"\(phrase)\".\n")
                 continue
             }
-            try BrowseSession(options: options, ui: ui, shallow: shallow).run(rows[index].source, focus: rows[index].skill)
+            var context = context
+            var notice: String?
+            while true {
+                let rows = rows(for: results, context)
+                let labels = alignedColumns(rows.map { row in
+                    [row.skill, row.source, row.installs.map { "\(grouped($0)) installs" } ?? "",
+                     row.status == "—" ? "" : "[\(row.status)]"]
+                }, rightAligned: [2])
+                // First, so it's on screen however long the list is.
+                let newSearch = "← New search"
+                ui.clearScreen()
+                if let notice { ui.line(notice + "\n") }
+                notice = nil
+                let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: [newSearch] + labels, enter: "choose")
+                guard let index = labels.firstIndex(of: picked) else { break }
+                guard rows[index].status != Catalog.notARepo else {
+                    notice = "\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos."
+                    continue
+                }
+                let added = try BrowseSession(options: options, ui: ui, shallow: shallow)
+                    .run(rows[index].source, focus: rows[index].skill)
+                if !added.isEmpty {
+                    notice = "Added \(added.joined(separator: ", ")) from \(rows[index].source) and installed. "
+                        + "Staged; commit with `laiaskills commit`."
+                    // Statuses change once something is added.
+                    context = try Context(options)
+                }
+            }
         }
     }
 
     private func rows(for phrase: String, _ context: Context) throws -> [Row] {
-        try Catalog.search(phrase, limit: limit).map {
+        rows(for: try Catalog.search(phrase, limit: limit), context)
+    }
+
+    private func rows(for results: [CatalogResult], _ context: Context) -> [Row] {
+        results.map {
             Row(skill: $0.skillId, source: $0.source, installs: $0.installs,
                 status: Catalog.status(of: $0, skills: context.repo.manifest.skills, submodules: context.submodules))
         }
@@ -153,7 +181,9 @@ struct BrowseSession {
         let files: [SkillFile]
     }
 
-    func run(_ argument: String, focus: String?) throws {
+    /// Returns the names of the skills added from the picker, if any.
+    @discardableResult
+    func run(_ argument: String, focus: String?) throws -> [String] {
         let context = try Context(options)
         PreviewClone.cleanLeftovers(repo: context.repo.root)
         let (target, named) = try resolve(argument, context)
@@ -174,11 +204,18 @@ struct BrowseSession {
         }
 
         if options.json {
-            if let focused { return try printJSON(details(focused, target)) }
-            return try printJSON(Report(source: target.label, version: target.version,
-                                        preview: target.preview != nil, skills: rows))
+            if let focused {
+                try printJSON(details(focused, target))
+            } else {
+                try printJSON(Report(source: target.label, version: target.version,
+                                     preview: target.preview != nil, skills: rows))
+            }
+            return []
         }
-        if let focused, !ui.isInteractive { return try show(focused, target) }
+        if let focused, !ui.isInteractive {
+            try show(focused, target)
+            return []
+        }
         guard ui.isInteractive else {
             ui.line("\(target.label) \(target.version)")
             ui.table(headers: ["Skill", "Status", "Description", "Path"], rows: rows.map { row in
@@ -189,9 +226,10 @@ struct BrowseSession {
                 let source = spec.url.hasPrefix("https://github.com/") ? "\(spec.owner)/\(spec.repository)" : spec.url
                 return "; add with `laiaskills add \(source) --skill <name>`"
             } ?? ""
-            return ui.info("Preview one with `--skill <name>`\(addHint).")
+            ui.info("Preview one with `--skill <name>`\(addHint).")
+            return []
         }
-        try loop(rows, target, focused: focused, context: context)
+        return try loop(rows, target, focused: focused, context: context)
     }
 
     // MARK: Resolving the source
@@ -245,7 +283,7 @@ struct BrowseSession {
 
     // MARK: Interactive loop
 
-    private func loop(_ rows: [BrowseRow], _ target: Target, focused: BrowseRow?, context: Context) throws {
+    private func loop(_ rows: [BrowseRow], _ target: Target, focused: BrowseRow?, context: Context) throws -> [String] {
         let done = "Done"
         var marked: [String] = []
         var current = focused
@@ -285,7 +323,7 @@ struct BrowseSession {
                 }
             }
         }
-        try add(marked, target, context: context)
+        return try add(marked, target, context: context)
     }
 
     /// The interactive preview: what the skill is and whether it can be added, without its full text.
@@ -306,9 +344,10 @@ struct BrowseSession {
                    warning: audit.isEmpty ? nil : "Scripts to read before adding: \(audit.joined(separator: ", "))")
     }
 
-    private func add(_ names: [String], _ target: Target, context: Context) throws {
-        guard !names.isEmpty, let spec = target.spec else { return }
-        guard ui.confirm("Add \(names.joined(separator: ", ")) from \(target.label)?", default: true) else { return }
+    /// Adds the marked skills after a confirmation; returns the names added.
+    private func add(_ names: [String], _ target: Target, context: Context) throws -> [String] {
+        guard !names.isEmpty, let spec = target.spec else { return [] }
+        guard ui.confirm("Add \(names.joined(separator: ", ")) from \(target.label)?", default: true) else { return [] }
         let tag = try Adder.addSource(spec, repo: context.repo.root, shallow: shallow)
         let available = Adder.skills(in: spec.submodulePath, repo: context.repo.root)
         let chosen = try names.map { name in
@@ -321,6 +360,7 @@ struct BrowseSession {
                                   install: true, options: options, repo: context.repo)
         ui.success("Added \(added.joined(separator: ", ")) from \(spec.submodulePath)" + (tag.map { " at \($0)" } ?? "")
             + " and installed. Staged; commit with `laiaskills commit`.")
+        return added
     }
 }
 
