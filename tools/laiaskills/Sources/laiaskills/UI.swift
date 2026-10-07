@@ -43,7 +43,7 @@ struct NooraUI: UI {
     }
 
     func pick(_ question: String, options: [String], enter: String) -> String {
-        // Noora's key hints end in a generic "enter confirm"; name the action instead.
+        // Noora's key hints end in a generic "enter confirm" and leave out ctrl+c, its only way out.
         Noora(content: Self.content(enter: enter))
             .singleChoicePrompt(question: "\(question)", options: options, filterMode: .toggleable,
                                 autoselectSingleChoice: false)
@@ -51,9 +51,6 @@ struct NooraUI: UI {
 
     private static func content(enter action: String) -> Content {
         let base = Content.default
-        func hint(_ text: String) -> String {
-            text.replacingOccurrences(of: "enter confirm", with: "enter \(action)")
-        }
         return Content(
             errorAlertTitle: base.errorAlertTitle,
             errorAlertRecommendedTitle: base.errorAlertRecommendedTitle,
@@ -64,9 +61,9 @@ struct NooraUI: UI {
             infoAlertTitle: base.infoAlertTitle,
             infoAlertRecommendedTitle: base.infoAlertRecommendedTitle,
             choicePromptFilterTitle: base.choicePromptFilterTitle,
-            choicePromptInstructionWithoutFilter: hint(base.choicePromptInstructionWithoutFilter),
-            choicePromptInstructionWithFilter: hint(base.choicePromptInstructionWithFilter),
-            choicePromptInstructionIsFiltering: hint(base.choicePromptInstructionIsFiltering),
+            choicePromptInstructionWithoutFilter: "↑↓ move • enter \(action) • ctrl+c quit",
+            choicePromptInstructionWithFilter: "↑↓ move • / filter • enter \(action) • ctrl+c quit",
+            choicePromptInstructionIsFiltering: "↑↓ move • esc clear filter • enter \(action) • ctrl+c quit",
             multipleChoicePromptFilterTitle: base.multipleChoicePromptFilterTitle,
             multipleChoicePromptErrorTitle: base.multipleChoicePromptErrorTitle,
             multipleChoicePromptInstructionWithoutFilter: base.multipleChoicePromptInstructionWithoutFilter,

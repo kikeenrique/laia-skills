@@ -36,8 +36,7 @@ struct BrowseCommand: ParsableCommand {
             SourcesCommand.render(rows, ui: ui)
             return ui.info("Open one with `laiaskills browse <source>`.")
         }
-        let picked = ui.pick("Sources in skills.json", options: rows.map(\.path) + [quit], enter: "open")
-        guard picked != quit else { return }
+        let picked = ui.pick("Sources in skills.json", options: rows.map(\.path), enter: "open")
         try session.run(picked, focus: skill)
     }
 }
@@ -92,7 +91,7 @@ struct FindCommand: ParsableCommand {
             "\(row.skill)  \(row.source)  \(row.installs.map { "\($0) installs" } ?? "")"
                 + (row.status == "—" ? "" : "  [\(row.status)]")
         }
-        let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: labels + [quit], enter: "preview")
+        let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: labels, enter: "preview")
         guard let index = labels.firstIndex(of: picked) else { return }
         guard rows[index].status != Catalog.notARepo else {
             throw ValidationError("\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos.")
@@ -100,9 +99,6 @@ struct FindCommand: ParsableCommand {
         try BrowseSession(options: options, ui: ui, shallow: shallow).run(rows[index].source, focus: rows[index].skill)
     }
 }
-
-/// The last option of a top-level picker: leaves without doing anything.
-private let quit = "Quit"
 
 /// One `browse` of one source: resolve it (added submodule or preview clone), then list, preview, and add.
 struct BrowseSession {
