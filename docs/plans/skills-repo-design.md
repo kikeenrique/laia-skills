@@ -418,8 +418,8 @@ no-GitHub-API rule (5.7) and Codeberg. So `browse` makes a throwaway clone that 
   related skills. Only `source` and `skillId` are required when decoding; everything else is optional.
 - Table, in API (relevance) order: skill (`skillId`), source (`owner/repo`), installs, and status:
   `managed` when the skill is in `skills.json` from that repo, `name taken` when the name comes from
-  another source, `source added` when only its repo is a submodule, `not a repo` for results whose
-  source is a website (skills.sh also lists `.well-known` endpoints, e.g. `uizze.sh`), `—`
+  another source, `source added` when only its repo is a submodule, `unsupported` for results whose
+  source is a website, not a git repo (skills.sh also lists `.well-known` endpoints, e.g. `uizze.sh`), `—`
   otherwise. `--limit` (default 20), `--json`.
 - Interactive: pick a result to open `browse <source>` with that skill's `SKILL.md` already shown.
   Non-interactive: the table plus a hint (`laiaskills browse owner/repo` or

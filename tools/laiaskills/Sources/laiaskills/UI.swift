@@ -31,7 +31,7 @@ protocol UI {
     /// Only valid when `isInteractive`.
     func page(_ file: URL)
     /// Asks for a line of text, trimmed; empty when nothing was typed. Only valid when `isInteractive`.
-    func ask(title: String, _ prompt: String, description: String) -> String
+    func ask(_ prompt: String) -> String
     /// True when both stdin and stdout are a terminal, so prompts can be shown.
     var isInteractive: Bool { get }
 }
@@ -91,8 +91,9 @@ struct NooraUI: UI {
         waitpid(pid, &status, 0)
     }
 
-    func ask(title: String, _ prompt: String, description: String) -> String {
-        noora.textPrompt(title: "\(title)", prompt: "\(prompt)", description: "\(description)")
+    func ask(_ prompt: String) -> String {
+        // Not collapsed: Noora would redraw it as "<prompt>: <answer>", doubling a prompt's own colon.
+        noora.textPrompt(prompt: "\(prompt)", collapseOnAnswer: false)
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

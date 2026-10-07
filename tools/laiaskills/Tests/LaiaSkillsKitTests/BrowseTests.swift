@@ -143,6 +143,6 @@ import LaiaSkillsTestSupport
         #expect(status("avdlee/swiftui-agent-skill", "update-swiftui-apis") == "source added")
         #expect(status("anthropics/skills", "pdf") == "name taken")
         #expect(status("anthropics/skills", "docx") == "—")
-        #expect(status("uizze.sh", "ios-design") == Catalog.notARepo)
+        #expect(status("uizze.sh", "ios-design") == Catalog.unsupported)
     }
 }

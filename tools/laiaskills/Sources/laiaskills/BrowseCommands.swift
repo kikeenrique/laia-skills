@@ -97,8 +97,10 @@ struct FindCommand: AsyncParsableCommand {
             if phrase.isEmpty {
                 ui.clearScreen()
                 if let problem { ui.line(problem + "\n") }
-                phrase = ui.ask(title: "Find skills on skills.sh", "Search",
-                                description: "A skill name or topic, e.g. swiftui. Leave empty to quit.")
+                ui.summary(title: "Find skills on skills.sh",
+                           subtitle: "You can search for a skill by name or topic, e.g. swiftui. Leave empty to quit.",
+                           body: [], warning: nil)
+                phrase = ui.ask("Search for:")
             }
             next = ""
             problem = nil
@@ -132,7 +134,7 @@ struct FindCommand: AsyncParsableCommand {
                 notice = nil
                 let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: [newSearch] + labels, enter: "choose")
                 guard let index = labels.firstIndex(of: picked) else { break }
-                guard rows[index].status != Catalog.notARepo else {
+                guard rows[index].status != Catalog.unsupported else {
                     notice = "\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos."
                     continue
                 }

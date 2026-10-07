@@ -70,7 +70,7 @@ import Testing
         """)
         let environment = [Catalog.endpointVariable: catalog.absoluteString]
         let rows = try laiaskills(setup, environment: environment, ["find", "skills", "--json"]).jsonArray()
-        #expect(rows.map { $0["status"] as? String } == ["managed", "—", Catalog.notARepo])
+        #expect(rows.map { $0["status"] as? String } == ["managed", "—", Catalog.unsupported])
         #expect(rows.first?["installs"] as? Int == 12)
 
         let table = try laiaskills(setup, environment: environment, ["find", "skills"])

@@ -40,7 +40,7 @@ public enum Catalog {
     public static let defaultEndpoint = "https://skills.sh/api/search"
     /// Overrides the endpoint; tests point it at a `file://` fixture (curl ignores the query there).
     public static let endpointVariable = "LAIASKILLS_CATALOG_URL"
-    public static let notARepo = "not a repo"
+    public static let unsupported = "unsupported"
 
     public static var endpoint: String {
         ProcessInfo.processInfo.environment[endpointVariable] ?? defaultEndpoint
@@ -82,11 +82,11 @@ public enum Catalog {
     }
 
     /// `managed` when the skill is in `skills.json` from this source, `name taken` when a skill with that
-    /// name comes from elsewhere, `source added` when only its repo is a submodule, `not a repo` for
-    /// sources that are websites (skills.sh also lists `.well-known` endpoints), `—` otherwise. Ignores
+    /// name comes from elsewhere, `source added` when only its repo is a submodule, `unsupported` for
+    /// sources that are websites, not git repos (skills.sh also lists `.well-known` endpoints), `—` otherwise. Ignores
     /// case: skills.sh lowercases sources.
     public static func status(of result: CatalogResult, skills: [String: SkillEntry], submodules: [Submodule]) -> String {
-        guard let path = result.submodulePath?.lowercased() else { return notARepo }
+        guard let path = result.submodulePath?.lowercased() else { return unsupported }
         if let entry = skills.first(where: { $0.key.lowercased() == result.skillId.lowercased() })?.value {
             return entry.source.lowercased() == path ? "managed" : "name taken"
         }
