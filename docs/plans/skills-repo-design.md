@@ -504,6 +504,7 @@ of third-party sources.
 | 2026-10-05 | **Phase 4 built**: `browse` and `find` (5.9). Tried on real repos (an added source, a recased `owner/repo`, unadded `anthropics/skills`, a live skills.sh search) and interactively in a pseudo-terminal, adding a skill in a throwaway repo. Surfaced and fixed: block-scalar descriptions (`>`, `|-`) read as the marker only; skills.sh lists websites as sources (`not a repo`). 97 tests (76 library, 21 end to end) |
 | 2026-10-05 | **Phase 4 pushed, CI green on Linux** (run 37333321744): the `browse` and `find` tests pass on Ubuntu 26.04. Local Docker or Podman runs are dropped from the roadmap; CI is the Linux check (`laiaskills:test-linux` stays for anyone who has a container runtime) |
 | 2026-10-07 | **First real `find` run** (`find tuist`) surfaced three prompt problems, all fixed: the header ("Which skill?") didn't say what the list was, there was no way out, and Noora's "enter confirm" hint didn't say what enter does. Pickers now have descriptive headers and their own key hints (`↑↓ move • / filter • enter preview • ctrl+c quit`), set through Noora's `Content`. Noora has no quit key of its own; ctrl+c, which it handles, was just never listed. `find` without a query opens a search box (Noora's `textPrompt`) and returns to it after each preview; an empty search ends it. Scripts and `--json` still need a query. Each list and preview starts on a cleared screen. Also fixed: a skill at a repo's root (`SKILL.md` next to the README) got an absolute path instead of `""`, so it showed no description, the wrong files, and couldn't be installed |
+| 2026-10-07 | **`find` and `browse` tried interactively by the owner** (roadmap item closed). From that run: browsing a result returns to the same results; the search box has a title and its own screen; searching skills.sh and cloning a repo for a preview show Noora's spinner (`progressStep`, so the root command, `find`, and `browse` are now `AsyncParsableCommand`; no spinner with `--json` or without a terminal) |
 
 ### Pending
 
@@ -513,11 +514,10 @@ In priority order.
 |---|---|---|---|
 | 1 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
 | 2 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task running `check --exit-code` |
-| 3 | Try `browse` interactively | owner | The picker loop has no automated test (Noora needs a terminal); it was only driven with scripted keystrokes. One real run, e.g. `mise run laiaskills browse anthropics/skills` |
-| 4 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
-| 5 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
-| 6 | Optional: Claude Code sandbox | owner | Not enabled on this machine (checked 2026-10-05). If turned on, the network allowlist needs at least `github.com`, `codeberg.org`, and (for `find`) `skills.sh` |
-| 7 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
+| 3 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run |
+| 4 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
+| 5 | Optional: Claude Code sandbox | owner | Not enabled on this machine (checked 2026-10-05). If turned on, the network allowlist needs at least `github.com`, `codeberg.org`, and (for `find`) `skills.sh` |
+| 6 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
 ### Implementation notes
 

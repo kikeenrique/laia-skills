@@ -21,6 +21,8 @@ protocol UI {
     /// Lets the user pick one option ("/" filters long lists). `enter` says what picking does, in the key
     /// hints ("enter preview"). Only valid when `isInteractive`.
     func pick(_ question: String, options: [String], enter: String) -> String
+    /// Runs slow work behind a spinner with `message` when `isInteractive`; otherwise just runs it.
+    func progress<Value: Sendable>(_ message: String, _ work: @escaping @Sendable () throws -> Value) async throws -> Value
     /// Starts a new screen: clears what's visible (scrollback stays). Only valid when `isInteractive`.
     func clearScreen()
     /// A short block: a highlighted title, a muted subtitle, body lines, and an optional warning.
@@ -29,7 +31,7 @@ protocol UI {
     /// Only valid when `isInteractive`.
     func page(_ file: URL)
     /// Asks for a line of text, trimmed; empty when nothing was typed. Only valid when `isInteractive`.
-    func ask(_ prompt: String, description: String) -> String
+    func ask(title: String, _ prompt: String, description: String) -> String
     /// True when both stdin and stdout are a terminal, so prompts can be shown.
     var isInteractive: Bool { get }
 }
@@ -49,6 +51,12 @@ struct NooraUI: UI {
 
     func choose(_ question: String, options: [String]) -> [String] {
         noora.multipleChoicePrompt(question: "\(question)", options: options)
+    }
+
+    func progress<Value: Sendable>(_ message: String, _ work: @escaping @Sendable () throws -> Value) async throws -> Value {
+        guard isInteractive else { return try work() }
+        return try await noora.progressStep(message: message, successMessage: nil, errorMessage: nil,
+                                            showSpinner: true, renderer: Renderer()) { _ in try work() }
     }
 
     func clearScreen() {
@@ -83,8 +91,8 @@ struct NooraUI: UI {
         waitpid(pid, &status, 0)
     }
 
-    func ask(_ prompt: String, description: String) -> String {
-        noora.textPrompt(prompt: "\(prompt)", description: "\(description)")
+    func ask(title: String, _ prompt: String, description: String) -> String {
+        noora.textPrompt(title: "\(title)", prompt: "\(prompt)", description: "\(description)")
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

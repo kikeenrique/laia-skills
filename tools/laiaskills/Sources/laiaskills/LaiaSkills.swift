@@ -3,7 +3,7 @@ import Foundation
 import LaiaSkillsKit
 
 @main
-struct LaiaSkills: ParsableCommand {
+struct LaiaSkills: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "laiaskills",
         abstract: "Manage agent skills pinned in this repo and installed into ~/.agents/skills.",

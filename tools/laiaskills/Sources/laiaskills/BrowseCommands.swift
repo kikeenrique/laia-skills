@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 import LaiaSkillsKit
 
-struct BrowseCommand: ParsableCommand {
+struct BrowseCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "browse",
         abstract: "Look inside a source: its skills, their status and descriptions; preview and add them.",
@@ -25,11 +25,11 @@ struct BrowseCommand: ParsableCommand {
     @Flag(help: "When adding a new source, download only the pinned snapshot (for large repos).")
     var shallow = false
 
-    func run() throws {
+    func run() async throws {
         let ui = NooraUI()
         let session = BrowseSession(options: options, ui: ui, shallow: shallow)
         if let source {
-            try session.run(source, focus: skill)
+            try await session.run(source, focus: skill)
             return
         }
 
@@ -40,11 +40,11 @@ struct BrowseCommand: ParsableCommand {
             return ui.info("Open one with `laiaskills browse <source>`.")
         }
         let picked = ui.pick("Sources in skills.json", options: rows.map(\.path), enter: "open")
-        try session.run(picked, focus: skill)
+        try await session.run(picked, focus: skill)
     }
 }
 
-struct FindCommand: ParsableCommand {
+struct FindCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "find",
         abstract: "Search skills.sh for skills, then browse a result.",
@@ -74,7 +74,7 @@ struct FindCommand: ParsableCommand {
         let status: String
     }
 
-    func run() throws {
+    func run() async throws {
         let ui = NooraUI()
         let context = try Context(options)
         let given = query.joined(separator: " ")
@@ -91,19 +91,30 @@ struct FindCommand: ParsableCommand {
         // Search, then pick results to browse; each browse comes back to the same results. "New search"
         // goes back to the search box, and an empty search ends it.
         var next = given
+        var problem: String?
         while true {
-            let phrase = next.isEmpty ? ui.ask("Search skills.sh", description: "Leave empty to quit.") : next
+            var phrase = next
+            if phrase.isEmpty {
+                ui.clearScreen()
+                if let problem { ui.line(problem + "\n") }
+                phrase = ui.ask(title: "Find skills on skills.sh", "Search",
+                                description: "A skill name or topic, e.g. swiftui. Leave empty to quit.")
+            }
             next = ""
+            problem = nil
             guard !phrase.isEmpty else { return }
             let results: [CatalogResult]
             do {
-                results = try Catalog.search(phrase, limit: limit)
+                let (query, limit) = (phrase, limit)
+                results = try await ui.progress("Searching skills.sh for \"\(query)\"") {
+                    try Catalog.search(query, limit: limit)
+                }
             } catch CatalogError.queryTooShort {
-                ui.line("Search for at least 2 characters.\n")
+                problem = "Search for at least 2 characters."
                 continue
             }
             guard !results.isEmpty else {
-                ui.line("No skills found for \"\(phrase)\".\n")
+                problem = "No skills found for \"\(phrase)\"."
                 continue
             }
             var context = context
@@ -125,7 +136,7 @@ struct FindCommand: ParsableCommand {
                     notice = "\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos."
                     continue
                 }
-                let added = try BrowseSession(options: options, ui: ui, shallow: shallow)
+                let added = try await BrowseSession(options: options, ui: ui, shallow: shallow)
                     .run(rows[index].source, focus: rows[index].skill)
                 if !added.isEmpty {
                     notice = "Added \(added.joined(separator: ", ")) from \(rows[index].source) and installed. "
@@ -183,10 +194,10 @@ struct BrowseSession {
 
     /// Returns the names of the skills added from the picker, if any.
     @discardableResult
-    func run(_ argument: String, focus: String?) throws -> [String] {
+    func run(_ argument: String, focus: String?) async throws -> [String] {
         let context = try Context(options)
         PreviewClone.cleanLeftovers(repo: context.repo.root)
-        let (target, named) = try resolve(argument, context)
+        let (target, named) = try await resolve(argument, context)
         defer { target.preview?.remove() }
 
         let installer = Installer(repo: context.repo, environment: context.environment)
@@ -234,7 +245,12 @@ struct BrowseSession {
 
     // MARK: Resolving the source
 
-    private func resolve(_ argument: String, _ context: Context) throws -> (Target, String?) {
+    /// Slow work behind a spinner, except with `--json`, whose output must stay plain JSON.
+    private func slow<Value: Sendable>(_ message: String, _ work: @escaping @Sendable () throws -> Value) async throws -> Value {
+        options.json ? try work() : try await ui.progress(message, work)
+    }
+
+    private func resolve(_ argument: String, _ context: Context) async throws -> (Target, String?) {
         let trimmed = argument.hasSuffix("/") ? String(argument.dropLast()) : argument
         if let submodule = context.submodules.first(where: { $0.path == trimmed }) {
             let spec = (try? SourceSpec(submodule.url)).flatMap { $0.submodulePath == submodule.path ? $0 : nil }
@@ -244,11 +260,18 @@ struct BrowseSession {
         if let submodule = context.submodules.first(where: { $0.path.lowercased() == typed.submodulePath.lowercased() }) {
             return (try added(submodule, spec: (try? SourceSpec(submodule.url)) ?? typed, context), typed.skill)
         }
-        let spec = Browser.canonical(typed)
-        if let submodule = context.submodules.first(where: { $0.path.lowercased() == spec.submodulePath.lowercased() }) {
-            return (try added(submodule, spec: spec, context), typed.skill)
+        // Looking up the canonical name and cloning take a while: show a spinner.
+        let added = Set(context.submodules.map { $0.path.lowercased() })
+        let root = context.repo.root
+        let (spec, clone) = try await slow("Downloading \(typed.owner)/\(typed.repository) to preview it") {
+            let spec = Browser.canonical(typed)
+            if added.contains(spec.submodulePath.lowercased()) { return (spec, nil as PreviewClone?) }
+            return (spec, try PreviewClone.make(spec, repo: root))
         }
-        let preview = try PreviewClone.make(spec, repo: context.repo.root)
+        guard let preview = clone else {
+            let submodule = context.submodules.first { $0.path.lowercased() == spec.submodulePath.lowercased() }!
+            return (try self.added(submodule, spec: spec, context), typed.skill)
+        }
         let target = Target(spec: spec, path: spec.submodulePath, label: "\(spec.owner)/\(spec.repository)",
                             checkout: preview.folder, version: preview.versionLabel, preview: preview)
         return (target, typed.skill)
