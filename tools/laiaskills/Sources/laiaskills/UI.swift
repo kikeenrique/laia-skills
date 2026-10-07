@@ -112,13 +112,21 @@ struct NooraUI: UI {
 
 /// Space-aligned columns, no truncation.
 func plainTable(headers: [String], rows: [[String]]) -> String {
-    let all = [headers] + rows
-    let widths = headers.indices.map { column in all.map { $0[column].count }.max() ?? 0 }
-    return all.map { row in
+    alignedColumns([headers] + rows).joined(separator: "\n")
+}
+
+/// One line per row, cells padded into columns (also for picker options, which are plain strings).
+/// Columns in `rightAligned`, such as counts, are padded on the left.
+func alignedColumns(_ rows: [[String]], rightAligned: Set<Int> = []) -> [String] {
+    let count = rows.map(\.count).max() ?? 0
+    let widths = (0..<count).map { column in rows.map { column < $0.count ? $0[column].count : 0 }.max() ?? 0 }
+    return rows.map { row in
         row.enumerated().map { column, cell in
-            column == row.count - 1 ? cell : cell.padding(toLength: widths[column], withPad: " ", startingAt: 0)
+            let pad = String(repeating: " ", count: widths[column] - cell.count)
+            if rightAligned.contains(column) { return pad + cell }
+            return column == row.count - 1 ? cell : cell + pad
         }.joined(separator: "  ")
-    }.joined(separator: "\n")
+    }
 }
 
 /// Prints an Encodable report as stable, pretty JSON.

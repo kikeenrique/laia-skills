@@ -96,10 +96,10 @@ struct FindCommand: ParsableCommand {
                 ui.info("No skills found for \"\(phrase)\".")
                 continue
             }
-            let labels = rows.map { row in
-                "\(row.skill)  \(row.source)  \(row.installs.map { "\($0) installs" } ?? "")"
-                    + (row.status == "—" ? "" : "  [\(row.status)]")
-            }
+            let labels = alignedColumns(rows.map { row in
+                [row.skill, row.source, row.installs.map { "\($0) installs" } ?? "",
+                 row.status == "—" ? "" : "[\(row.status)]"]
+            }, rightAligned: [2])
             // First, so it's on screen however long the list is.
             let newSearch = "← New search"
             let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: [newSearch] + labels, enter: "choose")
@@ -250,10 +250,10 @@ struct BrowseSession {
         var current = focused
         while true {
             if current == nil {
-                let labels = rows.map { row in
-                    (marked.contains(row.name) ? "✓ " : "") + "\(row.name)  [\(row.statusLabel)]  "
-                        + shorten(row.description ?? "", to: 60)
-                }
+                let labels = alignedColumns(rows.map { row in
+                    [(marked.contains(row.name) ? "✓ " : "  ") + row.name, "[\(row.statusLabel)]",
+                     shorten(row.description ?? "", to: 60)]
+                })
                 let picked = ui.pick("Skills in \(target.label) \(target.version)", options: labels + [done],
                                      enter: "preview")
                 guard let index = labels.firstIndex(of: picked) else { break }
