@@ -115,6 +115,15 @@ func plainTable(headers: [String], rows: [[String]]) -> String {
     alignedColumns([headers] + rows).joined(separator: "\n")
 }
 
+/// A count with thousands separators (657,823). Not locale-aware, so output is the same everywhere.
+func grouped(_ number: Int) -> String {
+    let digits = String(number.magnitude)
+    let groups = stride(from: digits.count, to: 0, by: -3).reversed().map { end in
+        digits[digits.index(digits.startIndex, offsetBy: max(0, end - 3))..<digits.index(digits.startIndex, offsetBy: end)]
+    }
+    return (number < 0 ? "-" : "") + groups.joined(separator: ",")
+}
+
 /// One line per row, cells padded into columns (also for picker options, which are plain strings).
 /// Columns in `rightAligned`, such as counts, are padded on the left.
 func alignedColumns(_ rows: [[String]], rightAligned: Set<Int> = []) -> [String] {

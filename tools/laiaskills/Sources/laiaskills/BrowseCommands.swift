@@ -81,7 +81,7 @@ struct FindCommand: ParsableCommand {
             if options.json { return try printJSON(rows) }
             guard !rows.isEmpty else { return ui.info("No skills found.") }
             ui.table(headers: ["Skill", "Source", "Installs", "Status"],
-                     rows: rows.map { [$0.skill, $0.source, $0.installs.map(String.init) ?? "—", $0.status] })
+                     rows: rows.map { [$0.skill, $0.source, $0.installs.map(grouped) ?? "—", $0.status] })
             return ui.info("Look inside with `laiaskills browse owner/repo`, or `laiaskills add owner/repo@skill`.")
         }
 
@@ -97,7 +97,7 @@ struct FindCommand: ParsableCommand {
                 continue
             }
             let labels = alignedColumns(rows.map { row in
-                [row.skill, row.source, row.installs.map { "\($0) installs" } ?? "",
+                [row.skill, row.source, row.installs.map { "\(grouped($0)) installs" } ?? "",
                  row.status == "—" ? "" : "[\(row.status)]"]
             }, rightAligned: [2])
             // First, so it's on screen however long the list is.
