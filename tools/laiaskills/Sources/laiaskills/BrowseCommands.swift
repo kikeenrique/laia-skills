@@ -46,7 +46,8 @@ struct FindCommand: ParsableCommand {
         commandName: "find",
         abstract: "Search skills.sh for skills, then browse a result.",
         discussion: """
-        Uses skills.sh's undocumented search API; this is the only command that calls an online catalog. \
+        In a terminal, without a QUERY it asks for one, and after each preview it asks again (empty to \
+        quit). Uses skills.sh's undocumented search API; this is the only command that calls an online catalog. \
         Results are in skills.sh's relevance order. Install counts are popularity, not a review: preview a \
         skill (and its scripts) before adding it.
         """
@@ -54,8 +55,8 @@ struct FindCommand: ParsableCommand {
 
     @OptionGroup var options: GlobalOptions
 
-    @Argument(help: "What to search for.")
-    var query: [String]
+    @Argument(help: "What to search for. In a terminal, leave it out to be asked.")
+    var query: [String] = []
 
     @Option(help: "Maximum number of results.")
     var limit = 20
@@ -71,32 +72,49 @@ struct FindCommand: ParsableCommand {
     }
 
     func run() throws {
-        let phrase = query.joined(separator: " ")
-        let results = try Catalog.search(phrase, limit: limit)
-        let context = try Context(options)
-        let rows = results.map {
-            Row(skill: $0.skillId, source: $0.source, installs: $0.installs,
-                status: Catalog.status(of: $0, skills: context.repo.manifest.skills, submodules: context.submodules))
-        }
-        if options.json { return try printJSON(rows) }
-
         let ui = NooraUI()
-        guard !rows.isEmpty else { return ui.info("No skills found.") }
-        guard ui.isInteractive else {
+        let context = try Context(options)
+        let given = query.joined(separator: " ")
+        guard ui.isInteractive, !options.json else {
+            guard !given.isEmpty else { throw ValidationError("Give something to search for (no terminal to ask in).") }
+            let rows = try rows(for: given, context)
+            if options.json { return try printJSON(rows) }
+            guard !rows.isEmpty else { return ui.info("No skills found.") }
             ui.table(headers: ["Skill", "Source", "Installs", "Status"],
                      rows: rows.map { [$0.skill, $0.source, $0.installs.map(String.init) ?? "—", $0.status] })
             return ui.info("Look inside with `laiaskills browse owner/repo`, or `laiaskills add owner/repo@skill`.")
         }
-        let labels = rows.map { row in
-            "\(row.skill)  \(row.source)  \(row.installs.map { "\($0) installs" } ?? "")"
-                + (row.status == "—" ? "" : "  [\(row.status)]")
+
+        // Search, preview a result, then back to the search box; an empty search ends it.
+        var next = given
+        while true {
+            let phrase = next.isEmpty ? ui.ask("Search skills.sh", description: "Leave empty to quit.") : next
+            next = ""
+            guard !phrase.isEmpty else { return }
+            let rows = try rows(for: phrase, context)
+            guard !rows.isEmpty else {
+                ui.info("No skills found for \"\(phrase)\".")
+                continue
+            }
+            let labels = rows.map { row in
+                "\(row.skill)  \(row.source)  \(row.installs.map { "\($0) installs" } ?? "")"
+                    + (row.status == "—" ? "" : "  [\(row.status)]")
+            }
+            let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: labels, enter: "preview")
+            guard let index = labels.firstIndex(of: picked) else { continue }
+            guard rows[index].status != Catalog.notARepo else {
+                ui.warning(["\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos."])
+                continue
+            }
+            try BrowseSession(options: options, ui: ui, shallow: shallow).run(rows[index].source, focus: rows[index].skill)
         }
-        let picked = ui.pick("skills.sh results for \"\(phrase)\"", options: labels, enter: "preview")
-        guard let index = labels.firstIndex(of: picked) else { return }
-        guard rows[index].status != Catalog.notARepo else {
-            throw ValidationError("\(rows[index].source) is a website, not a git repo; laiaskills only adds skills from git repos.")
+    }
+
+    private func rows(for phrase: String, _ context: Context) throws -> [Row] {
+        try Catalog.search(phrase, limit: limit).map {
+            Row(skill: $0.skillId, source: $0.source, installs: $0.installs,
+                status: Catalog.status(of: $0, skills: context.repo.manifest.skills, submodules: context.submodules))
         }
-        try BrowseSession(options: options, ui: ui, shallow: shallow).run(rows[index].source, focus: rows[index].skill)
     }
 }
 

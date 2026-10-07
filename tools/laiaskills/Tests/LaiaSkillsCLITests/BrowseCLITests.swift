@@ -85,4 +85,11 @@ import Testing
         #expect(missing.stderr.contains("laiaskills browse owner/repo"))
         #expect(try laiaskills(setup, "find", "x").stderr.contains("at least 2 characters"))
     }
+
+    @Test func findWithoutAQueryNeedsATerminal() throws {
+        let (setup, _) = try setUp()
+        let result = try laiaskills(setup, "find")
+        #expect(result.status != 0)
+        #expect(result.stderr.contains("no terminal to ask in"))
+    }
 }
