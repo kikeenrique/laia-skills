@@ -1,0 +1,20 @@
+Reason: Keep the trace stop-file in the project tmp folder
+Date: 2026-10-08
+
+diff --git a/SKILL.md b/SKILL.md
+index 534cf9a..685e9ee 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -54,10 +54,10 @@ Trigger when the user asks to "record a trace", "profile the app", "capture a se
+    ```bash
+    python3 "${SKILL_DIR}/scripts/record_trace.py" \
+        --device "<name|udid>" --attach "<AppName>" \
+-       --stop-file /tmp/stop-trace --output ~/Desktop/session.trace
++       --stop-file "$PWD/tmp/stop-trace" --output ~/Desktop/session.trace
+    ```
+    For interactive sessions, just tell the user to press Ctrl+C when done.
+-4. **Signal stop** — when the user says they've finished exercising the app, `touch /tmp/stop-trace`. The script cleanly SIGINTs xctrace and waits up to 60s for finalisation.
++4. **Signal stop** — when the user says they've finished exercising the app, `touch "$PWD/tmp/stop-trace"` (the project's own `tmp/` folder). The script cleanly SIGINTs xctrace and waits up to 60s for finalisation.
+ 5. **Analyse** the resulting trace (flow into the "Trace-driven improvement" workflow below).
+ 
+ ### Trace-driven improvement (Instruments `.trace` provided)
