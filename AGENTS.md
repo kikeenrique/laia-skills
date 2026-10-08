@@ -116,7 +116,6 @@ Third-party skills are never copied into the repo; `skills.json` maps each to a 
 - **Plugin name must match a skill.** Every plugin needs a skill directory named after it (`first-party/<plugin>/skills/<plugin>/SKILL.md`) plus a README link to that file. For a multi-skill bundle, add a **router** `SKILL.md` with that name (see `first-party/visionos-agents/skills/visionos-agents/SKILL.md`).
 - **Marketplace skill paths must exist.** Every path in a plugin's `skills` array in `marketplace.json` must point at a folder containing `SKILL.md`.
 - **Links and asset paths must resolve.** Local Markdown links in each `SKILL.md` and the icon paths in each `agents/openai.yaml` are checked. Fix broken references in the vendored copy under `first-party/<plugin>/skills/`; leave `upstream/` pristine.
-- **Quote long `description` frontmatter values** — a third-party skill manager's YAML parser breaks on long unquoted strings.
 
 ### Codex sidecar (`agents/openai.yaml`)
 
