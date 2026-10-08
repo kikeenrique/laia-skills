@@ -282,7 +282,7 @@ struct BrowseSession {
     private func added(_ submodule: Submodule, spec: SourceSpec?, _ context: Context) throws -> Target {
         let checkout = context.repo.root.appendingPathComponent(submodule.path)
         guard FileManager.default.fileExists(atPath: checkout.appendingPathComponent(".git").path) else {
-            throw ValidationError("`\(submodule.path)` is not checked out (git submodule update --init \(submodule.path)).")
+            throw CommandError("`\(submodule.path)` is not checked out (git submodule update --init \(submodule.path)).")
         }
         let status = UpstreamChecker.statuses(of: [submodule], repo: context.repo.root, fetch: false).first
         return Target(spec: submodule.isFirstPartyUpstream ? nil : spec, path: submodule.path, label: submodule.path,

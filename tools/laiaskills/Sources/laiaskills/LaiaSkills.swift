@@ -16,12 +16,23 @@ struct LaiaSkills: AsyncParsableCommand {
     )
 }
 
+/// A failure of the command's work, not of how it was typed. ArgumentParser prints it as `Error: …`;
+/// a `ValidationError` would also print the root command's usage, which reads as a typing mistake.
+/// Keep `ValidationError` for bad flag combinations.
+struct CommandError: Error, CustomStringConvertible {
+    let description: String
+
+    init(_ description: String) {
+        self.description = description
+    }
+}
+
 /// Gets approval for a risky step: `--yes`, or an interactive prompt. Non-interactive runs without
 /// `--yes` stop with an explanation instead of guessing.
 func approve(_ ui: UI, _ question: String, yes: Bool) throws -> Bool {
     if yes { return true }
     guard ui.isInteractive else {
-        throw ValidationError("\(question) Re-run with --yes to confirm (no terminal to ask in).")
+        throw CommandError("\(question) Re-run with --yes to confirm (no terminal to ask in).")
     }
     return ui.confirm(question, default: false)
 }
@@ -30,7 +41,7 @@ func approve(_ ui: UI, _ question: String, yes: Bool) throws -> Bool {
 func select(_ names: [String], from skills: [ResolvedSkill]) throws -> [ResolvedSkill] {
     try names.map { name in
         guard let skill = skills.first(where: { $0.name == name }) else {
-            throw ValidationError("`\(name)` is not in skills.json")
+            throw CommandError("`\(name)` is not in skills.json")
         }
         return skill
     }

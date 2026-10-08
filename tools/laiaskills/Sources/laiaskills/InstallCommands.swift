@@ -178,7 +178,7 @@ struct RemoveCommand: ParsableCommand {
 
     func run() throws {
         let context = try Context(options)
-        guard let entry = context.repo.manifest.skills[skill] else { throw ValidationError("`\(skill)` is not in skills.json") }
+        guard let entry = context.repo.manifest.skills[skill] else { throw CommandError("`\(skill)` is not in skills.json") }
         let ui = NooraUI()
         guard try approve(ui, "Remove \(skill) from skills.json and uninstall it?", yes: yes) else { throw ExitCode(1) }
 

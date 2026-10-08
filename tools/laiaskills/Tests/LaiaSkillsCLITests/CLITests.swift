@@ -254,7 +254,12 @@ import Testing
     @Test func commitRefusesWithoutConfirmationAndWithNothingPending() throws {
         let setup = try SkillsRepoFixture()
         #expect(try laiaskills(setup, "commit", "--yes").stderr.contains("nothing to commit"))
-        #expect(try laiaskills(setup, "remove", "beta").stderr.contains("--yes"))
+        let unconfirmed = try laiaskills(setup, "remove", "beta")
+        #expect(unconfirmed.status != 0)
+        #expect(unconfirmed.stderr.contains("Re-run with --yes"))
+        // A runtime refusal, not a typing mistake: no usage text after the error.
+        #expect(!unconfirmed.stderr.contains("Usage:"))
+        #expect(!(try laiaskills(setup, "remove", "ghost").stderr.contains("Usage:")))
     }
 }
 

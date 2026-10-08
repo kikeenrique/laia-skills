@@ -100,7 +100,7 @@ struct UpgradeCommand: ParsableCommand {
         }
         ui.warning(problems)
         if !conflicted.isEmpty {
-            throw ValidationError("""
+            throw CommandError("""
                 Stopped: patches for \(conflicted.joined(separator: ", ")) no longer apply. The new pin is staged and \
                 those skills keep their old copies. Update or delete the patches under \(Patches.folder)/, run \
                 `laiaskills sync`, then `laiaskills commit`.

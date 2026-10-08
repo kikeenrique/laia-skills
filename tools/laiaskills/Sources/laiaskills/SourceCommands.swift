@@ -45,7 +45,7 @@ struct AddCommand: ParsableCommand {
         if let path, let name = requested.first {
             guard let match = Adder.find(name, at: path, in: available) else {
                 let copies = available.filter { SkillDiscovery.matches($0.name, name) }.map(\.path)
-                throw ValidationError("No skill `\(name)` at `\(path)`. Copies: \(copies.isEmpty ? "none" : copies.joined(separator: ", "))")
+                throw CommandError("No skill `\(name)` at `\(path)`. Copies: \(copies.isEmpty ? "none" : copies.joined(separator: ", "))")
             }
             chosen = [match]
         } else if !requested.isEmpty {
@@ -62,7 +62,7 @@ struct AddCommand: ParsableCommand {
         } else {
             throw ValidationError("Pass --skill. Available: \(available.map(\.name).joined(separator: ", "))")
         }
-        guard !chosen.isEmpty else { throw ValidationError("No skills chosen.") }
+        guard !chosen.isEmpty else { throw CommandError("No skills chosen.") }
         let names = try addChosen(chosen, available: available, spec: spec, tag: tag, explicitPath: path,
                                   install: !noInstall, options: options, repo: repo)
 
@@ -237,6 +237,6 @@ struct ShowCommand: ParsableCommand {
         let command = ["xdg-open", folder.path]
         #endif
         let result = try Shell.run(command)
-        if !result.succeeded { throw ValidationError("Could not open \(folder.path): \(result.stderr)") }
+        if !result.succeeded { throw CommandError("Could not open \(folder.path): \(result.stderr)") }
     }
 }
