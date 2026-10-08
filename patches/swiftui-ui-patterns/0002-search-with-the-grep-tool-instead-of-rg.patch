@@ -1,0 +1,16 @@
+Reason: Search with the Grep tool instead of rg
+Date: 2026-10-08
+
+diff --git a/SKILL.md b/SKILL.md
+index 1a8200b..27ddf4e 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -12,7 +12,7 @@ Choose a track based on your goal:
+ ### Existing project
+ 
+ - Identify the feature or screen and the primary interaction model (list, detail, editor, settings, tabbed).
+-- Find a nearby example in the repo with `rg "TabView\("` or similar, then read the closest SwiftUI view.
++- Find a nearby example in the repo (search for `TabView(` or similar with the Grep tool), then read the closest SwiftUI view.
+ - Apply local conventions: prefer SwiftUI-native state, keep state local when possible, and use environment injection for shared dependencies.
+ - Choose the relevant component reference from `references/components-index.md` and follow its guidance.
+ - If the interaction reveals secondary content by dragging or scrolling the primary content away, read `references/scroll-reveal.md` before implementing gestures manually.
