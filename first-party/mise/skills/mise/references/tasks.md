@@ -122,6 +122,13 @@ Set `optional = true` on a structured dependency so a name or pattern that match
 depends = [{ task = "//...:test", optional = true }]
 ```
 
+The object form of `confirm` can relabel the answers (templated like the message; piped `y`/`n` and `--yes` still work):
+
+```toml
+[tasks.deploy]
+confirm = { message = "Deploy to production?", yes = "Deploy", no = "Cancel", default = "no" }
+```
+
 `confirm` guards only the task's own `run` command. Dependencies run before the confirmation prompt unless you model them as `run = [{ task = "..." }]` or put `confirm` on the dependency tasks too.
 
 ## Structured Runs
@@ -247,7 +254,33 @@ otel.enabled = true   # MISE_OTEL_ENABLED
 otel.logs = true      # optional: also ship task stdout/stderr as OTLP logs (privacy boundary)
 ```
 
-Configure the endpoint with standard variables such as `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`; without `otel.enabled`, mise ignores them.
+Configure the endpoint with standard variables such as `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`; without `otel.enabled`, mise ignores them. Since 2026.10.5 exporting requires `experimental = true`, as do `git::` remote task files (`file = "git::..."`) and `git::`/`oci::` entries in `task_config.includes`: `mise run` refuses them, while `mise tasks ls/info` show the task with a warning, and gated includes are skipped.
+
+## Secrets
+
+Experimental (`experimental = true`, fnox 1.39.0+). A project names [fnox](https://github.com/jdx/fnox) as its secrets source, and each task receives only the keys it lists, only while it runs; output is redacted:
+
+```toml
+[secrets.fnox]          # project config only; optional profile = "dev"
+
+[tasks.deploy]
+depends = ["build"]                          # build receives nothing
+secrets = ["DEPLOY_KEY", "DATABASE_URL"]     # also #MISE secrets=[...] in file tasks
+run = "./deploy.sh"                          # read $DEPLOY_KEY; never put secrets in run
+
+[tasks.migrate]
+env.PGURL = "postgres://app:{{ secrets.DB_PASSWORD }}@db/app"   # only allowed in task env values
+run = 'psql "$PGURL" -f schema.sql'
+```
+
+```bash
+mise secrets ls [--json]                     # keys, scopes, and granted tasks; never values
+mise run --secrets STRIPE_KEY deploy         # one-off grant to the named tasks, not their deps
+mise run --secrets-all deploy
+mise x --secrets GH_TOKEN -- gh release list # nothing is injected without the flag
+```
+
+Tasks that list secrets need trusted config, ignore `raw` (unless `raw`/`interactive` is set on the task, which disables redaction), are not artifact-cached, cannot be global or remote tasks, and are refused from hooks, daemons, `mise bootstrap`, and safe mode. `secrets` needs `min_version = "2026.10.4"`; older mise rejects the field. A user task named `secrets` now needs `mise run secrets`.
 
 ## Windows
 

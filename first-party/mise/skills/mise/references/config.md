@@ -29,7 +29,7 @@ include = [
 ]
 ```
 
-Included files cannot nest `include`, set `[settings]` or monorepo keys, or define `[tasks]` (use `task_config.includes`). They follow the including file's trust; paranoid mode requires a full commit sha or OCI digest. Fetched fragments are cached under `MISE_CACHE_DIR`.
+Included files cannot nest `include`, set `[settings]` or monorepo keys, or define `[tasks]` (use `task_config.includes`). Since 2026.10.5 they may declare `[bootstrap]`, merged key by key below the including file. They follow the including file's trust; paranoid mode requires a full commit sha or OCI digest. Fetched fragments are cached under `MISE_CACHE_DIR`.
 
 Dot-prefixed forms such as `.mise.toml` are also accepted. Use the CLI for the installed version's exact resolution:
 
@@ -60,6 +60,16 @@ mise use --path ./sub/mise.toml node@22
 ```
 
 `mise config get` / `mise config set` instead default to the highest-precedence loaded TOML file, which can be `mise.local.toml`; use their `-f`/`--file` flag to pick one. `mise set`/`mise unset` also take `--file`, and `mise unuse` takes `--path` (aliased `--file`) and defaults to the first loaded config declaring the tool. `mise use` is the exception: it has only `-p`/`--path` — `-f` there is `--force`.
+
+To split global config by section, set the global-only `write_targets`; new `mise use -g` tools, `mise bootstrap packages use|import --global` packages, and `mise dot add`/`edit` entries go to those files, while existing entries stay where they are declared (an ambiguous write needs `--path`):
+
+```toml
+# ~/.config/mise/config.toml
+[settings.write_targets]
+tools = "~/.config/mise/conf.d/10-tools.toml"
+packages = "~/.config/mise/conf.d/20-packages.toml"
+dotfiles = "~/.config/mise/conf.d/30-dotfiles.toml"
+```
 
 ## Core Sections
 

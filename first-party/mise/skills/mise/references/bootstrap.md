@@ -57,13 +57,16 @@ Machine-wide software goes in `[bootstrap.packages]`; per-project, version-switc
 | `[bootstrap.linux.systemd.units]`, `[bootstrap.linux.firewall]` | Linux user units and host firewall |
 | `[bootstrap.files]`, `[bootstrap.directories]` | Managed paths, content, ownership, permissions |
 | `[bootstrap.users]`, `[bootstrap.groups]` | Linux service accounts and groups |
-| `[bootstrap.services]`, `[bootstrap.compose]` | User services; Docker Compose projects |
+| `[bootstrap.services]`, `[bootstrap.compose]` | User services (including `builtin = "history-watch"` / `"tool-update"`); Docker Compose projects |
+| `[bootstrap] dotfile_groups` | Which `[dotfile_groups.*]` this machine applies; see [dotfiles.md](dotfiles.md) |
 | `[bootstrap.secrets]` | Names of secret inputs used by managed file templates |
 | `[bootstrap.user]` | Current-user settings such as `login_shell` |
 | `[bootstrap.hooks]` | Commands at named bootstrap phases |
 | `[tasks.bootstrap]` | Imperative setup that no declarative section covers |
 
-`[system.*]` and `mise system` were 2026.6.4 spellings and no longer exist. Never emit them.
+`[system.*]` and `mise system` were 2026.6.4 spellings and no longer exist. Never emit them; mise now warns on legacy command spellings.
+
+Since 2026.10.5 a config `include` (`git::`/`oci::` fragment) may carry `[bootstrap]`: it ranks below the including file key by key (lists get the shared entries first) and runs with the including file's trust. Under `MISE_SAFE=1`, project `[bootstrap]` and `[dotfiles]` are ignored.
 
 ## Packages
 
@@ -109,7 +112,7 @@ bashrc = "activate"
 fish = "activate"
 ```
 
-`zsh = true` expands to `zprofile = "shims"` + `zshrc = "activate"`. Blocks are written with the same markers dotfile edit entries use. `mise` must already be on the startup file's PATH; open a new shell afterwards.
+`zsh = true` expands to `zprofile = "shims"` + `zshrc = "activate"`. `fish = "auto"` writes an `if status is-interactive` block to `config.fish`: full activation at the prompt, shims for scripts (fish-only; `auto` elsewhere is ignored with a warning). Blocks are written with the same markers dotfile edit entries use. `mise` must already be on the startup file's PATH; open a new shell afterwards.
 
 ## Phases
 
@@ -127,8 +130,18 @@ mise bootstrap --update          # refresh package metadata and declared repos f
 
 Files and directories a package manager needs (apt keyrings, repo definitions) can run early with `phase = "pre-packages"` on their `[bootstrap.files."<path>"]` / `[bootstrap.directories."<path>"]` entry: they apply after accounts and plugins, before the `pre-packages` hook (default phase is `"post-packages"`). Follow with `mise bootstrap --update` to refresh package metadata.
 
+Files and directories also accept the packages' `os` selector, so one config can write different paths per platform; a non-matching entry is skipped as if undeclared:
+
+```toml
+[bootstrap.files."/etc/docker/daemon.json"]
+os = "linux"
+source = "./files/docker-daemon.json"
+```
+
 ## Platform Units And Defaults
 
+- Compose project values render Tera, e.g. `project_dir = "{{ config_root }}/mempalace"`, so shared config needs no machine-specific paths (no `exec()`).
+- systemd units support `state = "absent"` and `mise bootstrap unapply`.
 - systemd units (`[bootstrap.linux.systemd.units.<name>]`) accept `before`, `binds_to`, `part_of`, and `conflicts` (lists of unit names) next to `after`/`wants`/`requires`, and service-only `exec_start_pre` / `exec_start_post` lists (one `ExecStartPre=`/`ExecStartPost=` line each).
 - LaunchAgents accept `process_type` = `Background`, `Standard`, `Adaptive`, or `Interactive` (exact launchd spelling; anything else is an error).
 - For `defaults -currentHost` preferences, use an explicit entry with `host = "current"` (default `"any"`):

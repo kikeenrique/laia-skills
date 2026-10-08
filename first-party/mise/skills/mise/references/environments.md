@@ -111,4 +111,4 @@ The `[settings] tera_v1 = true` form also works. Both are removed in mise 2027.4
 
 ## Safety
 
-Treat env directives, templates, and sourced files as code-like behavior. Review config before using `mise trust`, and avoid committing secrets in `mise.toml`. Use local files or an external secrets workflow for developer-specific secrets.
+Treat env directives, templates, and sourced files as code-like behavior. Review config before using `mise trust`, and avoid committing secrets in `mise.toml`. Use local files or an external secrets workflow for developer-specific secrets. For per-task grants from fnox (`[secrets.fnox]`, task `secrets`, `mise run --secrets`), see the Secrets section in [tasks.md](tasks.md); `{{ secrets.X }}` is rejected in `[env]` and `[vars]`.

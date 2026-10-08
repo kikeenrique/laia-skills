@@ -39,13 +39,18 @@ Use these official docs when exact behavior, flags, or current defaults matter:
 - Bootstrap Files: https://mise.jdx.dev/bootstrap/files.html
 - Bootstrap Repos: https://mise.jdx.dev/bootstrap/repos.html
 - Dotfiles: https://mise.jdx.dev/dotfiles.html
-- History: https://mise.jdx.dev/history.html
+- Dotfile Merge And Edit Entries: https://mise.jdx.dev/dotfiles/edits.html
+- Dotfile Groups: https://mise.jdx.dev/dotfiles/groups.html
+- Dotfiles History: https://mise.jdx.dev/dotfiles/history.html
+- Dotfiles Sync: https://mise.jdx.dev/dotfiles/sync.html
+- fnox Secrets: https://mise.jdx.dev/environments/secrets/fnox.html
+- Install Layout: https://mise.jdx.dev/dev-tools/install-layout.html
+- Java: https://mise.jdx.dev/lang/java.html
 - Security: https://mise.jdx.dev/security.html
 - Sandboxing: https://mise.jdx.dev/sandboxing.html
 - Continuous Integration: https://mise.jdx.dev/continuous-integration.html
 - Errors: https://mise.jdx.dev/errors.html
-- Plugins: https://mise.jdx.dev/plugins.html
-- Using Plugins: https://mise.jdx.dev/plugin-usage.html
+- Plugins (including usage): https://mise.jdx.dev/plugins.html
 - Backend Plugin Development: https://mise.jdx.dev/backend-plugin-development.html
 - Tool Plugin Development: https://mise.jdx.dev/tool-plugin-development.html
 - Environment Plugin Development: https://mise.jdx.dev/env-plugin-development.html

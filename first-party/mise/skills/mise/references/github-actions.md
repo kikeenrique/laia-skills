@@ -18,13 +18,13 @@ jobs:
 
 Prefer `mise run <task>` in later steps so CI and local runs share one definition. Plain commands (`node`, `npm test`) also work because the action exports PATH entries.
 
-`mise generate github-action` scaffolds a workflow like this, but mise v2026.10.2 still emits `jdx/mise-action@v3` and sets `MISE_EXPERIMENTAL: true`. Bump the tag to `@v5` and drop the experimental flag unless a task needs it.
+`mise generate github-action` scaffolds a workflow like this. Since mise 2026.10.5 it emits `jdx/mise-action@v5` and `actions/checkout@v7` without `MISE_EXPERIMENTAL`; older mise emitted `@v3` with the experimental flag, so bump the tag in workflows generated before that.
 
 ## Key Inputs
 
 | Input | Default | Use |
 | --- | --- | --- |
-| `version` | newest release ≥ `minimum_release_age` | Pin the mise binary, e.g. `2026.10.2`. Takes precedence over the release-age delay. |
+| `version` | newest release ≥ `minimum_release_age` | Pin the mise binary, e.g. `2026.10.5`. Takes precedence over the release-age delay. |
 | `minimum_release_age` | `24h` | Soak time for an unpinned mise binary (`7d`, `6mo`, ISO date; `0s` disables). Applies to the mise binary only, not to tools. |
 | `sha256` | — | Checksum of the mise binary; also lets a cached binary of an older release (no signed checksums) be reused. |
 | `install` | `true` | `false` installs mise only; run `mise install` yourself. |
@@ -79,7 +79,7 @@ steps:
   - uses: actions/checkout@v6
   - uses: jdx/mise-action@v5
     with:
-      version: 2026.10.2
+      version: 2026.10.5
       cache_save: ${{ github.event_name != 'pull_request' }}
   - run: mise run ci
 ```

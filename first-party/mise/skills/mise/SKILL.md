@@ -30,12 +30,12 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 | Install mise, activate shells, or get a project started | [getting-started.md](references/getting-started.md) |
 | Choose between `mise activate`, shims, `mise exec`, `mise env`, and `mise run` | [activation.md](references/activation.md) |
 | Edit `mise.toml`, config precedence, local files, or config environments | [config.md](references/config.md) |
-| Manage tool versions, backends, registry tools, or `.tool-versions` migration | [dev-tools.md](references/dev-tools.md) |
+| Manage tool versions, backends, registry tools, tool auto-updates, Java vendors, or `.tool-versions` migration | [dev-tools.md](references/dev-tools.md) |
 | Add env vars, dotenv loading, templates, or exported env output | [environments.md](references/environments.md) |
-| Define, run, debug, or optimize `mise run` tasks, including monorepo targets and `[daemons]` | [tasks.md](references/tasks.md) |
+| Define, run, debug, or optimize `mise run` tasks, including monorepo targets, `[daemons]`, and fnox task secrets | [tasks.md](references/tasks.md) |
 | Cache task artifacts, infer a workspace graph, or run only affected projects | [workspaces-and-caching.md](references/workspaces-and-caching.md) |
 | Set up a whole machine: OS packages, shell activation, repos, services, macOS defaults | [bootstrap.md](references/bootstrap.md) |
-| Track, link, copy, template, or sync dotfiles | [dotfiles.md](references/dotfiles.md) |
+| Track, link, copy, template, merge, group, or sync dotfiles | [dotfiles.md](references/dotfiles.md) |
 | Install or author plugins; choose plugins vs packslip/aqua/github/backends | [plugins.md](references/plugins.md) |
 | Create backend, tool, environment, or package plugins | [plugin-development.md](references/plugin-development.md) |
 | Add hooks, watch files, install scripts, CI files, or generated docs/stubs | [hooks-and-generate.md](references/hooks-and-generate.md) |

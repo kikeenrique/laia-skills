@@ -27,6 +27,8 @@ When the registry moves a tool to another backend, mise keeps installing from th
 
 `mise lock --bump` re-resolves fuzzy selectors (`latest`, `lts`, `"22"`) against the newest matching versions and rewrites the lockfile without installing anything and without touching `mise.toml`. Exact pins are untouched — use `mise upgrade --bump` for those. `--global`/`--local` pick the lockfile; `--json` emits machine-readable changes for scheduled dependency-bump PRs.
 
+Full lock runs drop top-level tools the active config no longer declares. For a shared lockfile (e.g. `mise lock --global` used by profiles that configure different tools), set `lockfile_auto_prune = false` to keep unreferenced entries.
+
 Monorepos can use one root lockfile with `[monorepo] lockfile = true`. Per-subproject lockfiles start warning in mise 2026.12.0 and the unset default flips to root lockfiles in 2027.6.0.
 
 Commit:
@@ -101,7 +103,7 @@ mise trust --ignore
 MISE_SAFE=1 mise lock --bump --dry-run --json
 ```
 
-Safe mode **refuses** template `exec()`/`read_file()`, task execution, tool `postinstall` and `install_env`, and asdf plugin scripts or plugin installation. It **ignores** shell and install hooks, project `[env]`/env directives/`[shell_alias]`, project `[settings]`, and `_.source` everywhere. It loads otherwise-untrusted config without prompting, since those features are off. Operator-owned global and system config still applies.
+Safe mode **refuses** template `exec()`/`read_file()`, task execution, tool `postinstall` and `install_env`, and asdf plugin scripts or plugin installation. It **ignores** shell and install hooks, project `[env]`/env directives/`[shell_alias]`, project `[settings]`, project `[bootstrap]` and `[dotfiles]`, `watch_files` hooks, and `_.source` everywhere. It loads otherwise-untrusted config without prompting, since those features are off. Operator-owned global and system config still applies.
 
 Safe mode is not an OS sandbox and does not make a command read-only.
 
@@ -121,7 +123,7 @@ Defaults for every invocation:
 deny_all = true
 ```
 
-`--deny-all` keeps implicit access to system libraries and tool dirs; it is not an empty container. Enforcement uses the host OS and differs between Linux and macOS; **Windows does not enforce filesystem or network restrictions**. Configuration evaluation and tool installation happen outside the child's sandbox — use safe mode for untrusted config.
+`--deny-all` keeps implicit access to system libraries and tool dirs; it is not an empty container. Enforcement uses the host OS and differs between Linux and macOS; **Windows does not enforce filesystem or network restrictions**. Per-host `--allow-net=<host>` (task `allow_net`) is unsupported on both Linux and macOS and fails with an error; use `--deny-net` to block all network. Configuration evaluation and tool installation happen outside the child's sandbox — use safe mode for untrusted config.
 
 ## CI Pattern
 
@@ -189,6 +191,8 @@ task.timings = true
 
 Task settings now live under a `task.` table. The flat `task_output`, `task_timeout`, `task_timings`, `task_skip`, `task_disable_paths`, `task_run_auto_install`, `task_show_full_cmd`, `task_skip_depends`, and `task_remote_no_cache` spellings are deprecated: they warn from mise 2026.8.0 and are removed in 2027.2.0.
 
+Settings that have no effect are now deprecated — remove them: `plugin_autoupdate_last_check_duration`, `sops.age_recipients` (use `mise set --age-encrypt --age-recipient <r> KEY=value`), `task.cache.stats_report`, and `idiomatic_version_file` / `legacy_version_file*` (use `idiomatic_version_file_enable_tools`). `mise settings set` now refuses to write a setting where mise would ignore it: early-init settings (`env`, `auto_env`, `env_conf_d`, `ceiling_paths`, `ignored_config_paths`, `override_*_filenames`) belong in `miserc.toml` or env vars, and global-only ones (`yes`, `paranoid`, `trusted_config_paths`, …) cannot take `--local`.
+
 Useful env vars:
 
 ```bash
@@ -202,7 +206,7 @@ MISE_NO_HOOKS=1
 MISE_EXPERIMENTAL=1
 ```
 
-Self-update is separate from `mise upgrade`. For standalone installs, `mise settings auto_update=true` (global-only, skipped in CI) checks periodically before eligible interactive commands. `mise self-update` and the `mise.run` installer pick the newest stable release at least 24h old: override with `self_update.minimum_release_age`, `MISE_SELF_UPDATE_MINIMUM_RELEASE_AGE=7d`, or `--minimum-release-age`. Organizations can point self-updates at a mirror:
+Self-update is separate from `mise upgrade`. For standalone installs, `self_update.auto = true` (`MISE_SELF_UPDATE_AUTO`; global-only, skipped in CI) checks every `self_update.check_duration` before eligible interactive commands. These replaced `auto_update` and `auto_update_check_duration` in 2026.10.4; the old names still work (warning from 2027.4.0, removed in 2028.4.0) and older mise ignores a settings file with unknown `self_update.*` keys, so keep the old spelling while old clients must read the config. The per-tool `auto_update` option is a different feature (see [dev-tools.md](dev-tools.md)). `mise self-update` and the `mise.run` installer pick the newest stable release at least 24h old: override with `self_update.minimum_release_age`, `MISE_SELF_UPDATE_MINIMUM_RELEASE_AGE=7d`, or `--minimum-release-age`. Organizations can point self-updates at a mirror:
 
 ```toml
 [settings.self_update]
@@ -219,7 +223,9 @@ MISE_EXPERIMENTAL=1 mise mcp
 
 - `list_commands` reports each mise command's help plus its declared effect: `read`, `write`, or `destructive`. Every CLI doc page now carries the same `Effect:` line. The declarations describe commands; they do not enforce client approval policy.
 - `run_task` runs a task with its normal dependencies and environment, non-interactively with `MISE_YES=1`, bounded by `task.timeout`. Output is captured, not streamed.
-- `install_tool` is advertised but returns "not yet implemented" — install tools with `mise install` outside MCP.
+- `install_tool` (`{"tool": "node", "version": "22"}`) installs like `mise install`; without `version` it installs the configured version, or latest. No time limit.
+- Since 2026.10.5 `run_task` and `install_tool` refuse untrusted projects and ask the user to run `mise trust <path>`; the server never trusts config on a client's behalf.
+- The `mise://tasks` resource's `env` field is now an array of directive strings (as in `mise tasks ls --json`), not an object.
 
 `mise deps` is also experimental and the docs now require `[settings] experimental = true`. Use it when the user explicitly wants mise to manage project dependency installs such as `npm install`, `uv sync`, `go mod download`, or custom generated outputs based on hashed sources.
 

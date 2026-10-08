@@ -125,7 +125,7 @@ mise generate task-docs
 mise generate task-stubs
 mise generate tool-stub ./bin/my-tool --url https://example.com/tool.tar.gz
 mise generate tool-stub ./bin/my-tool --lock
-mise generate tool-stub ./bin/bootstrap-tool --url https://example.com/tool.tar.gz --bootstrap --bootstrap-version 2026.10.2
+mise generate tool-stub ./bin/bootstrap-tool --url https://example.com/tool.tar.gz --bootstrap --bootstrap-version 2026.10.5
 ```
 
 `mise generate install-script` writes a committable wrapper that downloads mise for contributors who do not have it. It was renamed from `mise generate bootstrap`; the old name still works but is deprecated and removed in mise 2027.9.0.

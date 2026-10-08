@@ -96,7 +96,14 @@ Backend preference order:
 
 `packslip:` takes a host and path without `https://`; GitHub may be abbreviated (`packslip:jdx/hk`). Releases can carry version-matched completions, man pages, and agent skills. mise remembers accepted signers; inspect with `mise packslip pins` and reset one with `mise packslip forget <project>` only after confirming the publisher announced the change.
 
-The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools to `packslip`, `aqua`, or `github`. The experimental `spinel:` backend (2026.10.2) compiles a Ruby CLI from GitHub source into a native binary and needs the `spinel` compiler and a C compiler; it may be removed, so avoid it for team config.
+By default any workflow of the repository may sign a GitHub release. Pin the signing workflow on tags with `workflow` (a file name, or a list when the project moved its release workflow); it cannot be combined with `pubkey`, `identity`, `identity_prefix`, or `issuer`:
+
+```toml
+[tools]
+"packslip:github.com/aubepkg/aube" = { version = "latest", workflow = ["release-plz.yml", "release.yml"] }
+```
+
+The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools to `packslip`, `aqua`, or `github`. The experimental `spinel:` backend (2026.10.2) compiles a Ruby CLI from GitHub source into a native binary and needs the `spinel` compiler and a C compiler; since 2026.10.5 its installs require `experimental = true`. It may be removed, so avoid it for team config.
 
 ### GitHub Asset Selection
 
@@ -117,6 +124,8 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
 "gem:internal-cli" = { version = "latest", source = "https://{{ env.GEM_TOKEN }}@gems.example.com/acme" }
 "npm:@gmickel/gno" = { version = "2.3.0", allow_exotic_deps = ["xlsx"] }   # git/file/tarball deps aube blocks
 "http:my-tool" = { version = "1.0.0", url = "file:///opt/archives/my-tool.tar.gz", checksum = "sha256:..." }
+"http:polaris" = { version = "0.9.2", url = "https://ghcr.io/v2/acme/polaris/blobs/sha256:...", headers = { Authorization = "Bearer {{ env.GITHUB_TOKEN | b64_encode }}" } }
+"npm:github:owner/repo" = "v1.2.0"   # git+https://, git://, github:, gitlab:, bitbucket:; version is the git ref
 "pypi:azure-cli" = { version = "latest", with = ["pip"], dependency_prereleases = "allow" }
 "pypi:ansible" = { version = "latest", expose = ["ansible-core"] }   # expose extra packages' entry points
 ```
@@ -125,6 +134,8 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
 - Git subdirectories use pip's fragment, quoted, with the ref after `@`: `mise use 'pypi:git+https://github.com/o/repo#subdirectory=cli@main'` (the `.git` suffix is optional; GitHub shorthand works too).
 - aqua `libc` overrides the `libc` setting for that tool and is recorded in the lockfile; reinstall with `mise install --force` to switch an installed version.
 - A `file://` URL is recorded in `mise.lock` as written, so it only works where that path exists.
+- `http:` `headers` (templated values, e.g. bearer or `X-Api-Key`) go to the artifact, `version_list_url`, and `checksum_url` requests on the `url` host only; they are dropped on a cross-host redirect unless listed per header in `headers_forward = { X-Api-Key = ["cdn.example.com", "*.assets.example.com"] }`. Changing a token does not reinstall the tool.
+- `npm:` git installs: `latest` is the repository's default branch; `mise.lock` does not pin it to a commit.
 
 Find and filter: `mise search npm:<name>` also queries that package registry (`npm:`, `cargo:`, `gem:`, `dotnet:`), `mise search --all` searches every backend; `mise ls --backend go --backend cargo` filters and `mise ls --grouped` groups by backend.
 
@@ -216,6 +227,23 @@ mise install --include-task-tools
 
 `-l` on `mise upgrade` is a deprecated shorthand for `--bump`; it becomes `--local` after mise 2027.8.5. Use `-b`/`--bump`.
 
+`prune.exclude = ["node", "aqua:BurntSushi/ripgrep"]` (`MISE_PRUNE_EXCLUDE`) keeps every version of those tools from `mise prune`, `ls --prunable`, and post-upgrade pruning — for tools something outside mise reaches by install path (a virtualenv, an editor SDK). `mise uninstall` is unaffected.
+
+Global tools can keep themselves current with the per-tool `auto_update` option, in **global config only**:
+
+```toml
+# ~/.config/mise/config.toml
+[tools]
+claude = { version = "latest", auto_update = true }   # every tool_update.check_duration (24h)
+node = { version = "22", auto_update = "6h" }         # stays within 22.x; minimum 1h
+```
+
+When a shim or `mise x` is about to run the tool and the interval has passed, mise upgrades it first (warning and running the installed version on failure). Exact pins, offline, CI, and `locked = true` never update; tasks, `hook-env`, and plain PATH lookups under activation never update. A project that sets its own version of the tool is not updated. For background updates instead, declare `[bootstrap.services.mise-tool-update] builtin = "tool-update"` and run `mise bootstrap services apply`. Failures show in `mise doctor`. `mise use -g --tool-option auto_update=true node@22` writes the option.
+
+### Install Layout
+
+Experimental and opt-in: `install_layout = "identity"` (plus `experimental = true`) names each installation `installs/<label>-<hash>/` by backend, version, platform, and install-affecting options, with `installs/<tool>/<version>` kept as a link. Shorthand and full backend spellings then share one install, and variants of one version can coexist. Existing installs stay put; `mise installs migrate [--dry-run] [tool@version]` reinstalls them into the new layout. `mise installs ls [tool] [--json]` lists installations (`selected`, `pinned`, `shared`) and `mise installs select <installation>` picks the one requests without a lockfile use. `http:`, `rust`, and `dotnet` keep the legacy layout.
+
 ## Version Files
 
 mise reads `.tool-versions` and can use asdf plugins when needed. When migrating, prefer a `mise.toml` with `[tools]` because it also supports env vars, settings, tasks, options, and lockfiles.
@@ -232,6 +260,10 @@ mise reads fields that state the version a project is *built with*, not compatib
 ## Ruby
 
 mise installs a precompiled Ruby binary when one exists and otherwise falls back to compiling with `ruby-build`. Set `ruby.compile=false` on hosts without a build toolchain so installs fail loudly instead of falling back; `ruby.compile=true` forces source builds.
+
+## Java
+
+**Breaking in 2026.10.5:** versions without a vendor prefix (`java@21`, `lts`, `latest`) now install Eclipse Temurin builds — `java.shorthand_vendor` defaults to `temurin` instead of `openjdk`, whose jdk.java.net builds stop at the next feature release (`java@21` was stuck on 21.0.2). Installed OpenJDK versions keep working, but `mise install --locked` fails on old shorthand lock entries. Keep OpenJDK with `java.shorthand_vendor = "openjdk"` or `java = "openjdk-21"`; move to Temurin with `mise lock --bump java` and commit. Temurin has no Java 9, 10, or 12–15 builds (use `openjdk-12` etc.), and shorthand versions now carry its build suffix (`21.0.12+101.0.LTS`).
 
 ## Auto Install
 
