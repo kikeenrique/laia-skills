@@ -310,7 +310,7 @@ non-interactively; the tool keeps control of git, validation, and committing.
 - Run via a mise task in this repo (`mise run laiaskills check`), no install or notarization needed.
 - Commands are synchronous except `find`, `browse`, and the root command, which are
   `AsyncParsableCommand` because Noora's spinner (`progressStep`) is async.
-- Tests (99, offline: 77 library, 22 end to end): `LaiaSkillsKitTests` covers the library with real git repos and submodules;
+- Tests (100, offline: 78 library, 22 end to end): `LaiaSkillsKitTests` covers the library with real git repos and submodules;
   `LaiaSkillsCLITests` runs the built binary end to end with a fake `HOME`, a shell script standing in
   for the AI agent. Shared fixtures live in `LaiaSkillsTestSupport`, under the repo's
   `tmp/laiaskills-tests/`, and give every git process an identity so commits work on CI.
@@ -349,9 +349,9 @@ Submodules stay untouched; the fix is a patch applied to the installed copy.
   that broke the global agent rules. Patches are a stopgap: an upstream fix makes them unnecessary.
   The first one gone: `swiftui-pro` 2.0.0 refreshed the line its patch removed, so the patch was
   deleted on upgrade.
-- When `upgrade` stops on a patch that no longer applies and you delete the patch by hand, `commit`
-  leaves the deletion staged instead of putting it in the bump commit. Amend it in with a pathspec
-  (`git commit --amend -- patches/<skill>`).
+- When `upgrade` stops on a patch that no longer applies, edit or delete the patch, then `sync` and
+  `commit`: the bump commit includes the upgraded skills' `patches/<skill>/` folders, so the fix lands
+  with the new pin. A skill with its own pending `patch` keeps it for that commit.
 
 ### 5.9 Browse and discovery (phase 4, done 2026-10-05; interaction reworked 2026-10-07)
 
@@ -557,6 +557,7 @@ of third-party sources.
 | 2026-10-07 | **Bugs found on the way**: a skill at a repo's root (`SKILL.md` next to the README) got an absolute path instead of `""`, so `browse` showed no description and the wrong files, and its pin could not be resolved for install. The pager hung because Foundation's `Process` starts it in a background process group; it is now started with `posix_spawn`. A one-letter search ended `find` instead of asking again. 99 tests (77 library, 22 end to end) |
 | 2026-10-07 | **Rework pushed, CI green on Linux** (`b55a45f`): the async commands and the pager's `posix_spawn` build and pass on Ubuntu 26.04 |
 | 2026-10-08 | **Prompt audit** of the Claude Code configuration against Claude Opus 5.5, all fixes applied ([prompt-audit.md](prompt-audit.md)): first-party skills edited, 16 third-party patches (stale paths, hand-offs to missing skills, deprecated SwiftUI examples, commands that broke the global rules), `update-swiftui-apis` removed, `ios-simulator-ui-flow` credits ios-build-verify. `laiaskills` runtime refusals no longer print usage |
+| 2026-10-09 | **`commit` after a stopped upgrade**: the bump commit now includes the upgraded skills' `patches/<skill>/` folders, so a patch edited or deleted by hand lands with the new pin instead of staying staged (found on the `swiftui-pro` upgrade). 100 tests (78 library, 22 end to end) |
 | 2026-10-09 | **All 25 sources up to date** after three upgrades: mise, `swiftui-pro`, and `github/awesome-copilot` 143a3d9 → 7cce7cf (`98fea95`). The last one left `apple-appstore-reviewer` byte-identical, and its patch still applies |
 | 2026-10-09 | **`swiftui-pro` 1.1.0 → 2.0.0** (`8f549c4`): an iOS 27 refresh and a new resizability reference. Our patch conflicted, `upgrade` stopped as designed, and the patch was deleted, because upstream refreshed the same line and added a deployment-target rule covering its purpose |
 | 2026-10-09 | **Second live AI re-check**: mise v2026.10.2 → v2026.10.5 (3 releases), plugin 0.4.0 → 0.4.1 (`d81bacb`). The agent corrected 8 now-wrong statements (the Java default vendor switch to Temurin, `self_update.*`, MCP `install_tool`, safe mode, `settings set`, the hidden `bootstrap dotfiles`, `--allow-net`, the generated `mise-action@v5`) and added the new dotfiles, bootstrap, install-layout, and secrets features to the reference files; `SKILL.md` only widened three routing rows. Every claim checked against upstream's changelog, docs, and source held up, so the revised prompt made a second pass unnecessary |

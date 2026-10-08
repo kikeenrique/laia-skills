@@ -182,12 +182,22 @@ import Testing
         #expect(try laiaskills(setup, "sync", "--yes").status == 0)
         try setup.fixture.write("home/.agents/skills/beta/references/notes.md", "our own notes")
         #expect(try laiaskills(setup, "patch", "beta", "-m", "add notes").status == 0)
+        #expect(try laiaskills(setup, "commit", "--yes").status == 0)
 
         let upgrade = try laiaskills(setup, "upgrade", "beta", "--yes")
         #expect(upgrade.status != 0)
         #expect(upgrade.stderr.contains("no longer apply"))
         // The old copy stays installed, with the patch.
         #expect(try setup.fixture.read("home/.agents/skills/beta/references/notes.md") == "our own notes")
+
+        // Deleting the patch by hand, as the message says, lands in the bump commit with the pin.
+        try setup.fixture.git("rm", "-r", "--quiet", "patches/beta", in: "repo")
+        #expect(try laiaskills(setup, "sync", "--yes").status == 0)
+        #expect(try laiaskills(setup, "commit", "--yes").status == 0)
+        #expect(try setup.fixture.git("status", "--porcelain", "--untracked-files=no", in: "repo").isEmpty)
+        let committed = try setup.fixture.git("show", "--name-status", "--format=", "HEAD", in: "repo")
+        #expect(committed.contains("patches/beta/"))
+        #expect(try lastSubject(setup).hasPrefix("chore(third-party): bump"))
     }
 
     // MARK: First-party re-check

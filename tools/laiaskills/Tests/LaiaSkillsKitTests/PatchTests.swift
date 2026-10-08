@@ -97,8 +97,22 @@ import LaiaSkillsTestSupport
         #expect(patch?.subject == "fix(beta): avoid eval on user input")
         #expect(patch?.paths == ["patches/beta/0001-avoid-eval.patch"])
         let bump = groups.first { $0.subject.hasPrefix("chore(third-party)") }
-        #expect(bump?.paths == ["third-party/o__gamma", "patches/gamma/0001-fix.patch"])
+        // The skill's whole patch folder rides along, for patches edited or deleted by hand after a
+        // stopped upgrade.
+        #expect(bump?.paths == ["third-party/o__gamma", "patches/gamma/0001-fix.patch", "patches/gamma"])
         #expect(bump?.body.contains("Drops patches the new version already contains") == true)
+    }
+
+    @Test func aBumpLeavesASkillsPendingPatchToItsOwnCommit() {
+        let pending = PendingChanges(changes: [
+            PendingChange(kind: .upgrade, skills: ["beta", "delta"], source: "third-party/o__beta", from: "v1", to: "v2"),
+            PendingChange(kind: .patch, skills: ["beta"], source: "third-party/o__beta", to: "v2",
+                          patch: "patches/beta/0002-new-fix.patch", reason: "new fix"),
+        ])
+        let groups = Committer.plan(pending, upstreamNames: [:])
+        let bump = groups.first { $0.subject.hasPrefix("chore(third-party)") }
+        #expect(bump?.paths == ["third-party/o__beta", "patches/delta"])
+        #expect(groups.first { $0.subject.hasPrefix("fix(") }?.paths == ["patches/beta/0002-new-fix.patch"])
     }
 
     @Test(arguments: [

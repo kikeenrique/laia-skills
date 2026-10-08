@@ -75,8 +75,14 @@ public enum Committer {
             let subject = full.count <= 72 ? full : "chore(third-party): bump \(thirdParty.count) sources"
             let body = thirdParty.map { "- \($0.source ?? ""): \($0.from ?? "?") → \($0.to ?? "?") (skills: \($0.skills.joined(separator: ", ")))" }
                 .joined(separator: "\n") + droppedLines(thirdParty)
+            // When `upgrade` stops on a patch that no longer applies, the fix is to edit or delete it by
+            // hand: include the upgraded skills' patch folders so that fix lands in the bump. Skills
+            // with a pending `patch` keep it for their own commit below.
+            let patchedSeparately = Set(patches.flatMap(\.skills))
+            let patchFolders = thirdParty.flatMap(\.skills).filter { !patchedSeparately.contains($0) }.map(Patches.path(for:))
             groups.append(CommitGroup(subject: subject, body: body,
-                                      paths: thirdParty.compactMap(\.source) + thirdParty.flatMap { $0.droppedPatches ?? [] },
+                                      paths: thirdParty.compactMap(\.source) + thirdParty.flatMap { $0.droppedPatches ?? [] }
+                                          + patchFolders,
                                       plugin: nil, changes: thirdParty, skillsToSync: []))
         }
 
