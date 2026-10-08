@@ -1,0 +1,32 @@
+Reason: Stop routing to skills that are not installed
+Date: 2026-10-08
+
+diff --git a/SKILL.md b/SKILL.md
+index 8716d48..338800d 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,13 +1,10 @@
+ ---
+ name: debugging-instruments
+-description: "Debug iOS apps and profile performance using LLDB, the interactive Memory Graph Debugger, and Instruments. Use for crashes, retain-cycle inspection, hangs, build failures, and generic CPU, memory, energy, or network profiling. Use ios-memgraph-analysis for .memgraph capture, leaks CLI ownership paths, or persistent heap growth; use ios-ettrace-performance for ETTrace capture and JSON."
++description: "Debug iOS apps and profile performance using LLDB, the interactive Memory Graph Debugger, and Instruments. Use for crashes, retain-cycle inspection, memory growth, hangs, build failures, and CPU, memory, energy, or network profiling."
+ ---
+ 
+ # Debugging and Instruments
+ 
+-Keep interactive graph and Instruments triage here. Route detailed `.memgraph`
+-command-line ownership/growth analysis and ETTrace work to their focused skills.
+-
+ ## Contents
+ 
+ - [LLDB Debugging](#lldb-debugging)
+@@ -157,8 +154,7 @@ can still feel unresponsive. Common detection tools:
+ - **On-device Hang Detection**: Developer Settings reports hangs from device use
+ - **Time Profiler / CPU Profiler / Hitches**: profile reproducible hangs
+ - **os_signpost** and `OSSignposter`: mark intervals for Instruments
+-- **MetricKit** hang diagnostics: production hang detection (see
+-  `metrickit` skill for `HangDiagnostic` and iOS 26 compatibility)
++- **MetricKit** hang diagnostics: production hang detection (`HangDiagnostic`)
+ 
+ ```swift
+ import os
