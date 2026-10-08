@@ -37,7 +37,7 @@ Use it when:
 5. Define the implementation handoff: SwiftUI, RealityKit, ARKit, SharePlay, or
    build/debug.
 6. If this is a refactor, sequence the extraction so behavior stays stable.
-7. Verify the structure with `build-run-debug` after the first usable slice.
+7. Build and run the first usable slice to verify the structure.
 
 ## When To Switch Skills
 
@@ -49,8 +49,6 @@ Use it when:
   provider constraints, anchors, or tracked-world behavior.
 - Switch to `shareplay-developer` when the app structure is driven by group
   activity or shared immersive presence.
-- Switch to `build-run-debug` after the first usable architectural slice exists
-  and needs validation.
 
 ## Guardrails
 
@@ -69,4 +67,4 @@ Provide:
 - the refactor slices, if this is brownfield work
 - the next implementation handoff:
   `spatial-swiftui-developer`, `realitykit-visionos-developer`,
-  `arkit-visionos-developer`, `shareplay-developer`, or `build-run-debug`
+  `arkit-visionos-developer`, `shareplay-developer`, or a build-and-run check

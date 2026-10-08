@@ -1,7 +1,7 @@
 {
   "$schema": "https://code.claude.com/schemas/plugin.json",
   "name": "visionos-agents",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "visionOS / Apple Vision Pro spatial computing skills: spatial SwiftUI, RealityKit (rendering, animation/physics, audio, ECS), ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, and Swift Charts 3D.",
   "author": { "name": "Enrique Garcia" },
   "homepage": "https://github.com/kikeenrique/laia-skills",

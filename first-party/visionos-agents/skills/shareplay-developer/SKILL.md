@@ -42,12 +42,9 @@ description: Build, integrate, and troubleshoot SharePlay GroupActivities featur
 
 ## When To Switch Skills
 
-- Switch to `build-run-debug` when the blocker is app launch, simulator state,
-  or runtime debugging rather than SharePlay behavior.
-- Switch to `signing-entitlements` when the issue is capabilities,
-  entitlements, or privacy gating.
-- Switch to `telemetry` when proof of event ordering or session state changes
-  matters more than API design.
+- Hand off to build/run debugging when the blocker is app launch, simulator
+  state, or runtime debugging rather than SharePlay behavior, and to
+  capability/entitlement setup when the issue is signing or privacy gating.
 
 ## Guardrails
 

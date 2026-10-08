@@ -14,7 +14,7 @@ This skill is verified against **cupertino v1.4.2** (`cupertino --version`). Com
 
 1. **Any Apple-related question goes through cupertino first.** SwiftUI, UIKit, AppKit, Foundation, Swift language, iOS / macOS / visionOS / tvOS / watchOS APIs, HIG, sample code, Swift Evolution, Swift packages: ask cupertino before answering. Don't reach for training-data memory of Apple APIs; reach for `cupertino search`. If the user's question doesn't obviously involve Apple, but mentions a symbol that *might* be Apple's (e.g., `NavigationStack`, `URLSession`, `@Observable`), query cupertino to confirm before assuming.
 2. **After you draft an answer, verify the code actually exists on Apple AND that it's the right pattern for the job.** Two checks, both run against cupertino:
-   - **Existence:** for every symbol, method, initializer, modifier, property, or framework name in your code/answer, re-search cupertino to confirm Apple actually ships that exact thing. Check its signature (parameter names, parameter types, return type), availability (which OS versions / which platforms), and deprecation status against the doc cupertino returns. If a name doesn't trace back to a cupertino hit, **the API doesn't exist**: you hallucinated it. Fix it (find the real name) or remove it. `cupertino search-symbols --query <Name>` is the cheapest existence check: it returns the symbol kind, attributes, conformances, and the `doc_uri` to read.
+   - **Existence:** for every symbol, method, initializer, modifier, property, or framework name in your code/answer, re-search cupertino to confirm Apple actually ships that exact thing. Check its signature (parameter names, parameter types, return type), availability (which OS versions / which platforms), and deprecation status against the doc cupertino returns. If a name doesn't trace back to a cupertino hit, treat it as unverified: find the real name or remove it. A symbol newer than the corpus (check `cupertino doctor --freshness`) can be missing without being wrong; keep it only if you say it is unconfirmed. `cupertino search-symbols --query <Name>` is the cheapest existence check: it returns the symbol kind, attributes, conformances, and the `doc_uri` to read.
    - **Appropriateness:** confirm the pattern / tech you used is the canonical / current Apple recommendation for the task. Cupertino indexes both current and deprecated symbols. Don't recommend `UIWebView` when `WKWebView` exists, `URLConnection` when `URLSession` exists, `Combine` when modern Swift Concurrency fits, or UIKit list patterns when SwiftUI `List` is what the user asked for. Search for the conceptual area ("loading a web view", "displaying a list of items", "background URL session") and read what Apple's doc actually steers people toward. If the user's context is iOS 17+ or Swift 6, prefer the API Apple ships for that era.
 
 Don't ship code that names APIs cupertino can't find, and don't ship patterns Apple's current docs actively steer away from. This "verify before sending" pass is cheap (millisecond search, few-hundred-token cost), catches most hallucinations, and runs in seconds.
@@ -217,18 +217,6 @@ Before finalizing your answer, scan it for every API/symbol you named. Each one 
 1. **Re-search to confirm it exists**: `cupertino search-symbols --query "<Symbol>" --format json` (types, protocols, functions) or `cupertino search "<symbol>(arg:" --format json` (methods and modifiers by signature)
 2. **If still no hit**, mark it as uncertain in your answer ("I'm less sure about X; couldn't confirm in Apple docs") or remove it
 3. **Never fabricate** parameter names, return types, or platform availability — read the `declaration` and `availability` fields of the page instead
-
-### Token-efficient verification
-
-| Pattern | Cost | When to use |
-|---|---|---|
-| Cite as you go (no extra calls) | ~5% overhead | Always |
-| Re-search uncertain claims | 1 search call per claim (~500 tokens) | When you mention an API you don't 100% remember |
-| `--brief` text triage | Fraction of a full search | Skimming many candidates before choosing which to `read` |
-| Full LLM verify pass | 1.5–2× baseline | High-stakes answers (production code, security) |
-| Wrong answer + user correction | 3–5× baseline | Worst case; avoid |
-
-The cite-as-you-go default is essentially free and prevents most hallucinations. Re-search for uncertain claims is cheap. Full verify passes are usually overkill.
 
 ## Commands
 

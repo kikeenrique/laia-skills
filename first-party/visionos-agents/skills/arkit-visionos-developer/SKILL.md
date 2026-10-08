@@ -16,7 +16,7 @@ description: Router for ARKit features on visionOS 27, including ARKitSession se
 4. Keep anchor state in a model layer, and bridge into RealityKit only when you
    have a rendering target.
 5. If the issue is app launch, test flow, simulator behavior, or signing,
-   switch to `build-run-debug` or `signing-entitlements`.
+   treat it as a build/run problem rather than an ARKit one.
 
 ## Provider-Focused Skills
 

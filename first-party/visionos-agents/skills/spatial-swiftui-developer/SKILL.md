@@ -16,7 +16,8 @@ description: Design and implement visionOS 27 SwiftUI scenes that integrate Real
 4. Load only the matching reference files.
 5. Keep loading async and keep RealityKit mutations inside its intended entry
    points.
-6. Route build, launch, simulator, and test problems to `build-run-debug`.
+6. Treat build, launch, simulator, and test problems as out of scope for this
+   skill.
 
 ## Load References When
 
@@ -58,14 +59,9 @@ description: Design and implement visionOS 27 SwiftUI scenes that integrate Real
 - Treat `ImmersiveSpace` as a separate scene with its own lifecycle and environment actions.
 - Use `defaultSize` as an initial hint only; the system can clamp or restore geometry.
 - Use `$swiftui-chart3d-developer` for Chart3D and spatial data visualization.
-- Switch to `build-run-debug` when the question is about launch, build,
-  simulator, codesign, or debugging workflow.
 - Use `spatial-app-architecture` when the question is about scene boundaries,
   ownership, or feature decomposition rather than API usage.
-- visionOS 27 SwiftUI adds no new scene, volume, or immersion APIs; the
-  guidance here is current for visionOS 27. New in 27: gesture `inputKinds:`
-  filtering (see `interaction.md`) plus cross-platform toolbar and navigation
-  refinements that also apply on visionOS.
+- For gesture `inputKinds:` filtering, see `interaction.md`.
 
 ## Output Expectations
 

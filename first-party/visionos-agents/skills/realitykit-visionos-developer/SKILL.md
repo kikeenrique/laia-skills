@@ -1,6 +1,6 @@
 ---
 name: realitykit-visionos-developer
-description: Route RealityKit work on visionOS 27 and handle core entity/component basics, RealityView scene setup, asset loading, input targets, SwiftUI attachments, anchoring, portals, synchronization, and USDStage bridge usage. Use for general RealityKit triage, choosing documented components, loading Reality Composer Pro, USD, USDZ, or .reality content, and deciding whether to hand off to realitykit-rendering-materials, realitykit-animation-physics, realitykit-audio-spatial, realitykit-ecs-systems, spatial-preview-developer, usdkit-runtime-developer, usd-editor, shadergraph-editor, ARKit, SwiftUI, or build-debug skills.
+description: Route RealityKit work on visionOS 27 and handle core entity/component basics, RealityView scene setup, asset loading, input targets, SwiftUI attachments, anchoring, portals, synchronization, and USDStage bridge usage. Use for general RealityKit triage, choosing documented components, loading Reality Composer Pro, USD, USDZ, or .reality content, and deciding whether to hand off to realitykit-rendering-materials, realitykit-animation-physics, realitykit-audio-spatial, realitykit-ecs-systems, usdkit-runtime-developer, usd-editor, shadergraph-editor, ARKit, SwiftUI, or build/debug work.
 ---
 
 # RealityKit visionOS Developer
@@ -29,13 +29,12 @@ description: Route RealityKit work on visionOS 27 and handle core entity/compone
 | Animation clips, character controllers, skeletal poses, IK, body tracking, retargeting, navigation, behavior trees, collision, physics, joints, forces, particles, cloth | `realitykit-animation-physics` |
 | Spatial audio, ambient or channel audio, audio libraries, mix groups, reverb, acoustic simulation | `realitykit-audio-spatial` |
 | Custom components, systems, ECS queries, registration, update ordering, per-frame multi-entity behavior | `realitykit-ecs-systems` |
-| Mac app streaming documents or live USD stages to Vision Pro via Spatial Preview | `spatial-preview-developer` |
 | Swift USDKit stage/layer/prim APIs | `usdkit-runtime-developer` |
 | Authored USD edits or command-line USD inspection | `usd-editor` |
 | ShaderGraph or RealityKit material graph editing in USDA | `shadergraph-editor` |
 | ARKitSession providers, permissions, and direct anchor stream reconciliation | `arkit-visionos-developer` |
 | SwiftUI layout, ornaments, windows, immersive spaces, or targeted gesture ergonomics | `spatial-swiftui-developer` |
-| Building, launching, simulator/device logs, or runtime debugging | `build-run-debug` |
+| Building, launching, simulator/device logs, or runtime debugging | Out of scope: use the project's build/run tooling |
 
 ## Load References When
 
@@ -54,7 +53,7 @@ description: Route RealityKit work on visionOS 27 and handle core entity/compone
 | [`references/sceneunderstandingcomponent.md`](references/sceneunderstandingcomponent.md), [`references/dockingregioncomponent.md`](references/dockingregioncomponent.md), [`references/referencecomponent.md`](references/referencecomponent.md), [`references/attachedtransformcomponent.md`](references/attachedtransformcomponent.md) | Work with spatial references, docking, scene understanding, or transform attachments. |
 | [`references/portalcomponent.md`](references/portalcomponent.md), [`references/portalcrossingcomponent.md`](references/portalcrossingcomponent.md), [`references/worldcomponent.md`](references/worldcomponent.md), [`references/environmentblendingcomponent.md`](references/environmentblendingcomponent.md), [`references/portal-volumes-and-accessory-anchoring.md`](references/portal-volumes-and-accessory-anchoring.md) | Compose portals, worlds, environment blending, and new visionOS 27 portal/accessory anchoring behavior. |
 | [`references/synchronizationcomponent.md`](references/synchronizationcomponent.md), [`references/transientcomponent.md`](references/transientcomponent.md) | Synchronize or mark entity state for multi-user/session behavior. |
-| [`references/usdstagecomponent.md`](references/usdstagecomponent.md) | Render a live USDKit stage inside RealityKit or export entity hierarchies to USD. For Swift USDKit stage authoring, switch to `usdkit-runtime-developer`; for Spatial Preview streaming, switch to `spatial-preview-developer`. |
+| [`references/usdstagecomponent.md`](references/usdstagecomponent.md) | Render a live USDKit stage inside RealityKit or export entity hierarchies to USD. For Swift USDKit stage authoring, switch to `usdkit-runtime-developer`. |
 
 ## Guardrails
 

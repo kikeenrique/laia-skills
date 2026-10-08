@@ -216,7 +216,7 @@ axe describe-ui --point 200,400 --udid "$UDID"
 axe tap -x 200 -y 400 --udid "$UDID"
 ```
 
-Switches and toggles are handled better in AXe `v1.8.0`: selector taps with default `--tap-style automatic` activate a contained UIKit `UISwitch` or SwiftUI `Toggle` when the matched row or label contains exactly one. Force the style only when troubleshooting:
+Selector taps with the default `--tap-style automatic` activate a contained UIKit `UISwitch` or SwiftUI `Toggle` when the matched row or label contains exactly one. Force the style only when troubleshooting:
 
 ```bash
 axe tap --label "Notifications" --tap-style physical --udid "$UDID"
@@ -246,7 +246,7 @@ axe gesture swipe-from-left-edge --udid "$UDID"
 axe touch -x 150 -y 250 --down --up --delay 1.0 --udid "$UDID"
 ```
 
-Always verify a `drag` result with `describe-ui`. On Xcode 27 Beta 3, `axe drag` acknowledged the send without delivering the touches, so a success exit code is not evidence the drag happened.
+Always verify a `drag` result with `describe-ui`: a success exit code only means the touches were sent.
 
 ### Text And Keyboard
 
@@ -301,7 +301,7 @@ For streaming:
 axe stream-video --udid "$UDID" --fps 10 --format mjpeg > tmp/stream.mjpeg
 ```
 
-`--fps` is honored for both the MJPEG and BGRA stream formats as of `v1.8.0`.
+`--fps` applies to both the MJPEG and BGRA stream formats.
 
 ## 9. Verification Loop
 
@@ -318,19 +318,6 @@ Use this loop after UI-affecting changes:
 
 For existing apps, grow accessibility coverage as part of the verification work. Add `.accessibilityIdentifier` to stable leaf elements that need to be tapped, queried, or used as render anchors. Add `.accessibilityValue` when state needs to be asserted. Avoid placing a shared identifier on a root SwiftUI container when a leaf identifier would be more precise.
 
-## Patterns Borrowed From ios-build-verify
-
-`ios-build-verify` solves the same feedback-loop problem with a larger script bundle, per-project config, named operations, `xcbeautify`, `jq`, and project setup/calibration scripts. This skill stays lighter and command-oriented, but use these ideas:
-
-- Keep a project facts block for app name, bundle id, scheme, target simulator, UDID, built app path, and first-screen anchor.
-- Resolve the simulator by the intended device, not by whichever device happens to be booted.
-- Terminate before install so a stale running app cannot hide a bad rebuild.
-- Poll a known accessibility anchor after launch instead of trusting `simctl launch` or a blind sleep.
-- Treat error output as a state probe. Empty trees, missing identifiers, modal dismiss regions, or home-screen app labels each point to different recovery paths.
-- Prefer accessibility-tree checks for text and state, then screenshots for visual review.
-
-Do not import `ios-build-verify` assumptions wholesale. It is SwiftUI/iOS-version opinionated, uses `xcbeautify`, ships many wrapper scripts, and has no tagged release as of the comparison. Keep this skill aligned with AXe released tags and the local project's existing build tooling.
-
 ## Troubleshooting
 
 - **Empty or tiny accessibility tree**: The app may still be launching, crashed, be gated by a modal/onboarding view, or be showing the home screen. Check logs, screenshots, and `describe-ui`.
@@ -339,7 +326,7 @@ Do not import `ios-build-verify` assumptions wholesale. It is SwiftUI/iOS-versio
 - **Tap dispatch succeeds but state does not change**: Add `--wait-timeout`, `--post-delay`, or a batch `sleep`; confirm the target with `describe-ui --point`; use physical tap style for switch/toggle edge cases.
 - **Coordinate taps miss**: Use logical points from `describe-ui`, not raw screenshot pixels.
 - **Xcode 27: input reports success but nothing happens**: Check Device Hub **Resize Mode**. With it enabled, taps and drags are acknowledged and then silently dropped. Disable it for UI automation.
-- **Drag reported success but the view did not move**: Never trust the drag exit code. Verify with `describe-ui`; on Xcode 27 Beta 3 `axe drag` acknowledged sends it did not deliver. Fall back to `axe swipe` or `axe touch` sequences and verify again.
+- **Drag reported success but the view did not move**: Check Device Hub **Resize Mode** first, then fall back to `axe swipe` or `axe touch` sequences and verify again with `describe-ui`.
 - **"AXe could not deliver simulator input"**: The simulator may have restarted or disconnected. Confirm it is booted (`xcrun simctl bootstatus "$UDID" -b`) and retry. An unknown UDID reports separately and points at `axe list-simulators`.
 - **Worried about a duplicated action after a failure**: Do not re-run an input step defensively. AXe only releases possibly-held touch state after an ambiguous physical-tap failure and never re-sends touch-down, so a failure cannot produce a double tap. Its per-simulator input broker also recovers stale state on its own.
 - **Accessibility query fails transiently**: AXe restarts `testmanagerd` and retries once, and `describe-ui --point` retries transient fallback results with backoff. Re-run once before treating it as an app bug.
@@ -353,7 +340,6 @@ Before reporting success:
 
 - The AXe upstream version used for guidance is known. Current target: `v1.8.0`.
 - Every AXe simulator-interaction command includes `--udid "$UDID"`.
-- No stale AXe syntax is used, especially old `swipe --from/--to` forms.
 - Selector taps are preferred over coordinates where possible.
 - Sliders use `axe slider --value 0-100`.
 - A postcondition was verified after each input step that matters.

@@ -51,8 +51,8 @@ description: Implement and debug RealityKit rendering, materials, lighting, came
 
 ## Guardrails
 
-- Treat visionOS 27 rendering additions as beta API; re-verify symbols against
-  the installed SDK before shipping.
+- Re-check visionOS 27 rendering symbols against the installed SDK before
+  shipping; this guidance was written against the June 2026 beta SDK.
 - Keep expensive material, mesh, and texture loading asynchronous.
 - Validate visual changes with screenshots or simulator/device inspection when
   possible.

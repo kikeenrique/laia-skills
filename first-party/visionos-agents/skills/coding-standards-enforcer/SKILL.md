@@ -46,10 +46,9 @@ API standards.
 
 - Switch to `spatial-app-architecture` when the core problem is scene
   ownership, feature decomposition, or state placement across surfaces.
-- Switch to `build-run-debug` when the main blocker is a build failure or a
-  runtime issue that still needs reproduction after standards fixes.
-- Switch to `test-triage` when the work is primarily about narrowing a failing
-  test scope rather than correcting standards violations directly.
+- Hand off to build/run debugging when the main blocker is a build failure, a
+  runtime issue that still needs reproduction after standards fixes, or
+  narrowing a failing test scope.
 
 ## Guardrails
 

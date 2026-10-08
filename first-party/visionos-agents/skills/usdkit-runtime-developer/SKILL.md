@@ -17,8 +17,9 @@ switch to `$usd-editor`.
 3. Load the USDKit decision reference, then the USDKit framework reference.
 4. Keep `USDStage`, `USDPrim`, `USDLayer`, and nested property work on one
    actor; these types are not Sendable.
-5. For live RealityKit display, use `USDStageComponent` from the RealityKit
-   skill; for Spatial Preview streaming, keep `$spatial-preview-developer`.
+5. For live RealityKit display, use `USDStageComponent` from
+   `realitykit-visionos-developer`; Spatial Preview streaming is out of scope
+   here.
 
 ## Load References When
 
@@ -44,8 +45,8 @@ switch to `$usd-editor`.
 
 - Do not use USDKit just to inspect or batch-convert files in CI; use the CLI
   tools through `$usd-editor`.
-- Do not assume beta USDKit symbols are stable; re-check the installed 27 SDK
-  before shipping.
+- Re-check visionOS 27 USDKit symbols against the installed SDK before
+  shipping; this guidance was written against the June 2026 beta SDK.
 - Do not recreate authored Reality Composer Pro content in Swift unless the
   feature explicitly requires procedural authoring.
 

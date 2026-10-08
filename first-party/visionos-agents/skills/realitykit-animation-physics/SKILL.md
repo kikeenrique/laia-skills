@@ -53,8 +53,9 @@ description: Implement and debug RealityKit animation, character controllers, sk
   owner before changing them.
 - Keep continuous simulation behavior in RealityKit systems or documented
   components, not SwiftUI body code.
-- Treat visionOS 27 animation, navigation, compute, and cloth additions as
-  beta API; re-check symbols against the installed SDK.
+- Re-check visionOS 27 animation, navigation, compute, and cloth symbols
+  against the installed SDK; this guidance was written against the June 2026
+  beta SDK.
 - Validate simulation work with deterministic inputs where possible and note
   whether the check ran in simulator or on device.
 

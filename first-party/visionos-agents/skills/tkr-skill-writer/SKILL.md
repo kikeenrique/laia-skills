@@ -28,10 +28,12 @@ When creating or updating a skill, this skill guides you to:
    - Frontmatter with `name` and `description`
    - Instructions that explain exactly when the skill should trigger
 
-2. **Apply this repo's preferred structure**:
-   - Description and Goals
-   - What This Skill Should Do
-   - Information About the Skill (with subcategories)
+2. **Apply this repo's preferred structure** (the layout every skill in this plugin uses):
+   - Quick Start (numbered triage steps)
+   - Load References When (table)
+   - Workflow
+   - Guardrails
+   - Output Expectations
 
 3. **Create reference files** that are:
    - One level deep from SKILL.md (e.g., `references/filename.md`)
@@ -57,7 +59,7 @@ When creating or updating a skill, this skill guides you to:
 
 ### Skill Structure Template
 
-Every `SKILL.md` must satisfy the official minimum format. In this repo, the preferred structure is the three-section layout below:
+Every `SKILL.md` must satisfy the official minimum format. In this repo, the preferred structure is the layout below:
 
 ```text
 skill-name/
@@ -78,37 +80,29 @@ description: Brief description of what the skill does and when to use it.
 
 # Skill Name
 
-## Description and Goals
+## Quick Start
 
-[Description of the skill, its purpose, and goals]
+1. [First triage decision]
+2. Load only the matching reference files.
 
-### Goals
+## Load References When
 
-- Goal 1
-- Goal 2
-- Goal 3
+| Reference | When to Use |
+|-----------|-------------|
+| `references/<name>.md` (as a link) | [When to load it] |
 
-## What This Skill Should Do
+## Workflow
 
-[Clear explanation of what the skill accomplishes and how it should be used]
+1. [Step]
 
-## Information About the Skill
+## Guardrails
 
-### Core Concepts
+- [Constraint, with its reason]
 
-[Important concepts and principles]
+## Output Expectations
 
-### Reference Tables
-
-[Tables organizing references with clickable links and "When to Use" descriptions]
-
-### Implementation Patterns
-
-[Code examples and patterns]
-
-### Pitfalls and Checks
-
-[Common mistakes and things to watch for]
+Provide:
+- [What the answer must include]
 ```
 
 ### File Reference Guidelines
@@ -158,7 +152,7 @@ Reference tables should use this format:
 ### Reference File Naming
 
 - Component files: `{name}component.md` (e.g., `modelcomponent.md`)
-- System files: `system.md` (consolidate all system info in one file)
+- System files: descriptive names such as `custom-systems.md`
 - Other references: Use descriptive, lowercase names with hyphens
 
 ### Best Practices

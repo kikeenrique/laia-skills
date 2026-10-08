@@ -47,5 +47,5 @@ description: "Build and debug ARKit rendering-context providers for visionOS 27:
 Provide:
 - the rendering-context provider selected
 - which provider references were used
-- support, authorization, and beta-API caveats
+- support, authorization, and SDK-version caveats
 - how the app consumes the provider output

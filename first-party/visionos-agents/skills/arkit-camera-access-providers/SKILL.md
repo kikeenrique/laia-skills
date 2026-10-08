@@ -37,8 +37,8 @@ description: "Build and debug ARKit camera access providers for visionOS 27: Cam
   entitlement/profile support as a first-class blocker.
 - Do not widen camera access when a narrower region or non-camera API satisfies
   the feature.
-- Do not route camera provider build, signing, or provisioning failures here;
-  use `$signing-entitlements` or `$build-run-debug`.
+- Camera provider build, signing, or provisioning failures are out of scope
+  here; diagnose them as build/signing problems before changing provider code.
 
 ## Output Expectations
 

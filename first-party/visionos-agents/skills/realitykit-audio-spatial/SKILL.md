@@ -45,8 +45,8 @@ description: Implement and debug RealityKit spatial audio, ambient audio, channe
 - Keep audio resource and file loading off the synchronous UI path.
 - Decide whether audio should be positional, ambient, channel-based, grouped,
   or acoustically simulated before adding components.
-- Treat visionOS 27 audio group and acoustics additions as beta API; re-check
-  symbols against the installed SDK.
+- Re-check visionOS 27 audio group and acoustics symbols against the installed
+  SDK; this guidance was written against the June 2026 beta SDK.
 - Verify audio behavior on device when spatialization, acoustics, or output
   routing matters.
 
