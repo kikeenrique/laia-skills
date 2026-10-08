@@ -1,0 +1,16 @@
+Reason: State the domain-layer rule with its reason
+Date: 2026-10-08
+
+diff --git a/SKILL.md b/SKILL.md
+index 268cfbd..e368f1c 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -45,7 +45,7 @@ domain → core (or no dependencies)
+ core → (nothing)
+ ```
+ 
+-**Critical**: `domain` must NEVER depend on `data`, `presentation`, or any framework. It contains pure Kotlin only.
++`domain` depends on no other layer and no framework: it is pure Kotlin, so it compiles for every KMP target and can be unit-tested without Android.
+ 
+ ## Domain Layer
+ 
