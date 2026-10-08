@@ -53,6 +53,7 @@ Counts:
 | 2026-10-08 | Audit of 64 skills, the global config, and the subagent; report and 84 proposed hunks in [`prompt-audit/`](prompt-audit/) |
 | 2026-10-08 | Apple Watch touch target checked against the HIG with cupertino (`hig://general/accessibility`, Mobility; crawled 2026-06-21): default 44x44 pt, minimum 28x28 pt. Both skills were wrong (">44pt", "minimum 38pt"); `design.diff` corrects both |
 | 2026-10-08 | `update-swiftui-apis` removed (`1520dc8`). It is a maintainer-only skill from `AvdLee/SwiftUI-Agent-Skill` that edits that repo's own files, needs the Sosumi MCP, and opens PRs. It came in with the 2026-10-04 migration |
+| 2026-10-08 | `ios-simulator-ui-flow` compared with [ios-build-verify](https://github.com/vermont42/ios-build-verify), the skill its verification approach draws on: added a *Credits* section crediting it (MIT, Josh Adams), and a troubleshooting entry for AXe's post-boot accessibility-bridge lag (an empty tree or a "fullscreen dialog" error for 10–25 s after `simctl boot`). With the credit in place, M4 can drop the "Patterns Borrowed" section without losing the attribution. Plugin 0.3.0 → 0.3.1 |
 | 2026-10-08 | Rule to quote long `description` values dropped from `AGENTS.md` (`235e6d7`). It guarded against Commander's YAML parser, and Commander is deleted. The memory note was rewritten as retired |
 
 ## Pending
@@ -151,6 +152,7 @@ In priority order.
 | [`swift.diff`](prompt-audit/swift.diff) | 4 | `swiftui-pro`, `swiftui-ui-patterns`, `swiftui-view-refactor` |
 | [`user-level.diff`](prompt-audit/user-level.diff) | 2 | `~/.claude/agents/visionos-engineer.md` |
 
-The diffs were made against the installed copies on 2026-10-08. After a `laiaskills upgrade` of a
+Apply `first-party.diff` from the repo root with `git apply -p0` (its paths have no `a/` prefix). The
+diffs were made against the installed copies on 2026-10-08. After a `laiaskills upgrade` of a
 source, re-check that its hunks still apply before using them. Mark a finding done here (move it to
 *Done*) when its hunks are applied.

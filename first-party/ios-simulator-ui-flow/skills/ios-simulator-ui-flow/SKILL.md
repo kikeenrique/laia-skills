@@ -334,6 +334,7 @@ Do not import `ios-build-verify` assumptions wholesale. It is SwiftUI/iOS-versio
 ## Troubleshooting
 
 - **Empty or tiny accessibility tree**: The app may still be launching, crashed, be gated by a modal/onboarding view, or be showing the home screen. Check logs, screenshots, and `describe-ui`.
+- **Empty tree or "invalid or invisible due to a fullscreen dialog" right after `simctl boot`**: For roughly 10–25 seconds after boot, AXe cannot reach the accessibility bridge yet, and no dialog is involved. Wait and retry `describe-ui` until it returns a tree before looking for a modal.
 - **Element not found**: Refresh `describe-ui`, confirm the identifier/label exists, scroll if the row is virtualized, or add a stable accessibility identifier to the app.
 - **Tap dispatch succeeds but state does not change**: Add `--wait-timeout`, `--post-delay`, or a batch `sleep`; confirm the target with `describe-ui --point`; use physical tap style for switch/toggle edge cases.
 - **Coordinate taps miss**: Use logical points from `describe-ui`, not raw screenshot pixels.
@@ -358,3 +359,7 @@ Before reporting success:
 - A postcondition was verified after each input step that matters.
 - Screenshots were captured when visual layout, color, typography, or spacing mattered.
 - Logs were checked for crashes or unexpected runtime errors when behavior looked wrong.
+
+## Credits
+
+Parts of this skill's verification approach (accessibility-tree checks before screenshots, errors read as state probes) and the post-boot accessibility-bridge note come from [ios-build-verify](https://github.com/vermont42/ios-build-verify) by Josh Adams (MIT License).
