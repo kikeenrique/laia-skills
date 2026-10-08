@@ -4,7 +4,8 @@ Status: **phases 0–4 done**: the tool is implemented and tested (macOS and Lin
 skill (63) is managed by it, third-party skills can carry local patches (5.8), and `browse` and `find`
 replace Commander for looking at and discovering skills (5.9), reworked on 2026-10-07 after the
 owner's first interactive run. The skills' prompt text was audited and fixed on 2026-10-08
-([prompt-audit.md](prompt-audit.md)). See the [roadmap](#7-roadmap). Last updated 2026-10-08.
+([prompt-audit.md](prompt-audit.md)), and all 25 sources were brought up to date on 2026-10-09. See the
+[roadmap](#7-roadmap). Last updated 2026-10-09.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -570,9 +571,9 @@ In priority order.
 | # | Task | Who | Notes |
 |---|---|---|---|
 | 1 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
-| 2 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task running `check --exit-code` |
+| 2 | Upgrade routine for all sources | owner | `check`, then `upgrade` per source; 7 of the 20 third-party sources have no releases and track a branch head. The 2026-10-09 manual run (3 of 25 behind, about an hour including verification) is the reference for a cadence, e.g. monthly or after each release season; possibly a scheduled task running `check --exit-code` |
 | 3 | Replay: Linux crash with `URLSession.download(for:)` | owner + tool | Notes in `tmp/replay/replay-linux-download-crash.md`: a force-unwrap in swift-corelibs-foundation, reached because `PlaybackURLProtocol` serves the body from memory. Observed on Replay 0.4.0; re-test on the pinned 0.6.0, then report to `mattt/Replay` or document the limitation in the `replay` skill |
-| 4 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. `visionos-agents` is pinned to `main`, not a tag: pin a release once upstream tags one |
+| 4 | Re-check first-party pins as their upstreams release | tool + owner | All five current on 2026-10-09 (mise re-pinned to v2026.10.5). When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. `visionos-agents` is pinned to `main`, not a tag: pin a release once upstream tags one |
 | 5 | Optional: top up the cupertino doc index | owner | The corpus is frozen at bundle v1.4.0 (crawled 2026-06-20, WWDC26 beta era) and upstream is dormant. When stale iOS 27 docs hurt: one batched overnight `cupertino fetch`, then a single `save` (about 40 minutes whatever the size) |
 | 6 | Re-run the prompt audit | tool + owner | At the next Claude model release or after a large skill upgrade. Starting point and keep-list in [prompt-audit.md](prompt-audit.md); its low-confidence flags are the first things to re-check |
 | 7 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
