@@ -1,0 +1,31 @@
+Reason: Say when to use it, drop the duplicate step list
+Date: 2026-10-08
+
+diff --git a/SKILL.md b/SKILL.md
+index 8cbcfb8..4d630b6 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: apple-appstore-reviewer
+-description: 'Serves as a reviewer of the codebase with instructions on looking for Apple App Store optimizations or rejection reasons.'
++description: "Reviews an iOS app's code and configuration as an App Store reviewer would, and produces a prioritized report of rejection risks and approval optimizations. Use before submitting to App Review, after a rejection, or when checking privacy, permissions, in-app purchase, account, or content compliance."
+ ---
+ 
+ # Apple App Store Review Specialist
+@@ -305,15 +305,6 @@ Typical P2/P3 examples:
+ 
+ ---
+ 
+-## What You Should Do First When Run
+-
+-1. Identify build system: SwiftUI/UIKit, iOS min version, dependencies.
+-2. Find app entry and core flows.
+-3. Inspect: permissions, privacy, purchases, login, external links.
+-4. Produce the report (no code changes).
+-
+----
+-
+ ## Final Reminder
+ 
+ You are **not** the developer. You are the **review gatekeeper**. Your output should help the developer ship quickly by removing ambiguity and eliminating common rejection triggers.
