@@ -1,0 +1,22 @@
+Reason: Link the reference files
+Date: 2026-10-08
+
+diff --git a/SKILL.md b/SKILL.md
+index daf78dd..9b3a28a 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -18,9 +18,12 @@ Master Material Design 3 (Material You) and Jetpack Compose to build modern, ada
+ - Implementing Android-specific gestures and interactions
+ - Designing for different screen configurations
+ 
+-## Detailed section: Core Concepts
++## References
+ 
+-Originally a 9201-byte section in this SKILL.md. Moved to `references/details.md` to fit Codex's 8 KB skill body cap.
++- [references/details.md](references/details.md): Material 3 principles, Compose layout system, navigation patterns, theming, component examples.
++- [references/material3-theming.md](references/material3-theming.md): color schemes, dynamic color, typography, shapes.
++- [references/compose-components.md](references/compose-components.md): Material 3 component usage in Compose.
++- [references/android-navigation.md](references/android-navigation.md): Navigation Compose and adaptive navigation.
+ 
+ ## Quick Start Component
+ 
