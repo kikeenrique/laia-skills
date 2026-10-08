@@ -554,7 +554,7 @@ In priority order.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Fixes from the prompt audit | tool + owner | Audit of the Claude Code configuration (2026-10-08): skills that hand off to missing skills, plugin-only script paths, deprecated SwiftUI examples. Pending tasks, findings, and the proposed diffs in [prompt-audit.md](prompt-audit.md) |
+| 1 | Prompt audit: owner decisions | owner | The audit's repo and skill fixes are applied (2026-10-08). Left: the `visionos-engineer` subagent edit, third-party skills that conflict with the global rules, when to commit, and the stored diffs. See [prompt-audit.md](prompt-audit.md) |
 | 2 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
 | 3 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task running `check --exit-code` |
 | 4 | Replay: Linux crash with `URLSession.download(for:)` | owner + tool | Notes in `tmp/replay/replay-linux-download-crash.md`: a force-unwrap in swift-corelibs-foundation, reached because `PlaybackURLProtocol` serves the body from memory. Observed on Replay 0.4.0; re-test on the pinned 0.6.0, then report to `mattt/Replay` or document the limitation in the `replay` skill |

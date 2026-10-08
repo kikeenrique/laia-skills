@@ -1,6 +1,6 @@
 # Prompt audit of the Claude Code configuration
 
-Status: **audit done 2026-10-08; fixes pending**. The audit looked for instructions that no longer fit
+Status: **audit done and repo and skill fixes applied 2026-10-08; owner decisions pending**. The audit looked for instructions that no longer fit
 the model, the repo, or each other, using the `/claude-api prompt-audit` method. Findings are below;
 the proposed edits are unified diffs in [`prompt-audit/`](prompt-audit/). Re-run the audit at the
 next model release or after a large skill upgrade.
@@ -54,6 +54,8 @@ Counts:
 | 2026-10-08 | Apple Watch touch target checked against the HIG with cupertino (`hig://general/accessibility`, Mobility; crawled 2026-06-21): default 44x44 pt, minimum 28x28 pt. Both skills were wrong (">44pt", "minimum 38pt"); `design.diff` corrects both |
 | 2026-10-08 | `update-swiftui-apis` removed (`1520dc8`). It is a maintainer-only skill from `AvdLee/SwiftUI-Agent-Skill` that edits that repo's own files, needs the Sosumi MCP, and opens PRs. It came in with the 2026-10-04 migration |
 | 2026-10-08 | `ios-simulator-ui-flow` compared with [ios-build-verify](https://github.com/vermont42/ios-build-verify), the skill its verification approach draws on: added a *Credits* section crediting it (MIT, Josh Adams), and a troubleshooting entry for AXe's post-boot accessibility-bridge lag (an empty tree or a "fullscreen dialog" error for 10–25 s after `simctl boot`). With the credit in place, M4 can drop the "Patterns Borrowed" section without losing the attribution. Plugin 0.3.0 → 0.3.1 |
+| 2026-10-08 | First-party fixes applied (`f93ac2a`; findings H1, H7, M2–M7): `first-party.diff`, plus a placeholder link in the `tkr-skill-writer` template that the validator rejected. Plugins: `visionos-agents` 0.1.1, `cupertino` 0.2.1, `ios-simulator-ui-flow` 0.3.2 |
+| 2026-10-08 | Third-party fixes saved as 13 `laiaskills` patches, one commit each (`f4a5897`..`05cbd4d`; findings H2–H6, H8–H11, M8–M18): `ui-ux-pro-max`, `watchos`, `apple-hig-designer` (its second patch), `macos-design-guidelines`, `android-gradle-build-logic`, `android-ci-cd-release-playstore`, `debugging-instruments`, `mobile-android-design`, `apple-appstore-reviewer`, `android-clean-architecture`, `swiftui-pro`, `swiftui-ui-patterns`, `swiftui-view-refactor`. `doctor` reports no problems. Commits whose subject would exceed 72 characters use a generic subject, with the reason in the body |
 | 2026-10-08 | Rule to quote long `description` values dropped from `AGENTS.md` (`235e6d7`). It guarded against Commander's YAML parser, and Commander is deleted. The memory note was rewritten as retired |
 
 ## Pending
@@ -62,15 +64,11 @@ In priority order.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Apply `first-party.diff` (31 hunks, 15 files) | tool + owner | Findings H1, H7, M2–M7. Edit the sources, `mise run validate`, `mise run laiaskills sync`, and bump `visionos-agents`, `cupertino`, and `ios-simulator-ui-flow`. Diverges the vendored visionOS copies from upstream, which AGENTS.md allows |
-| 2 | Patch `ui-ux-pro-max` (`design.diff`) | tool + owner | H2, H3, M11. The highest-impact third-party fix: today none of its commands runs |
-| 3 | Patch the Android and tooling skills (`android.diff`, 12 hunks, 6 skills) | tool + owner | H4–H6, M14–M18. For `debugging-instruments`, the alternative is to install `ios-memgraph-analysis`, `ios-ettrace-performance`, and `metrickit` from the same source |
-| 4 | Patch the design skills (`design.diff`: `apple-hig-designer`, `watchos`, `macos-design-guidelines`) | tool + owner | H8–H11, M12, M13 |
-| 5 | Patch the Swift skills (`swift.diff`, 4 hunks) | tool + owner | M8–M10. Hunk 3 also drops `swiftui-ui-patterns`' list of common compile errors; keep it if wanted |
-| 6 | Apply `user-level.diff` to `~/.claude/agents/visionos-engineer.md` | owner | M1. Outside the repo; affects every project |
-| 7 | Decide the third-party skills that conflict with the global rules | owner | See *Flags*: `debug-generated-project`, `swiftui-ui-patterns`, `swiftui-expert-skill`. Patch them, accept the conflict, or remove the skill |
-| 8 | Settle when to commit | owner | Auto-memory says "commit after each task without asking"; the global `CLAUDE.md` says "commit locally when asked". One should change |
-| 9 | `laiaskills commit` without a terminal | tool | Without `--yes` it prints a bare usage line and fails; it should say that `--yes` is needed, as `remove` does |
+| 1 | Apply `user-level.diff` to `~/.claude/agents/visionos-engineer.md` | owner | M1. Outside the repo; affects every project |
+| 2 | Decide the third-party skills that conflict with the global rules | owner | See *Flags*: `debug-generated-project`, `swiftui-ui-patterns`, `swiftui-expert-skill`. Patch them, accept the conflict, or remove the skill |
+| 3 | Settle when to commit | owner | Auto-memory says "commit after each task without asking"; the global `CLAUDE.md` says "commit locally when asked". One should change |
+| 4 | `laiaskills commit` without a terminal | tool | Without `--yes` it prints a bare usage line and fails; it should say that `--yes` is needed, as `remove` does |
+| 5 | Decide what to do with the diffs in [`prompt-audit/`](prompt-audit/) | owner | All but `user-level.diff` are applied: the first-party fixes as a commit, the third-party ones as `patches/`. They are now only a record |
 
 ## Findings
 
