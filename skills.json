@@ -52,7 +52,6 @@
     "swiftui-view-refactor": { "source": "third-party/Dimillian__Skills" },
     "tkr-skill-writer": { "source": "first-party" },
     "ui-ux-pro-max": { "source": "third-party/nextlevelbuilder__ui-ux-pro-max-skill" },
-    "update-swiftui-apis": { "source": "third-party/AvdLee__SwiftUI-Agent-Skill" },
     "usd-editor": { "source": "first-party" },
     "usdkit-runtime-developer": { "source": "first-party" },
     "using-tuist-generated-projects": { "source": "third-party/tuist__agent-skills" },
