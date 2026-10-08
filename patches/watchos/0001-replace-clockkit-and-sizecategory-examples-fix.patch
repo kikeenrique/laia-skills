@@ -1,0 +1,72 @@
+Reason: Replace ClockKit and sizeCategory examples, fix touch target size
+Date: 2026-10-08
+
+diff --git a/SKILL.md b/SKILL.md
+index bda3c81..1bf39ac 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -33,7 +33,7 @@ Use this skill when the user:
+ - Glanceable content - users look for seconds, not minutes
+ - Quick interactions - 2 seconds or less
+ - Essential information only - no scrolling walls of text
+-- Large touch targets - minimum 38pt height
++- Controls at least 28x28pt, 44x44pt by default (HIG Accessibility)
+ 
+ ### 2. Independent vs Companion
+ - Prefer independent Watch apps when possible
+@@ -96,10 +96,10 @@ NavigationSplitView {
+ - Swap layout when wrapping gets crowded:
+ 
+ ```swift
+-@Environment(\.sizeCategory) var sizeCategory
++@Environment(\.dynamicTypeSize) var dynamicTypeSize
+ 
+ var body: some View {
+-    if sizeCategory < .extraExtraLarge {
++    if dynamicTypeSize < .xxLarge {
+         PlantViewHorizontal(plant: $plant)   // default layout
+     } else {
+         PlantViewVertical(plant: $plant)     // stacked layout for large sizes
+@@ -163,7 +163,7 @@ struct MyWatchApp: App {
+ ### Navigation
+ 
+ ```swift
+-// Use NavigationStack (watchOS 9+)
++// NavigationStack: only when neither vertical pages nor a source list fits (see Navigation Model)
+ NavigationStack {
+     List {
+         NavigationLink("Item 1", value: Item.one)
+@@ -262,32 +262,7 @@ func session(_ session: WCSession, didReceiveApplicationContext context: [String
+ 
+ ## Complications
+ 
+-### Timeline Provider
+-
+-```swift
+-import ClockKit
+-
+-struct ComplicationController: CLKComplicationDataSource {
+-
+-    func getComplicationDescriptors(handler: @escaping ([CLKComplicationDescriptor]) -> Void) {
+-        let descriptor = CLKComplicationDescriptor(
+-            identifier: "myComplication",
+-            displayName: "My App",
+-            supportedFamilies: [.circularSmall, .modularSmall, .graphicCircular]
+-        )
+-        handler([descriptor])
+-    }
+-
+-    func getCurrentTimelineEntry(
+-        for complication: CLKComplication,
+-        withHandler handler: @escaping (CLKComplicationTimelineEntry?) -> Void
+-    ) {
+-        let template = makeTemplate(for: complication.family)
+-        let entry = CLKComplicationTimelineEntry(date: .now, complicationTemplate: template)
+-        handler(entry)
+-    }
+-}
+-```
++ClockKit is deprecated (watchOS 9) and removed (watchOS 11); build complications with WidgetKit below. For migrating an existing ClockKit data source, see [complications.md](complications.md).
+ 
+ ### WidgetKit Complications (watchOS 9+)
+ 
