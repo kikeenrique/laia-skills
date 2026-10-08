@@ -554,13 +554,14 @@ In priority order.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
-| 2 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task running `check --exit-code` |
-| 3 | Replay: Linux crash with `URLSession.download(for:)` | owner + tool | Notes in `tmp/replay/replay-linux-download-crash.md`: a force-unwrap in swift-corelibs-foundation, reached because `PlaybackURLProtocol` serves the body from memory. Observed on Replay 0.4.0; re-test on the pinned 0.6.0, then report to `mattt/Replay` or document the limitation in the `replay` skill |
-| 4 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run. `visionos-agents` is pinned to `main`, not a tag: pin a release once upstream tags one |
-| 5 | Optional: top up the cupertino doc index | owner | The corpus is frozen at bundle v1.4.0 (crawled 2026-06-20, WWDC26 beta era) and upstream is dormant. When stale iOS 27 docs hurt: one batched overnight `cupertino fetch`, then a single `save` (about 40 minutes whatever the size) |
-| 6 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
-| 7 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
+| 1 | Fixes from the prompt audit | tool + owner | Audit of the Claude Code configuration (2026-10-08): skills that hand off to missing skills, plugin-only script paths, deprecated SwiftUI examples. Pending tasks, findings, and the proposed diffs in [prompt-audit.md](prompt-audit.md) |
+| 2 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
+| 3 | Upgrade routine for third-party sources | owner | `check` then `upgrade` per source; 7 of the 20 have no releases and track a branch head. Decide a cadence (e.g. monthly), possibly as a scheduled task running `check --exit-code` |
+| 4 | Replay: Linux crash with `URLSession.download(for:)` | owner + tool | Notes in `tmp/replay/replay-linux-download-crash.md`: a force-unwrap in swift-corelibs-foundation, reached because `PlaybackURLProtocol` serves the body from memory. Observed on Replay 0.4.0; re-test on the pinned 0.6.0, then report to `mattt/Replay` or document the limitation in the `replay` skill |
+| 5 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run. `visionos-agents` is pinned to `main`, not a tag: pin a release once upstream tags one |
+| 6 | Optional: top up the cupertino doc index | owner | The corpus is frozen at bundle v1.4.0 (crawled 2026-06-20, WWDC26 beta era) and upstream is dormant. When stale iOS 27 docs hurt: one batched overnight `cupertino fetch`, then a single `save` (about 40 minutes whatever the size) |
+| 7 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
+| 8 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
 ### Implementation notes
 
