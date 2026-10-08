@@ -1,0 +1,103 @@
+Reason: Use project tmp and absolute paths, prepare PRs locally
+Date: 2026-10-08
+
+diff --git a/SKILL.md b/SKILL.md
+index 24b8747..cc882c1 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -10,7 +10,9 @@ description: Debugs issues users encounter with Tuist-generated projects by repr
+ 1. Ask the user to describe the issue and the project setup (targets, dependencies, configurations, platform).
+ 2. Confirm the issue exists with the latest release by running `mise exec tuist@latest -- tuist generate` against a reproduction project.
+ 3. If confirmed, clone the Tuist repository and build from source to test against main.
+-4. Triage: fix the bug and open a PR, advise on misconfiguration, or recommend the user files an issue with a reproduction.
++4. Triage: fix the bug and prepare a PR for the user to open, advise on misconfiguration, or recommend the user files an issue with a reproduction.
++
++Scratch folders (the reproduction project and the Tuist clone) go in the current project's own `tmp/` folder, never the system temp folder. Commands use absolute paths instead of `cd`.
+ 
+ ## Step 1: Gather Context
+ 
+@@ -36,11 +38,11 @@ Before investigating the source code, confirm the issue is not already fixed in
+ ### Set up a temporary reproduction project
+ 
+ ```bash
+-REPRO_DIR=$(mktemp -d)
+-cd "$REPRO_DIR"
++REPRO_DIR="$PWD/tmp/tuist-repro"
++mkdir -p "$REPRO_DIR"
+ ```
+ 
+-Create minimal `Tuist.swift`, `Project.swift`, and source files that reproduce the user's scenario. Keep it as small as possible while still triggering the issue.
++Create minimal `Tuist.swift`, `Project.swift`, and source files in `$REPRO_DIR` that reproduce the user's scenario. Keep it as small as possible while still triggering the issue.
+ 
+ ### Run generation with the latest Tuist release
+ 
+@@ -64,13 +66,12 @@ mise exec tuist@latest -- tuist install --path "$REPRO_DIR"
+ Clone the repository and build the `tuist` executable and `ProjectDescription` library from source to test against the latest code on `main`.
+ 
+ ```bash
+-TUIST_SRC=$(mktemp -d)
++TUIST_SRC="$PWD/tmp/tuist-src"
+ git clone --depth 1 https://github.com/tuist/tuist.git "$TUIST_SRC"
+-cd "$TUIST_SRC"
+-swift build --product tuist --product ProjectDescription --replace-scm-with-registry
++swift build --package-path "$TUIST_SRC" --product tuist --product ProjectDescription --replace-scm-with-registry
+ ```
+ 
+-The built binary will be at `.build/debug/tuist`. Use it to test the reproduction project:
++The built binary will be at `$TUIST_SRC/.build/debug/tuist`. Use it to test the reproduction project:
+ 
+ ```bash
+ "$TUIST_SRC/.build/debug/tuist" generate --no-open --path "$REPRO_DIR"
+@@ -94,18 +95,16 @@ Investigate the Tuist source code to understand why the issue occurs.
+ 2. Apply the fix.
+ 3. Verify by rebuilding and running against the reproduction project:
+    ```bash
+-   cd "$TUIST_SRC"
+-   swift build --product tuist --product ProjectDescription --replace-scm-with-registry
++   swift build --package-path "$TUIST_SRC" --product tuist --product ProjectDescription --replace-scm-with-registry
+    "$TUIST_SRC/.build/debug/tuist" generate --no-open --path "$REPRO_DIR"
+    ```
+-4. Zip the reproduction project and include it in the PR:
++4. Zip the reproduction project for the PR (run from the project root, where `tmp/` is):
+    ```bash
+-   cd "$REPRO_DIR" && cd ..
+-   zip -r reproduction.zip "$(basename "$REPRO_DIR")" -x '*.xcodeproj/*' -x '*.xcworkspace/*' -x 'Derived/*' -x '.build/*'
++   zip -r tmp/reproduction.zip tmp/tuist-repro -x '*.xcodeproj/*' -x '*.xcworkspace/*' -x '*/Derived/*' -x '*/.build/*'
+    ```
+-5. Open a PR on the Tuist repository with:
++5. Prepare the PR locally for the user to open; never push. Commit the fix on a branch in `$TUIST_SRC` and write the PR description with:
+    - The fix
+-   - The zipped reproduction project attached or committed as a fixture
++   - The zipped reproduction project, to attach or commit as a fixture
+    - A clear description of the root cause and how to verify the fix
+ 
+ ### Outcome B: It is a misconfiguration
+@@ -138,8 +137,7 @@ When testing a fix, always verify the full cycle:
+ 
+ ```bash
+ # Build the patched tuist
+-cd "$TUIST_SRC"
+-swift build --product tuist --product ProjectDescription --replace-scm-with-registry
++swift build --package-path "$TUIST_SRC" --product tuist --product ProjectDescription --replace-scm-with-registry
+ 
+ # Install dependencies if needed
+ "$TUIST_SRC/.build/debug/tuist" install --path "$REPRO_DIR"
+@@ -189,8 +187,8 @@ The `--console-pty` flag streams the app's stdout/stderr so you can observe logs
+ If the app crashes without useful console output, pull the crash log:
+ 
+ ```bash
+-# List recent crash logs for the app
+-find ~/Library/Logs/DiagnosticReports -name "<AppName>*" -newer "$REPRO_DIR" -print
++# List the app's crash logs, newest first
++ls -t ~/Library/Logs/DiagnosticReports/<AppName>*
+ ```
+ 
+ Read the crash log to identify the crashing thread and the faulting symbol.
+@@ -203,6 +201,6 @@ Read the crash log to identify the crashing thread and the faulting symbol.
+ - Tested against Tuist built from source (main branch)
+ - If runtime issue: launched the app on a simulator and verified the crash or misbehavior
+ - Triaged the issue as a bug, misconfiguration, or unclear
+-- If bug: applied fix, verified it, and opened a PR with reproduction project
++- If bug: applied fix, verified it, and prepared the PR (branch, description, reproduction project) for the user to open
+ - If misconfiguration: provided corrected manifest to the user
+ - If unclear: gave the user a summary and recommended next steps
