@@ -86,6 +86,7 @@ To add an external skill repo as a plugin:
 Swift package in `tools/laiaskills/` (Swift 6.4+, must build and pass tests on **Linux and macOS**; CI runs it on Ubuntu 26.04). Design, decisions, and roadmap: [`docs/plans/skills-repo-design.md`](docs/plans/skills-repo-design.md). Update the roadmap there when you finish or add work.
 
 - `LaiaSkillsKit` holds all logic and is what the tests cover; the `laiaskills` target only parses arguments and renders. All Noora calls go through `UI.swift`.
+- Errors: throw `ValidationError` only for bad flags or arguments (ArgumentParser prints usage after it). Anything that fails while doing the work (needs `--yes`, unknown skill, missing checkout) is a `CommandError`, printed as `Error: …` alone.
 - No macOS-only APIs (AppKit, CryptoKit, the Trash API). Shell out to `git` instead of using libgit2 or the GitHub API.
 - Tests build their fixtures (including real git repos) under the repo's `tmp/laiaskills-tests/`, never the system temp folder. Three targets: `LaiaSkillsKitTests` (library), `LaiaSkillsCLITests` (runs the built binary end to end with a fake `HOME`; a shell script stands in for the AI agent), and the shared fixtures in `LaiaSkillsTestSupport`. Everything is offline: local git repos stand in for GitHub.
 - Fixtures set git identity and `protocol.file.allow` for the whole test process through `GIT_CONFIG_*` variables, so commits work on CI machines without a git identity. Don't rely on your own global git config in tests.
@@ -110,6 +111,10 @@ Third-party skills are never copied into the repo; `skills.json` maps each to a 
 - **Fix (e.g. after a security audit):** edit the installed copy in `~/.agents/skills/<skill>/`, then `mise run laiaskills patch <skill> -m "<reason>"` and `commit`. Never edit files under `third-party/`. Patches live in `patches/<skill>/` and are re-tested on every upgrade.
 - **Skip an agent:** `"skipMirrors": ["claude"]` on a `skills.json` entry when that agent already gets the skill another way (decision 18 in the design doc).
 - Don't install the same skills through a Claude plugin as well; `doctor` reports duplicates.
+
+### Prompt audits
+
+[`docs/plans/prompt-audit.md`](docs/plans/prompt-audit.md) records the last audit of the skills and agent configuration for prompt text that no longer fits the model, the repo, or each other (`/claude-api prompt-audit`). Re-run it at each model release or after a large skill upgrade. Fix findings where they belong: first-party skills in `first-party/`, third-party skills with `laiaskills patch`. Keep only the plan in the repo, not generated diffs.
 
 ### Validator conventions (`tools/scripts/validate_skills.rb`)
 

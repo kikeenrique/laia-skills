@@ -1,9 +1,10 @@
 # Skills repo and `laiaskills` — design
 
 Status: **phases 0–4 done**: the tool is implemented and tested (macOS and Linux CI), every installed
-skill (64) is managed by it, third-party skills can carry local patches (5.8), and `browse` and `find`
+skill (63) is managed by it, third-party skills can carry local patches (5.8), and `browse` and `find`
 replace Commander for looking at and discovering skills (5.9), reworked on 2026-10-07 after the
-owner's first interactive run. See the [roadmap](#7-roadmap). Last updated 2026-10-07.
+owner's first interactive run. The skills' prompt text was audited and fixed on 2026-10-08
+([prompt-audit.md](prompt-audit.md)). See the [roadmap](#7-roadmap). Last updated 2026-10-08.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -342,6 +343,11 @@ Submodules stay untouched; the fix is a patch applied to the installed copy.
   sources); `doctor` flags patches that don't apply to the pin, patches the pin already contains,
   patches for first-party skills, and patches for skills not in `skills.json`.
 - Sending a fix upstream stays manual; the patch file can be attached to an upstream issue or PR as is.
+- In use (2026-10-08): 18 patches on 16 skills. Two come from security reviews (`apple-hig-designer`,
+  `formatting-build-output`); the other 16 come from the prompt audit ([prompt-audit.md](prompt-audit.md)):
+  stale paths, hand-offs to skills that aren't installed, deprecated SwiftUI examples, and commands
+  that broke the global agent rules. Patches are a stopgap: an upstream fix drops them on the next
+  `upgrade`.
 
 ### 5.9 Browse and discovery (phase 4, done 2026-10-05; interaction reworked 2026-10-07)
 
@@ -560,8 +566,9 @@ In priority order.
 | 3 | Replay: Linux crash with `URLSession.download(for:)` | owner + tool | Notes in `tmp/replay/replay-linux-download-crash.md`: a force-unwrap in swift-corelibs-foundation, reached because `PlaybackURLProtocol` serves the body from memory. Observed on Replay 0.4.0; re-test on the pinned 0.6.0, then report to `mattt/Replay` or document the limitation in the `replay` skill |
 | 4 | Re-check first-party pins as their upstreams release | tool + owner | All five were current on 2026-10-04. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits. The updated prompt should make a second pass unnecessary; confirm on the next run. `visionos-agents` is pinned to `main`, not a tag: pin a release once upstream tags one |
 | 5 | Optional: top up the cupertino doc index | owner | The corpus is frozen at bundle v1.4.0 (crawled 2026-06-20, WWDC26 beta era) and upstream is dormant. When stale iOS 27 docs hurt: one batched overnight `cupertino fetch`, then a single `save` (about 40 minutes whatever the size) |
-| 6 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
-| 7 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
+| 6 | Re-run the prompt audit | tool + owner | At the next Claude model release or after a large skill upgrade. Starting point and keep-list in [prompt-audit.md](prompt-audit.md); its low-confidence flags are the first things to re-check |
+| 7 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
+| 8 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
 ### Implementation notes
 
