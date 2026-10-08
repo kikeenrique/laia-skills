@@ -1,0 +1,16 @@
+Reason: Use clipShape instead of cornerRadius
+Date: 2026-10-08
+
+diff --git a/SKILL.md b/SKILL.md
+index df15993..db139fc 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -542,7 +542,7 @@ struct HoverableRow: View {
+         }
+         .padding(8)
+         .background(isHovered ? Color.primary.opacity(0.05) : .clear)
+-        .cornerRadius(6)
++        .clipShape(.rect(cornerRadius: 6))
+         .onHover { hovering in isHovered = hovering }
+     }
+ }
