@@ -343,11 +343,15 @@ Submodules stay untouched; the fix is a patch applied to the installed copy.
   sources); `doctor` flags patches that don't apply to the pin, patches the pin already contains,
   patches for first-party skills, and patches for skills not in `skills.json`.
 - Sending a fix upstream stays manual; the patch file can be attached to an upstream issue or PR as is.
-- In use (2026-10-08): 18 patches on 16 skills. Two come from security reviews (`apple-hig-designer`,
-  `formatting-build-output`); the other 16 come from the prompt audit ([prompt-audit.md](prompt-audit.md)):
+- In use (2026-10-09): 17 patches on 15 skills. Two come from security reviews (`apple-hig-designer`,
+  `formatting-build-output`); the other 15 come from the prompt audit ([prompt-audit.md](prompt-audit.md)):
   stale paths, hand-offs to skills that aren't installed, deprecated SwiftUI examples, and commands
-  that broke the global agent rules. Patches are a stopgap: an upstream fix drops them on the next
-  `upgrade`.
+  that broke the global agent rules. Patches are a stopgap: an upstream fix makes them unnecessary.
+  The first one gone: `swiftui-pro` 2.0.0 refreshed the line its patch removed, so the patch was
+  deleted on upgrade.
+- When `upgrade` stops on a patch that no longer applies and you delete the patch by hand, `commit`
+  leaves the deletion staged instead of putting it in the bump commit. Amend it in with a pathspec
+  (`git commit --amend -- patches/<skill>`).
 
 ### 5.9 Browse and discovery (phase 4, done 2026-10-05; interaction reworked 2026-10-07)
 
@@ -553,6 +557,7 @@ of third-party sources.
 | 2026-10-07 | **Bugs found on the way**: a skill at a repo's root (`SKILL.md` next to the README) got an absolute path instead of `""`, so `browse` showed no description and the wrong files, and its pin could not be resolved for install. The pager hung because Foundation's `Process` starts it in a background process group; it is now started with `posix_spawn`. A one-letter search ended `find` instead of asking again. 99 tests (77 library, 22 end to end) |
 | 2026-10-07 | **Rework pushed, CI green on Linux** (`b55a45f`): the async commands and the pager's `posix_spawn` build and pass on Ubuntu 26.04 |
 | 2026-10-08 | **Prompt audit** of the Claude Code configuration against Claude Opus 5.5, all fixes applied ([prompt-audit.md](prompt-audit.md)): first-party skills edited, 16 third-party patches (stale paths, hand-offs to missing skills, deprecated SwiftUI examples, commands that broke the global rules), `update-swiftui-apis` removed, `ios-simulator-ui-flow` credits ios-build-verify. `laiaskills` runtime refusals no longer print usage |
+| 2026-10-09 | **`swiftui-pro` 1.1.0 → 2.0.0** (`8f549c4`): an iOS 27 refresh and a new resizability reference. Our patch conflicted, `upgrade` stopped as designed, and the patch was deleted, because upstream refreshed the same line and added a deployment-target rule covering its purpose |
 | 2026-10-09 | **Second live AI re-check**: mise v2026.10.2 → v2026.10.5 (3 releases), plugin 0.4.0 → 0.4.1 (`d81bacb`). The agent corrected 8 now-wrong statements (the Java default vendor switch to Temurin, `self_update.*`, MCP `install_tool`, safe mode, `settings set`, the hidden `bootstrap dotfiles`, `--allow-net`, the generated `mise-action@v5`) and added the new dotfiles, bootstrap, install-layout, and secrets features to the reference files; `SKILL.md` only widened three routing rows. Every claim checked against upstream's changelog, docs, and source held up, so the revised prompt made a second pass unnecessary |
 | 2026-10-07 | **Tuist skills source confirmed**: `tuist/agent-skills` 0.3.0 stays. `tuist/agent-plugin` has the same 12 skills (two renamed) plus Tuist's MCP server in the vendor-neutral Agent Plugins format, and no releases. The MCP server can be added on its own if needed |
 
