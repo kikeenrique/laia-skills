@@ -3,8 +3,8 @@ name: visionos-agents
 description: "Router for Apple Vision Pro / visionOS spatial computing development. Use when building a visionOS app and choosing which specialized skill applies: spatial SwiftUI, RealityKit (rendering, animation/physics, audio, custom ECS), ARKit providers (world/plane/hand/scene/image/object tracking, camera access), ShaderGraph and USD authoring, SharePlay/GroupActivities, visionOS WidgetKit, immersive/spatial video, or Swift Charts 3D. Start here to route to the focused skill for the task."
 license: MIT
 metadata:
-  author: Tom Krikorian
-  source: https://github.com/tomkrikorian/visionOSAgents
+  author: Enrique Garcia
+  source: https://github.com/kikeenrique/laia-skills
 ---
 
 # visionOS Agents
@@ -42,4 +42,4 @@ Entry-point router for Apple Vision Pro / visionOS spatial computing work. Pick 
 
 - Prefer SwiftUI + documented RealityKit components; reach for custom ECS `System`s only when documented components can't express the needed state/behavior.
 - Consult the `visionos-design-guidelines` skill (Apple HIG for Vision Pro) for design decisions.
-- All skills in this bundle, including this router's routing table, are by [Tom Krikorian](https://github.com/tomkrikorian), vendored from [tomkrikorian/visionOSAgents](https://github.com/tomkrikorian/visionOSAgents) under the MIT license (see the plugin's `LICENSE`). Each skill's frontmatter records the author and source; the pristine source is tracked as the `upstream/` submodule, pinned to commit `c359c3a`.
+- The skills this router points to are by [Tom Krikorian](https://github.com/tomkrikorian), vendored from [tomkrikorian/visionOSAgents](https://github.com/tomkrikorian/visionOSAgents) under the MIT license (see the plugin's `LICENSE`). Each skill's frontmatter records the author and source; the pristine source is tracked as the `upstream/` submodule, pinned to commit `c359c3a`. This router is not part of upstream: it was written for this plugin.
