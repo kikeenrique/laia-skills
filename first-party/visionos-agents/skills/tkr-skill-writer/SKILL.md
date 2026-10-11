@@ -1,6 +1,10 @@
 ---
 name: tkr-skill-writer
 description: Guide for creating and structuring skills with consistent formatting, clear documentation, and proper reference organization. Use when creating new skills or updating existing skill documentation.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # TKR Skill Writer

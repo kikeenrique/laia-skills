@@ -1,6 +1,10 @@
 ---
 name: realitykit-ecs-systems
 description: Design, implement, and debug custom RealityKit components, systems, ECS queries, component registration, update loops, Codable component state, and per-frame multi-entity behavior on visionOS. Use when documented RealityKit components do not represent the needed state or behavior, when behavior spans multiple entities, or when a task needs custom System and Component architecture instead of SwiftUI view logic.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # RealityKit ECS Systems

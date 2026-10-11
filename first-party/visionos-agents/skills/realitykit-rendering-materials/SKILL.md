@@ -1,6 +1,10 @@
 ---
 name: realitykit-rendering-materials
 description: Implement and debug RealityKit rendering, materials, lighting, cameras, visual effects, post-processing, render cost controls, Gaussian splats, decals, lightmaps, probes, LOD, and occlusion on visionOS 27. Use when a RealityKit task is primarily about visual appearance, mesh/material display, lights, shadows, tone mapping, bloom, camera projection, rendering performance, or choosing rendering components instead of animation, audio, interaction, or custom ECS behavior.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # RealityKit Rendering Materials

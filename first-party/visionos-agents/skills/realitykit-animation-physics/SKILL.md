@@ -1,6 +1,10 @@
 ---
 name: realitykit-animation-physics
 description: Implement and debug RealityKit animation, character controllers, skeletal poses, IK, body tracking, blendshapes, animation graphs, retargeting, root motion, navigation, behavior trees, collision, physics bodies, joints, forces, particles, compute simulations, and cloth on visionOS 27. Use when a RealityKit task is primarily about motion, character behavior, physical simulation, hit-test collision shape details, particle simulation, or animation/physics troubleshooting.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # RealityKit Animation Physics

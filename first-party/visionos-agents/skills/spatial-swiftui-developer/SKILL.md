@@ -1,6 +1,10 @@
 ---
 name: spatial-swiftui-developer
 description: Design and implement visionOS 27 SwiftUI scenes that integrate RealityKit content. Use when building spatial UI with RealityView, Model3D, attachments, volumetric windows, ImmersiveSpace, spatial gestures, windowing, spatial layout, or when choosing SwiftUI vs RealityKit APIs for 3D presentation.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # Spatial SwiftUI Developer

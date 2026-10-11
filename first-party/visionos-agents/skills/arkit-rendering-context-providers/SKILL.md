@@ -1,6 +1,10 @@
 ---
 name: arkit-rendering-context-providers
 description: "Build and debug ARKit rendering-context providers for visionOS 27: EnvironmentLightEstimationProvider, StereoPropertiesProvider, and VisualFidelityProvider. Use when matching virtual lighting to the environment, informing custom stereo rendering, coaching device fit, or tuning foveated field of view."
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # ARKit Rendering Context Providers

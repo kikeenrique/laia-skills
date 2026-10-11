@@ -1,6 +1,10 @@
 ---
 name: realitykit-audio-spatial
 description: Implement and debug RealityKit spatial audio, ambient audio, channel audio, audio libraries, audio mix groups, reverb, grouped playback, and acoustic simulation on visionOS 27. Use when a RealityKit task is primarily about placing sound in 3D, loading or organizing audio resources, controlling channel or ambient playback, mixing groups, room acoustics, or audio behavior tied to RealityKit entities.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # RealityKit Audio Spatial

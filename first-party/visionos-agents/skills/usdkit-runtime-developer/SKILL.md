@@ -1,6 +1,10 @@
 ---
 name: usdkit-runtime-developer
 description: Build USDKit runtime editing flows on visionOS 27, macOS 27, or iOS 27. Use when Swift code imports USDKit, opens or creates USDStage and USDLayer values, edits USDPrim attributes, observes USDStage.ObjectsDidChange, exports runtime USD packages, or bridges live stages through RealityKit USDStageComponent.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # USDKit Runtime Developer

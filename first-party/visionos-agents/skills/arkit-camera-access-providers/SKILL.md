@@ -1,6 +1,10 @@
 ---
 name: arkit-camera-access-providers
 description: "Build and debug ARKit camera access providers for visionOS 27: CameraFrameProvider and CameraRegionProvider. Use when accessing camera frame streams, region-scoped camera content, custom computer-vision pipelines, or troubleshooting camera-access authorization, entitlement, enterprise, format, and support issues."
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # ARKit Camera Access Providers

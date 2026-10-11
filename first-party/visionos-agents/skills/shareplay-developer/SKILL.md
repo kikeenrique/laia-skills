@@ -1,6 +1,10 @@
 ---
 name: shareplay-developer
 description: Build, integrate, and troubleshoot SharePlay GroupActivities features for visionOS 27, including GroupActivity definitions, activation flows, GroupSession lifecycle, messaging and journals, ShareLink and SharePlay UI surfaces, and spatial coordination.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # SharePlay Developer

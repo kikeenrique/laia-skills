@@ -1,6 +1,10 @@
 ---
 name: swiftui-chart3d-developer
 description: Build SwiftUI Chart3D and Swift Charts 3D visualizations for visionOS 27 and Apple platforms. Use when implementing Chart3D, SurfacePlot, 3D PointMark, RuleMark, RectangleMark, Chart3DPose, 3D chart scales, axis labels, camera projection, or spatial data-visualization interactions.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # SwiftUI Chart3D Developer

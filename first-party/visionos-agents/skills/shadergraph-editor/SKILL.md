@@ -1,6 +1,10 @@
 ---
 name: shadergraph-editor
 description: Author, load, and troubleshoot Reality Composer Pro Shader Graph materials for RealityKit on visionOS. Use when building Shader Graph materials, exposing promoted inputs for runtime control, debugging exported USD and MaterialX interop, or building shader graphs programmatically in Swift on visionOS 27.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # ShaderGraph Editor

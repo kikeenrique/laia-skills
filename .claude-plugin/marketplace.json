@@ -81,9 +81,9 @@
         "repo": "kikeenrique/laia-skills",
         "ref": "main"
       },
-      "version": "0.1.0",
-      "description": "visionOS / Apple Vision Pro spatial computing skills: spatial SwiftUI, RealityKit, ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, and Swift Charts 3D.",
-      "author": { "name": "Enrique Garcia" },
+      "version": "0.1.2",
+      "description": "visionOS / Apple Vision Pro spatial computing skills: spatial SwiftUI, RealityKit, ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, and Swift Charts 3D. Skills by Tom Krikorian, vendored from tomkrikorian/visionOSAgents (MIT).",
+      "author": { "name": "Tom Krikorian (vendored by Enrique Garcia)", "url": "https://github.com/tomkrikorian" },
       "homepage": "https://github.com/kikeenrique/laia-skills",
       "repository": "https://github.com/kikeenrique/laia-skills",
       "license": "MIT",

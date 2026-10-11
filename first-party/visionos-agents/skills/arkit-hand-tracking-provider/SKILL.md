@@ -1,6 +1,10 @@
 ---
 name: arkit-hand-tracking-provider
 description: Build and debug HandTrackingProvider on visionOS 27. Use when implementing hand anchors, hand joint transforms, custom hand gestures, hand-driven interactions, hand visualizations, or troubleshooting hand-tracking authorization, support, and lifecycle behavior.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # ARKit Hand Tracking Provider

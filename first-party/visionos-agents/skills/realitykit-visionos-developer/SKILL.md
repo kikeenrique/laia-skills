@@ -1,6 +1,10 @@
 ---
 name: realitykit-visionos-developer
 description: Route RealityKit work on visionOS 27 and handle core entity/component basics, RealityView scene setup, asset loading, input targets, SwiftUI attachments, anchoring, portals, synchronization, and USDStage bridge usage. Use for general RealityKit triage, choosing documented components, loading Reality Composer Pro, USD, USDZ, or .reality content, and deciding whether to hand off to realitykit-rendering-materials, realitykit-animation-physics, realitykit-audio-spatial, realitykit-ecs-systems, usdkit-runtime-developer, usd-editor, shadergraph-editor, ARKit, SwiftUI, or build/debug work.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # RealityKit visionOS Developer

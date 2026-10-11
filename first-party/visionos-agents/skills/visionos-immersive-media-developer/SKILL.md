@@ -1,6 +1,10 @@
 ---
 name: visionos-immersive-media-developer
 description: Implement immersive and spatial video experiences on Apple Vision Pro (visionOS 27), including AVKit AVExperienceController, RealityKit VideoPlayerComponent setup, Apple Projected Media Profile (APMP), portal/progressive/full immersive viewing modes, transitions and events, comfort mitigation, and Apple Immersive Video authoring workflows.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # visionOS Immersive Media Developer

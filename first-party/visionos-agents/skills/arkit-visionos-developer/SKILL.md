@@ -1,6 +1,10 @@
 ---
 name: arkit-visionos-developer
 description: Router for ARKit features on visionOS 27, including ARKitSession setup, authorization, provider selection, anchor processing, and RealityKit integration. Use when choosing an ARKit provider set, combining multiple ARKit providers, or troubleshooting shared ARKit lifecycle behavior before routing to focused provider skills.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # ARKit visionOS Developer

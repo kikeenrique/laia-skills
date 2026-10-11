@@ -1,6 +1,10 @@
 ---
 name: usd-editor
 description: Guide for modifying USD ASCII (.usda) files and command-line USD workflows, including prims, properties, composition arcs, variants, transforms, usdcat, usdchecker, usdrecord, usdtree, usdzip, and usdedit. Use when editing or reviewing .usda files by hand, validating USD/USDZ assets, or working in an asset pipeline outside runtime Swift USDKit.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # USD Editor

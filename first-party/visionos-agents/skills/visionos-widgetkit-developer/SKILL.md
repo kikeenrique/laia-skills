@@ -1,6 +1,10 @@
 ---
 name: visionos-widgetkit-developer
 description: Build and debug WidgetKit widgets for Apple Vision Pro (visionOS), including mounting styles (elevated/recessed), textures (glass/paper), proximity-aware layouts via LevelOfDetail, interactive widgets with AppIntents, widget rendering modes (accented/fullColor), and timeline update troubleshooting. (visionOS widgets are pinned spatial objects, not watch complications.)
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # visionOS WidgetKit Developer

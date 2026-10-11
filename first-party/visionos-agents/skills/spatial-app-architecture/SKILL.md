@@ -1,6 +1,10 @@
 ---
 name: spatial-app-architecture
 description: Choose and refactor visionOS app architecture across surfaces, scene boundaries, state ownership, and file layout. Use when deciding window vs volume vs immersive space, splitting a feature across scenes, cleaning up a monolithic spatial root, or defining the ownership map before implementing SwiftUI or RealityKit details.
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # Spatial App Architecture

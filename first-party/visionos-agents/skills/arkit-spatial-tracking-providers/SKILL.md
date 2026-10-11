@@ -1,6 +1,10 @@
 ---
 name: arkit-spatial-tracking-providers
 description: "Build and debug ARKit spatial tracking providers for visionOS 27: WorldTrackingProvider, PlaneDetectionProvider, SceneReconstructionProvider, RoomTrackingProvider, and SharedCoordinateSpaceProvider. Use when implementing world anchors, device pose queries, surface placement, mesh reconstruction, room context, or shared coordinate spaces."
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # ARKit Spatial Tracking Providers

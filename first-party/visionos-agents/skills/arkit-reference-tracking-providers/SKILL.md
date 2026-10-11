@@ -1,6 +1,10 @@
 ---
 name: arkit-reference-tracking-providers
 description: "Build and debug ARKit reference and marker tracking providers for visionOS 27: ImageTrackingProvider, ObjectTrackingProvider, BarcodeDetectionProvider, and AccessoryTrackingProvider. Use when anchoring to known images, tracked 3D reference objects, barcodes, or supported accessories."
+license: MIT
+metadata:
+  author: Tom Krikorian
+  source: https://github.com/tomkrikorian/visionOSAgents
 ---
 
 # ARKit Reference Tracking Providers
