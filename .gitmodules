@@ -72,3 +72,6 @@
 [submodule "third-party/wshobson__agents"]
 	path = third-party/wshobson__agents
 	url = https://github.com/wshobson/agents.git
+[submodule "third-party/tomkrikorian__visionOSAgents"]
+	path = third-party/tomkrikorian__visionOSAgents
+	url = https://github.com/tomkrikorian/visionOSAgents.git
