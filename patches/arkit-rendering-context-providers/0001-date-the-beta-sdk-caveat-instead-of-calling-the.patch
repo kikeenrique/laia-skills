@@ -1,0 +1,12 @@
+Reason: date the beta-SDK caveat instead of calling the API beta
+Date: 2026-10-11
+
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -47,5 +47,5 @@
+ Provide:
+ - the rendering-context provider selected
+ - which provider references were used
+-- support, authorization, and beta-API caveats
++- support, authorization, and SDK-version caveats
+ - how the app consumes the provider output
