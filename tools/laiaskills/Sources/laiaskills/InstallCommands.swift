@@ -160,8 +160,8 @@ struct RemoveCommand: ParsableCommand {
         commandName: "remove",
         abstract: "Remove a skill from skills.json and uninstall it.",
         discussion: """
-        The installed copy goes to backups. A third-party submodule no other skill uses is removed too \
-        (staged, like the skills.json change); commit with `laiaskills commit`.
+        The installed copy goes to backups. The skill's patches and a third-party submodule no other \
+        skill uses are removed too (staged, like the skills.json change); commit with `laiaskills commit`.
         """
     )
 
@@ -183,13 +183,18 @@ struct RemoveCommand: ParsableCommand {
         guard try approve(ui, "Remove \(skill) from skills.json and uninstall it?", yes: yes) else { throw ExitCode(1) }
 
         let dropped = try SourceEditor.removeSkill(skill, repo: context.repo, keepSource: keepSource)
+        let patches = try SourceEditor.removePatches(of: skill, repo: context.repo)
         var installer = Installer(repo: context.repo, environment: context.environment)
         if installer.state.skills[skill] != nil { try installer.uninstall(skill) }
-        try PendingChanges.record(PendingChange(kind: .remove, skills: [skill], source: dropped ?? entry.source),
+        try PendingChanges.record(PendingChange(kind: .remove, skills: [skill], source: dropped ?? entry.source,
+                                                droppedPatches: patches.isEmpty ? nil : patches),
                                   repo: context.repo.root)
 
-        if options.json { return try printJSON(["skill": skill, "droppedSource": dropped ?? ""]) }
+        if options.json {
+            return try printJSON(["skill": skill, "droppedSource": dropped ?? "", "droppedPatches": patches.joined(separator: ",")])
+        }
         ui.success("Removed \(skill)." + (dropped.map { " Also removed the unused submodule \($0)." } ?? "")
+            + (patches.isEmpty ? "" : " Deleted its \(patches.count == 1 ? "patch" : "\(patches.count) patches").")
             + " Staged; commit with `laiaskills commit`.")
     }
 }

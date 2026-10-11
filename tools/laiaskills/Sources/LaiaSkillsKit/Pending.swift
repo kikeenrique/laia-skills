@@ -24,7 +24,8 @@ public struct PendingChange: Codable, Sendable, Equatable {
     /// For `patch`: the new patch file (repo-relative) and why it exists.
     public var patch: String?
     public var reason: String?
-    /// For `upgrade`: patch files deleted because the new pin already contains their change.
+    /// For `upgrade`: patch files deleted because the new pin already contains their change. For `remove`:
+    /// the removed skill's patch files, deleted with it.
     public var droppedPatches: [String]?
 
     public init(kind: Kind, skills: [String], source: String? = nil, from: String? = nil, to: String? = nil,

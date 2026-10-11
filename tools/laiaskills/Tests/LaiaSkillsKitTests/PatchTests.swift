@@ -103,6 +103,33 @@ import LaiaSkillsTestSupport
         #expect(bump?.body.contains("Drops patches the new version already contains") == true)
     }
 
+    @Test func removingASkillDeletesItsPatches() throws {
+        let setup = try SkillsRepoFixture()
+        let file = try patchedBeta(setup, edit: { folder in
+            try Data("notes".utf8).write(to: folder.appendingPathComponent("NOTES.md"))
+        }, reason: "add notes")
+        try setup.fixture.git("add", "patches", in: "repo")
+        try setup.fixture.git("commit", "--quiet", "-m", "patch", in: "repo")
+
+        let repository = try Repository(root: setup.repo)
+        #expect(try SourceEditor.removePatches(of: "beta", repo: repository) == ["patches/beta/\(file.lastPathComponent)"])
+        #expect(!FileManager.default.fileExists(atPath: setup.fixture.url("repo/patches/beta").path))
+        #expect(try setup.fixture.git("diff", "--cached", "--name-status", "--", "patches", in: "repo").hasPrefix("D"))
+        // A skill without patches has nothing to delete.
+        #expect(try SourceEditor.removePatches(of: "alpha", repo: repository).isEmpty)
+    }
+
+    @Test func aRemovalCommitsTheDeletedPatches() {
+        let pending = PendingChanges(changes: [
+            PendingChange(kind: .remove, skills: ["beta"], source: "third-party/o__beta",
+                          droppedPatches: ["patches/beta/0001-fix.patch"]),
+        ])
+        let removal = Committer.plan(pending, upstreamNames: [:]).first
+        #expect(removal?.subject == "chore(skills): remove beta")
+        #expect(removal?.paths == ["skills.json", ".gitmodules", "third-party/o__beta", "patches/beta/0001-fix.patch"])
+        #expect(removal?.body.contains("Deletes the removed skills' patches:\n- patches/beta/0001-fix.patch") == true)
+    }
+
     @Test func aBumpLeavesASkillsPendingPatchToItsOwnCommit() {
         let pending = PendingChanges(changes: [
             PendingChange(kind: .upgrade, skills: ["beta", "delta"], source: "third-party/o__beta", from: "v1", to: "v2"),

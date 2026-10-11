@@ -151,6 +151,23 @@ import Testing
         #expect(try !setup.fixture.read("repo/.gitmodules").contains("o__beta"))
     }
 
+    @Test func removeDeletesThePatchesAndCommitsThem() throws {
+        let setup = try SkillsRepoFixture()
+        #expect(try laiaskills(setup, "sync", "--yes").status == 0)
+        try setup.fixture.write("home/.agents/skills/beta/references/notes.md", "our own notes")
+        #expect(try laiaskills(setup, "patch", "beta", "-m", "add notes").status == 0)
+        #expect(try laiaskills(setup, "commit", "--yes").status == 0)
+
+        #expect(try laiaskills(setup, "remove", "beta", "--yes").status == 0)
+        #expect(!setup.fixture.exists("repo/patches/beta"))
+        #expect(try laiaskills(setup, "commit", "--yes").status == 0)
+        #expect(try lastSubject(setup) == "chore(skills): remove beta")
+        let committed = try setup.fixture.git("show", "--name-status", "--format=", "HEAD", in: "repo")
+        #expect(committed.contains("patches/beta/0001-add-notes.patch"))
+        #expect(try setup.fixture.git("status", "--porcelain", "--untracked-files=no", in: "repo").isEmpty)
+        #expect(!(try laiaskills(setup, "doctor").stdout.contains("delete the patches")))
+    }
+
     // MARK: Patches
 
     @Test func patchSavesAnEditCommitsItAndUpgradeDropsItOnceUpstreamHasIt() throws {

@@ -63,8 +63,13 @@ public enum Committer {
                 let verb = change.kind == .add ? "Add" : "Remove"
                 return "- \(verb) \(change.skills.joined(separator: ", "))" + (change.source.map { " (\($0)\(change.to.map { " \($0)" } ?? ""))" } ?? "")
             }.joined(separator: "\n")
+            // `remove` deletes the skill's patches with it.
+            let deletedPatches = edits.flatMap { $0.droppedPatches ?? [] }
+            let patchLines = deletedPatches.isEmpty ? "" : "\n\nDeletes the removed skills' patches:\n"
+                + deletedPatches.map { "- \($0)" }.joined(separator: "\n")
             let sources = edits.compactMap(\.source).filter { $0.hasPrefix("third-party/") }
-            groups.append(CommitGroup(subject: subject, body: body, paths: ["skills.json", ".gitmodules"] + sources,
+            groups.append(CommitGroup(subject: subject, body: body + patchLines,
+                                      paths: ["skills.json", ".gitmodules"] + sources + deletedPatches,
                                       plugin: nil, changes: edits, skillsToSync: []))
         }
 

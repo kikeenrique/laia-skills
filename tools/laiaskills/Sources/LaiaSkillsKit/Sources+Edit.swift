@@ -21,6 +21,19 @@ public enum SourceEditor {
         return entry.source
     }
 
+    /// Deletes the skill's `patches/<skill>` folder (staged), so a removed skill leaves no orphaned patches.
+    /// Returns the deleted patch files, repo-relative.
+    @discardableResult
+    public static func removePatches(of name: String, repo: Repository) throws -> [String] {
+        let deleted = Patches.list(for: name, repo: repo.root).map { "\(Patches.path(for: name))/\($0.name)" }
+        let folder = repo.root.appendingPathComponent(Patches.path(for: name))
+        guard FileManager.default.fileExists(atPath: folder.path) else { return [] }
+        try Git(repo.root).run("rm", "-r", "--quiet", "--force", "--ignore-unmatch", "--", Patches.path(for: name))
+        // Files git never tracked (or an emptied folder) stay behind after `git rm`.
+        try? FileManager.default.removeItem(at: folder)
+        return deleted
+    }
+
     /// Adds skills to skills.json (staged).
     public static func addSkills(_ entries: [String: SkillEntry], repo: Repository) throws {
         var manifest = repo.manifest
