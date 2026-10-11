@@ -81,38 +81,16 @@
         "repo": "kikeenrique/laia-skills",
         "ref": "main"
       },
-      "version": "0.1.3",
-      "description": "visionOS / Apple Vision Pro spatial computing skills: spatial SwiftUI, RealityKit, ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, and Swift Charts 3D. Skills by Tom Krikorian, vendored from tomkrikorian/visionOSAgents (MIT).",
-      "author": { "name": "Tom Krikorian (vendored by Enrique Garcia)", "url": "https://github.com/tomkrikorian" },
+      "version": "0.2.0",
+      "description": "Router for visionOS / Apple Vision Pro spatial computing work: picks the right skill from Tom Krikorian's visionOSAgents set (spatial SwiftUI, RealityKit, ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, Swift Charts 3D). Install those skills from tomkrikorian/visionOSAgents.",
+      "author": { "name": "Enrique Garcia" },
       "homepage": "https://github.com/kikeenrique/laia-skills",
       "repository": "https://github.com/kikeenrique/laia-skills",
       "license": "MIT",
       "category": "development",
       "keywords": ["visionos", "vision-pro", "spatial", "realitykit", "arkit", "swiftui", "usd"],
       "skills": [
-        "./first-party/visionos-agents/skills/visionos-agents",
-        "./first-party/visionos-agents/skills/arkit-visionos-developer",
-        "./first-party/visionos-agents/skills/arkit-spatial-tracking-providers",
-        "./first-party/visionos-agents/skills/arkit-hand-tracking-provider",
-        "./first-party/visionos-agents/skills/arkit-reference-tracking-providers",
-        "./first-party/visionos-agents/skills/arkit-rendering-context-providers",
-        "./first-party/visionos-agents/skills/arkit-camera-access-providers",
-        "./first-party/visionos-agents/skills/realitykit-visionos-developer",
-        "./first-party/visionos-agents/skills/realitykit-rendering-materials",
-        "./first-party/visionos-agents/skills/realitykit-animation-physics",
-        "./first-party/visionos-agents/skills/realitykit-audio-spatial",
-        "./first-party/visionos-agents/skills/realitykit-ecs-systems",
-        "./first-party/visionos-agents/skills/spatial-app-architecture",
-        "./first-party/visionos-agents/skills/spatial-swiftui-developer",
-        "./first-party/visionos-agents/skills/swiftui-chart3d-developer",
-        "./first-party/visionos-agents/skills/visionos-widgetkit-developer",
-        "./first-party/visionos-agents/skills/visionos-immersive-media-developer",
-        "./first-party/visionos-agents/skills/shareplay-developer",
-        "./first-party/visionos-agents/skills/shadergraph-editor",
-        "./first-party/visionos-agents/skills/usd-editor",
-        "./first-party/visionos-agents/skills/usdkit-runtime-developer",
-        "./first-party/visionos-agents/skills/coding-standards-enforcer",
-        "./first-party/visionos-agents/skills/tkr-skill-writer"
+        "./first-party/visionos-agents/skills/visionos-agents"
       ]
     }
   ]

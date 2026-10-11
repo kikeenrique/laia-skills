@@ -48,14 +48,13 @@ Top-level folders are grouped by ownership, not packaging:
 
 ## Upstream submodules
 
-Each plugin pins the upstream project the skill documents under `first-party/<plugin>/upstream/` as a git submodule:
+Each plugin that documents an upstream project pins it under `first-party/<plugin>/upstream/` as a git submodule (`visionos-agents` is only a router, so it has none):
 
 | Plugin | Submodule | Upstream |
 |--------|-----------|----------|
 | `replay` | `first-party/replay/upstream` | [`mattt/Replay`](https://github.com/mattt/Replay) |
 | `ios-simulator-ui-flow` | `first-party/ios-simulator-ui-flow/upstream` | [`cameroncooke/AXe`](https://github.com/cameroncooke/AXe) |
 | `mise` | `first-party/mise/upstream` | [`jdx/mise`](https://github.com/jdx/mise) |
-| `visionos-agents` | `first-party/visionos-agents/upstream` | [`tomkrikorian/visionOSAgents`](https://github.com/tomkrikorian/visionOSAgents) |
 | `cupertino` | `first-party/cupertino/upstream` | [`CupertinoHQ/cupertino`](https://codeberg.org/CupertinoHQ/cupertino) (Codeberg) |
 
 The submodule *names* in `.gitmodules` (e.g. `replay/upstream`) predate the move to `first-party/` and are internal identifiers only; always refer to submodules by *path*.
@@ -69,17 +68,18 @@ The submodule *names* in `.gitmodules` (e.g. `replay/upstream`) predate the move
 
 ## Adding a plugin
 
-Each folder under `first-party/` is a plugin: `first-party/<plugin>/.claude-plugin/plugin.json` + `first-party/<plugin>/skills/` + `first-party/<plugin>/upstream/` (submodule, see above).
+Each folder under `first-party/` is a plugin: `first-party/<plugin>/.claude-plugin/plugin.json` + `first-party/<plugin>/skills/` + `first-party/<plugin>/upstream/` (submodule, see above) when the skill documents an upstream project.
 
-To add an external skill repo as a plugin:
+Plugins hold only skills written here. Don't vendor another repo's skills into `first-party/`: add them as third-party (`laiaskills add`) and keep local changes as patches. A first-party router may point to them, as `visionos-agents` does for `tomkrikorian/visionOSAgents`.
 
-1. Vendor the source: `git submodule add <repo-url> first-party/<plugin>/upstream` (pin per the rules above).
-2. Materialize the skills into `first-party/<plugin>/skills/` as real directories — each with its `SKILL.md`, `references/`, and `assets/`.
-3. Write `first-party/<plugin>/.claude-plugin/plugin.json` (model it on `first-party/replay/`). Skill paths are relative to the plugin dir: `"skills": ["./skills/<skill>", ...]`.
-4. Register the plugin in `.claude-plugin/marketplace.json`. Skill paths there are relative to the repo root: `"skills": ["./first-party/<plugin>/skills/<skill>", ...]`.
-5. Add a `/plugin install <plugin>@laia-skills` line and a Plugins-table row to `README.md`.
-6. List each of its skills in `skills.json` as `{ "source": "first-party" }` (the validator warns about first-party skills that are missing).
-7. Run `mise run validate` (or `ruby tools/scripts/validate_skills.rb`) and fix any errors before committing.
+To add a plugin:
+
+1. Write the skills in `first-party/<plugin>/skills/<skill>/` — each with its `SKILL.md`, and `references/` and `assets/` as needed. If the skill documents an upstream project, pin it as `first-party/<plugin>/upstream/` (`git submodule add <repo-url> first-party/<plugin>/upstream`, pinned per the rules above).
+2. Write `first-party/<plugin>/.claude-plugin/plugin.json` (model it on `first-party/replay/`). Skill paths are relative to the plugin dir: `"skills": ["./skills/<skill>", ...]`.
+3. Register the plugin in `.claude-plugin/marketplace.json`. Skill paths there are relative to the repo root: `"skills": ["./first-party/<plugin>/skills/<skill>", ...]`.
+4. Add a `/plugin install <plugin>@laia-skills` line and a Plugins-table row to `README.md`.
+5. List each of its skills in `skills.json` as `{ "source": "first-party" }` (the validator warns about first-party skills that are missing).
+6. Run `mise run validate` (or `ruby tools/scripts/validate_skills.rb`) and fix any errors before committing.
 
 ## laiaskills
 
@@ -118,9 +118,9 @@ Third-party skills are never copied into the repo; `skills.json` maps each to a 
 
 ### Validator conventions (`tools/scripts/validate_skills.rb`)
 
-- **Plugin name must match a skill.** Every plugin needs a skill directory named after it (`first-party/<plugin>/skills/<plugin>/SKILL.md`) plus a README link to that file. For a multi-skill bundle, add a **router** `SKILL.md` with that name (see `first-party/visionos-agents/skills/visionos-agents/SKILL.md`).
+- **Plugin name must match a skill.** Every plugin needs a skill directory named after it (`first-party/<plugin>/skills/<plugin>/SKILL.md`) plus a README link to that file. For a multi-skill bundle, add a **router** `SKILL.md` with that name (see `first-party/visionos-agents/skills/visionos-agents/SKILL.md`, which routes to third-party skills).
 - **Marketplace skill paths must exist.** Every path in a plugin's `skills` array in `marketplace.json` must point at a folder containing `SKILL.md`.
-- **Links and asset paths must resolve.** Local Markdown links in each `SKILL.md` and the icon paths in each `agents/openai.yaml` are checked. Fix broken references in the vendored copy under `first-party/<plugin>/skills/`; leave `upstream/` pristine.
+- **Links and asset paths must resolve.** Local Markdown links in each `SKILL.md` and the icon paths in each `agents/openai.yaml` are checked. Fix broken references in the skill under `first-party/<plugin>/skills/`; leave `upstream/` pristine.
 
 ### Codex sidecar (`agents/openai.yaml`)
 

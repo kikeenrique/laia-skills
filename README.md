@@ -26,7 +26,7 @@ Check for updates anytime with `/plugin marketplace update`.
 | [mise](first-party/mise/skills/mise/SKILL.md) | mise-en-place workflows for dev tools, project config, environments, tasks and task caching, machine bootstrap and dotfiles, plugins/backends, dependency providers, tool stubs, MCP, lockfiles, CI, and troubleshooting. |
 | [ios-simulator-ui-flow](first-party/ios-simulator-ui-flow/skills/ios-simulator-ui-flow/SKILL.md) | Autonomous iOS Simulator UI verification flow verified against AXe v1.8.0: builds, installs, launches, captures logs, inspects and interacts with UI via AXe CLI, uses tap/slider/swipe/drag/batch/screenshot/video, and verifies results without user intervention. |
 | [replay](first-party/replay/skills/replay/SKILL.md) | HTTP recording, playback, and stubbing for Swift tests using the [Replay](https://github.com/mattt/Replay) framework — HAR fixtures, Swift Testing traits, matcher tuning, secret redaction, and `AsyncHTTPClient` support. |
-| [visionos-agents](first-party/visionos-agents/skills/visionos-agents/SKILL.md) | visionOS / Apple Vision Pro spatial computing suite (22 skills): spatial SwiftUI, RealityKit (rendering, animation/physics, audio, ECS), ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, and Swift Charts 3D. Skills by [Tom Krikorian](https://github.com/tomkrikorian), vendored from [tomkrikorian/visionOSAgents](https://github.com/tomkrikorian/visionOSAgents) (MIT). |
+| [visionos-agents](first-party/visionos-agents/skills/visionos-agents/SKILL.md) | Router for visionOS / Apple Vision Pro spatial computing work: points to the right skill among the 22 in [Tom Krikorian](https://github.com/tomkrikorian)'s [tomkrikorian/visionOSAgents](https://github.com/tomkrikorian/visionOSAgents) (MIT): spatial SwiftUI, RealityKit (rendering, animation/physics, audio, ECS), ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, and Swift Charts 3D. Install those skills from that repo; this plugin ships only the router. |
 | [cupertino](first-party/cupertino/skills/cupertino/SKILL.md) | Offline, citable Apple developer documentation search with the [cupertino](https://codeberg.org/CupertinoHQ/cupertino) CLI, verified against v1.4.2: 417 frameworks, HIG, sample code, Swift Evolution, Swift packages, AST symbol / conformance / inheritance queries, per-platform version filters, and a freshness check for newly released SDKs. Skill forked from upstream `skills/cupertino` (MIT). |
 
 ## Repository layout
@@ -34,7 +34,7 @@ Check for updates anytime with `/plugin marketplace update`.
 | Folder | Contents |
 |--------|----------|
 | `first-party/` | Skills authored here and published through this marketplace, one plugin per folder |
-| `third-party/` | External skill repos used here (20 sources), as git submodules pinned to releases, not published |
+| `third-party/` | External skill repos used here (21 sources), as git submodules pinned to releases, not published |
 | `patches/` | Local fixes to third-party skills (e.g. from security audits), applied to the installed copies |
 | `tools/` | Tooling: the skill validator and the `laiaskills` CLI (Swift, macOS and Linux) |
 | `docs/` | Plans and design docs, e.g. [the repo and `laiaskills` design](docs/plans/skills-repo-design.md) |

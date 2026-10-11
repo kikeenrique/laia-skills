@@ -7,9 +7,6 @@
 [submodule "mise/upstream"]
 	path = first-party/mise/upstream
 	url = https://github.com/jdx/mise.git
-[submodule "visionos-agents/upstream"]
-	path = first-party/visionos-agents/upstream
-	url = https://github.com/tomkrikorian/visionOSAgents
 [submodule "cupertino/upstream"]
 	path = first-party/cupertino/upstream
 	url = https://codeberg.org/CupertinoHQ/cupertino.git
