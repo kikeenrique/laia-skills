@@ -49,7 +49,6 @@
     "swiftui-performance-audit": { "source": "third-party/Dimillian__Skills" },
     "swiftui-pro": { "source": "third-party/twostraws__SwiftUI-Agent-Skill", "path": "swiftui-pro" },
     "swiftui-ui-patterns": { "source": "third-party/Dimillian__Skills" },
-    "swiftui-view-refactor": { "source": "third-party/Dimillian__Skills" },
     "tkr-skill-writer": { "source": "first-party" },
     "ui-ux-pro-max": { "source": "third-party/nextlevelbuilder__ui-ux-pro-max-skill" },
     "usd-editor": { "source": "first-party" },
