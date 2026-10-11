@@ -542,7 +542,7 @@ of third-party sources.
 | 2026-10-04 | **End-to-end CLI tests**: the built binary is tested against fixture repos with a fake `HOME` |
 | 2026-10-04 | **Decision 18**: `skill-creator` left to the claude.ai sync (old copy removed); `formatting-build-output` managed as a skill, `xcsift` Claude plugin and its `PreToolUse` hook uninstalled |
 | 2026-10-04 | **Per-skill mirror opt-out** (`skipMirrors`, 5.1) and **`import --prune`**; `sync` also repairs mirror links |
-| 2026-10-04 | **Phase 3, migration** (section 9): 20 third-party sources and 36 skills imported, four under their current GitHub names; `sync` replaced 40 copies (backed up) and installed 24; `visionos-agents` Claude plugin uninstalled; `import --prune` emptied `~/.agents/.skill-lock.json`. All 64 skills up to date and linked. Snapshot in `tmp/migration-snapshot-2026-10-04/` |
+| 2026-10-04 | **Phase 3, migration** (section 9): 20 third-party sources and 36 skills imported, four under their current GitHub names; `sync` replaced 40 copies (backed up) and installed 24; `visionos-agents` Claude plugin uninstalled; `import --prune` emptied `~/.agents/.skill-lock.json`. All 64 skills up to date and linked. Snapshot in `tmp/migration-snapshot-2026-10-04/` (deleted 2026-10-11) |
 | 2026-10-04 | **Fixes found during the migration**: names match ignoring case (`watchos` says `name: watchOS`); copies leave out plugin manifests and nested skills (duplicate `swiftui-pro:swiftui-pro`); `add` prefers the canonical `skills/<name>` copy (ECC skills had come from their Japanese translations) |
 | 2026-10-04 | **Local patches** (decision 19, 5.8): `laiaskills patch`, applied on install, re-tested on upgrade, reported by `check` and `doctor`. First patch: `apple-hig-designer`, `printf -v` instead of `eval` on user input |
 | 2026-10-04 | **Test suite**: 76 tests (61 library, 15 end-to-end CLI), all offline; green on macOS and Linux CI through `7e09a92` |
@@ -579,7 +579,6 @@ In priority order.
 | 5 | Optional: top up the cupertino doc index | owner | The corpus is frozen at bundle v1.4.0 (crawled 2026-06-20, WWDC26 beta era) and upstream is dormant. When stale iOS 27 docs hurt: one batched overnight `cupertino fetch`, then a single `save` (about 40 minutes whatever the size) |
 | 6 | Re-run the prompt audit | tool + owner | At the next Claude model release or after a large skill upgrade. Starting point and keep-list in [prompt-audit.md](prompt-audit.md); its low-confidence flags are the first things to re-check |
 | 7 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
-| 8 | Optional: delete `tmp/migration-snapshot-2026-10-04/` | owner | Once the migrated skills have been in use for a while |
 
 ### Implementation notes
 
@@ -734,7 +733,7 @@ Every skill installed by other tools is now managed by laiaskills: 20 third-part
 plus the 28 first-party ones, 64 in total. Four sources are added under their current GitHub names
 rather than the ones in the old lock file (`affaan-m/ECC`, `krutikJain/android-agent-skills`,
 `AvdLee/Swift-Concurrency-Agent-Skill`, `twostraws/SwiftData-Agent-Skill`). The pre-migration snapshot
-is in `tmp/migration-snapshot-2026-10-04/`; per-skill backups and the old lock file are in
+was kept in `tmp/migration-snapshot-2026-10-04/` until 2026-10-11; per-skill backups and the old lock file are in
 `~/.agents/.laiaskills/backups/`.
 
 ## 10. Feature coverage
