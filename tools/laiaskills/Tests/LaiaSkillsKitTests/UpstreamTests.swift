@@ -45,6 +45,29 @@ import LaiaSkillsTestSupport
         #expect(status.state == .outdated)
     }
 
+    @Test func shallowBranchPinAtHeadHasNoNote() throws {
+        let fixture = try Fixture()
+        try fixture.originRepo("origin", commits: [("a", nil), ("b", nil)])
+        try fixture.git("clone", "--quiet", fixture.url("origin").path, "repo/source")
+
+        let submodule = Submodule(name: "s", path: "source", url: "", branch: nil, shallow: true)
+        let status = UpstreamChecker.status(of: submodule, repo: fixture.url("repo"), fetch: true)
+        #expect(status.state == .upToDate)
+        #expect(status.note == nil)
+    }
+
+    @Test func shallowBranchPinBehindHeadIsOutdated() throws {
+        let fixture = try Fixture()
+        try fixture.originRepo("origin", commits: [("a", nil), ("b", nil)])
+        try fixture.git("clone", "--quiet", fixture.url("origin").path, "repo/source")
+        try fixture.git("checkout", "--quiet", "HEAD~1", in: "repo/source")
+
+        let submodule = Submodule(name: "s", path: "source", url: "", branch: nil, shallow: true)
+        let status = UpstreamChecker.status(of: submodule, repo: fixture.url("repo"), fetch: true)
+        #expect(status.state == .outdated)
+        #expect(status.note == "shallow: newer commits exist but are not counted")
+    }
+
     @Test func missingCheckoutIsUnknown() throws {
         let fixture = try Fixture()
         let submodule = Submodule(name: "s", path: "absent", url: "", branch: nil, shallow: false)

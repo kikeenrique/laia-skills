@@ -132,10 +132,14 @@ public enum UpstreamChecker {
         }
         let branch = submodule.branch ?? "main"
         let head = git.attempt("ls-remote", "origin", "refs/heads/\(branch)")?.split(separator: "\t").first.map(String.init)
+        let state: SourceStatus.State = head == nil ? .unknown : (head == pinned ? .upToDate : .outdated)
+        let note: String? = switch state {
+        case .unknown: "cannot read origin/\(branch)"
+        case .outdated: "shallow: newer commits exist but are not counted"
+        case .upToDate: nil
+        }
         return SourceStatus(path: submodule.path, kind: kind, mode: .branch, pinnedCommit: pinned, pinnedTag: nil,
-                            latest: branch, commitsBehind: nil,
-                            state: head == nil ? .unknown : (head == pinned ? .upToDate : .outdated),
-                            note: "shallow: newer commits exist but are not counted")
+                            latest: branch, commitsBehind: nil, state: state, note: note)
     }
 
     /// Checks many submodules in parallel (each is an independent git process).
