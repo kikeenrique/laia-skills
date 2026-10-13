@@ -49,11 +49,12 @@ Machine-wide software goes in `[bootstrap.packages]`; per-project, version-switc
 | Config | Use for |
 | --- | --- |
 | `[bootstrap.packages]` | OS packages, keyed `"manager:package"` |
+| `[bootstrap.apt.sources]` | Extra apt repositories and PPAs (2026.10.9) |
 | `[bootstrap.plugins]` | Package-manager plugins (register before their packages) |
 | `[bootstrap.repos]` | Git repos cloned before dotfiles apply |
 | `[dotfiles]` | Dotfiles — top level, not under `[bootstrap]`; see [dotfiles.md](dotfiles.md) |
 | `[bootstrap.mise_shell_activate]` | Activation snippets in shell startup files |
-| `[bootstrap.macos.defaults]`, `[bootstrap.macos.launchd.agents]` | macOS preferences and LaunchAgents |
+| `[bootstrap.macos.defaults]`, `[bootstrap.macos.launchd.agents]`, `[bootstrap.macos.login_items]` | macOS preferences, LaunchAgents, and Open-at-Login apps |
 | `[bootstrap.linux.systemd.units]`, `[bootstrap.linux.firewall]` | Linux user units and host firewall |
 | `[bootstrap.files]`, `[bootstrap.directories]` | Managed paths, content, ownership, permissions |
 | `[bootstrap.users]`, `[bootstrap.groups]` | Linux service accounts and groups |
@@ -81,6 +82,23 @@ Entries are `"manager:package" = "<version>"`; `"latest"` accepts an already-ins
 ```
 
 Managers: `apk`, `apt`, `aur`, `dnf`, `zypper`, `pacman`, `brew`, `brew-cask`, `macos-app`, `flatpak`, `flatpak-user`, `nix`, `mas`, `scoop`, `winget`, plus package plugins. Entries for a manager unavailable on the current platform are skipped, so one config works everywhere. `pacman`, `scoop`, and `zypper` support `state = "absent"`.
+
+`"dnf:@development-tools"` (a leading `@`) is a dnf package group; use `"latest"` (environment groups `@^name` are unsupported). On Fedora Atomic hosts (Silverblue, Bazzite, …) `dnf:` entries fail with an explanation by default; `system_packages.ostree = "layer"` (2026.10.9) layers them in one `rpm-ostree install` transaction instead (reboot needed, pins skipped, `upgrade` refused).
+
+Package managers that need root run through `sudo`; since 2026.10.9 mise falls back to `run0` (systemd 256+) and then `doas` when `sudo` is missing, and `system_packages.elevate_with = "run0"` (or `"doas"`) pins one. `system_packages.sudo = false` forbids elevation.
+
+Since 2026.10.9 `[bootstrap.apt.sources]` adds apt repositories before `apt:` packages install, writing `/etc/apt/sources.list.d/mise-<name>.sources` with the key embedded in `Signed-By` (apt 2.4+) and running `apt-get update` once when a source changes. PPAs are added only on Ubuntu and derivatives; other sources need `uris`, `key`, and `fingerprint` (`suites`, `components`, `architectures` optional). A declared source also replaces an already-installed package from elsewhere (unless pinned or arch-qualified). mise never removes sources; delete the file yourself.
+
+```toml
+[bootstrap.apt.sources]
+git-core = { ppa = "git-core/ppa" }
+
+[bootstrap.apt.sources.docker]
+uris = "https://download.docker.com/linux/ubuntu"
+components = "stable"
+key = "https://download.docker.com/linux/ubuntu/gpg"
+fingerprint = "9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
+```
 
 `brew`/`brew-cask` do **not** require Homebrew to be installed: mise pours bottles into the canonical prefix itself. Third-party taps use the fully qualified name; add non-inferable tap URLs under `[bootstrap.brew.taps]`. A cask entry can set its own install directory: `"brew-cask:1password" = { appdir = "/Applications" }`.
 
@@ -128,7 +146,7 @@ mise bootstrap --update          # refresh package metadata and declared repos f
 
 `--only` does not pull in prerequisites: `--only services` will not install the packages that provide them.
 
-Files and directories a package manager needs (apt keyrings, repo definitions) can run early with `phase = "pre-packages"` on their `[bootstrap.files."<path>"]` / `[bootstrap.directories."<path>"]` entry: they apply after accounts and plugins, before the `pre-packages` hook (default phase is `"post-packages"`). Follow with `mise bootstrap --update` to refresh package metadata.
+For apt, prefer `[bootstrap.apt.sources]`. Other files and directories a package manager needs (keyrings, repo definitions) can run early with `phase = "pre-packages"` on their `[bootstrap.files."<path>"]` / `[bootstrap.directories."<path>"]` entry: they apply after accounts and plugins, before the `pre-packages` hook (default phase is `"post-packages"`). Follow with `mise bootstrap --update` to refresh package metadata.
 
 Files and directories also accept the packages' `os` selector, so one config can write different paths per platform; a non-matching entry is skipped as if undeclared:
 
@@ -144,6 +162,7 @@ source = "./files/docker-daemon.json"
 - systemd units support `state = "absent"` and `mise bootstrap unapply`.
 - systemd units (`[bootstrap.linux.systemd.units.<name>]`) accept `before`, `binds_to`, `part_of`, and `conflicts` (lists of unit names) next to `after`/`wants`/`requires`, and service-only `exec_start_pre` / `exec_start_post` lists (one `ExecStartPre=`/`ExecStartPost=` line each).
 - LaunchAgents accept `process_type` = `Background`, `Standard`, `Adaptive`, or `Interactive` (exact launchd spelling; anything else is an error).
+- `[bootstrap.macos.login_items] apps = ["/Applications/Ghostty.app", "~/Applications/Example.app"]` (2026.10.9) declares Open-at-Login apps. It is additive by default; `exclusive = true` makes `apply` remove undeclared entries too. Applied with the macOS defaults.
 - For `defaults -currentHost` preferences, use an explicit entry with `host = "current"` (default `"any"`):
 
 ```toml
@@ -186,7 +205,9 @@ Every mutating run records a pair of history checkpoints (tracked files before a
 | Global mise config (`config.toml`, `conf.d/`, `tasks/`) | `mise bootstrap --adopt <repo>` |
 | Tracked dotfile history (setup repository) | `mise bootstrap --adopt <repo>` |
 
-`--from` clones into `$MISE_DATA_DIR/bootstrap-repo` (`--from-dir` overrides; append `?ref=<branch|tag|commit>` to the URL to check out a ref, e.g. `git::https://github.com/example/dotfiles.git?ref=v1`) and trusts the supplied repository for that invocation — review it first. `--adopt` clones into `$MISE_CONFIG_DIR`. Both accept `-E <env>` to select `mise.<env>.toml` / `config.<env>.toml`, and `--update` to fast-forward an existing checkout. The old `--from-git` alias was removed in 2026.10.0; use `--from`.
+`--from` clones into `$MISE_DATA_DIR/bootstrap-repo` (`--from-dir` overrides; append `?ref=<branch|tag|commit>` to the URL to check out a ref, e.g. `git::https://github.com/example/dotfiles.git?ref=v1`) and trusts the supplied repository for that invocation — review it first. `--adopt` clones into `$MISE_CONFIG_DIR`. Both accept `-E <env>` to select `mise.<env>.toml` / `config.<env>.toml`, and `--update` to fast-forward an existing checkout. The old `--from-git` alias was removed in 2026.10.0; use `--from`. Use `--from` for a setup project you apply but don't make your own (your global config still loads alongside it); use `--adopt` when the repository becomes this machine's own config. On a fresh machine without `git` (or `ssh` for an SSH URL), mise offers to install them with the host package manager before cloning (`--yes` accepts; `--dry-run` only reports).
+
+`--prompt-vars` asks for `[vars]` entries with a `prompt` and no saved answer (see [environments.md](environments.md)), which is how `--adopt` answers per-machine values on a fresh machine. `[bootstrap.repos]` keys may render vars, e.g. `"{{ vars.repos_dir }}/project-a" = { url = "..." }` (2026.10.9), so each machine picks its own checkout base.
 
 To drop an optional module, `mise bootstrap unapply <env>… [--dry-run]` removes the managed files, directories, user services, and dotfile entries that config environment contributes (based on the current config, not run history).
 

@@ -225,6 +225,8 @@ mise prune --dry-run         # prints the exact paths that would be removed
 mise install --include-task-tools
 ```
 
+`mise upgrade --global [tool]` (2026.10.7) upgrades only the global config's requests, even inside a project that pins its own version, and never touches project config or lockfiles; `mise outdated --global [tool] --json` reports what it would install (`{}` = up to date). Self-updating tools (coding agents, editors) should update through these two commands instead of their own updater, which would overwrite `installs/<tool>/<version>/` or install an unmanaged copy.
+
 `-l` on `mise upgrade` is a deprecated shorthand for `--bump`; it becomes `--local` after mise 2027.8.5. Use `-b`/`--bump`.
 
 `prune.exclude = ["node", "aqua:BurntSushi/ripgrep"]` (`MISE_PRUNE_EXCLUDE`) keeps every version of those tools from `mise prune`, `ls --prunable`, and post-upgrade pruning — for tools something outside mise reaches by install path (a virtualenv, an editor SDK). `mise uninstall` is unaffected.
@@ -238,7 +240,11 @@ claude = { version = "latest", auto_update = true }   # every tool_update.check_
 node = { version = "22", auto_update = "6h" }         # stays within 22.x; minimum 1h
 ```
 
-When a shim or `mise x` is about to run the tool and the interval has passed, mise upgrades it first (warning and running the installed version on failure). Exact pins, offline, CI, and `locked = true` never update; tasks, `hook-env`, and plain PATH lookups under activation never update. A project that sets its own version of the tool is not updated. For background updates instead, declare `[bootstrap.services.mise-tool-update] builtin = "tool-update"` and run `mise bootstrap services apply`. Failures show in `mise doctor`. `mise use -g --tool-option auto_update=true node@22` writes the option.
+When a shim or `mise x` is about to run the tool and the interval has passed, mise upgrades it first (warning and running the installed version on failure). Since 2026.10.7, in a shell with `mise activate`, a prompt whose checks are due starts the updates of every opted-in tool in the background without waiting; the new version is used after the next prompt refresh, and failures show in `mise doctor`. Exact pins, offline, CI, and `locked = true` never update; tasks never update. Only installed tools are updated (an un-run lazy tool is left alone), and a global lockfile entry moves with the update. A project that sets its own version of the tool is not updated.
+
+To opt in every global tool at once, set `tool_update.global_auto = true` (or an interval such as `"12h"`; `MISE_TOOL_UPDATE_GLOBAL_AUTO`) in global `[settings]`; a tool's own `auto_update`, including `auto_update = false`, still wins. Updates respect `minimum_release_age` (default `24h`), so a release can take 24–48h to land. For background updates instead, declare `[bootstrap.services.mise-tool-update] builtin = "tool-update"` and run `mise bootstrap services apply`. Failures show in `mise doctor`. `mise use -g --tool-option auto_update=true node@22` writes the option.
+
+For IDEs and programs that cannot run mise, each tool's install directory has runtime symlinks (`latest`, `3`, …) and, since 2026.10.8, a `global` link to the version global/system config selects (e.g. point a JDK or Maven home at `~/.local/share/mise/installs/maven/global`); it follows `mise use -g` and ignores project config.
 
 ### Install Layout
 
@@ -255,7 +261,7 @@ mise settings add idiomatic_version_file_enable_tools node
 mise settings add idiomatic_version_file_disable_files node:package.json
 ```
 
-mise reads fields that state the version a project is *built with*, not compatibility floors. `package.json` `devEngines` and `packageManager` are read; `engines` is not. In `go.mod` (and `go.work`, which wins when a workspace is active), `toolchain goX.Y.Z` is read while the `go X.Y` floor is deprecated and removed in mise 2026.11.0 (as is `cmake_minimum_required`); `idiomatic_version_file_ignore_minimum_versions` opts into the final behavior early.
+mise reads fields that state the version a project is *built with*, not compatibility floors. `package.json` `devEngines` and `packageManager` are read; `engines` is not. In `go.mod` (and `go.work`, which wins when a workspace is active), `toolchain goX.Y.Z` is read — or, since 2026.10.9, an exact three-part `go X.Y.Z` line when there is no `toolchain` line — while the `go X.Y` floor is deprecated and removed in mise 2026.11.0 (as is `cmake_minimum_required`); `idiomatic_version_file_ignore_minimum_versions` opts into the final behavior early.
 
 ## Ruby
 

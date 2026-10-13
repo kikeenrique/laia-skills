@@ -34,6 +34,8 @@ _.python.venv = { path = ".venv", create = true }
 
 Shell-style expansion is disabled by default inside structured JSON/YAML/TOML files so literal `$` survives; `expand = true` re-enables it. `_.file = { path = ".env", tools = true }` loads the file after tools define their env.
 
+Dotenv quoting works as in a shell: single-quoted text is literal (backslashes included), adjacent quoted and unquoted parts are joined (`'it'\''s'` → `it's`), and an unpaired quote such as `O'Brien` is kept as written. Single-quote values that must keep their own quotes, such as JSON: `CONFIG='{"debug": true}'`. YAML values are read as written (`VERSION: 1.10` stays `1.10`, `ZIP: 02134` keeps its zero).
+
 Deprecated spellings — do not emit these:
 
 | Deprecated | Use | Removed |
@@ -84,6 +86,31 @@ LD_LIBRARY_PATH = "/some/path:{{env.MY_PROJ_LIB}}"
 ```
 
 Useful vars: `config_root` (the project directory) and `config_source` (the template's own config file as an absolute path, unresolved through symlinks — pipe through `canonicalize` for the real file).
+
+Platform functions: `arch()`, `os()`, `os_family()`, and since 2026.10.9 `libc()` (`gnu`/`musl`, honoring the `libc` setting) and `avx2()` (`yes`/`no`; non-x86-64 reports `yes`). Keywords rename the result, e.g. `{{ libc(gnu="", musl="-musl") }}` or `{{ avx2(yes="", no="-baseline") }}` in an `http:` URL. Both also work in `.miserc.toml`.
+
+### Prompted `[vars]`
+
+Since 2026.10.6 a `[vars]` entry with `prompt` is a per-machine answer, asked once and saved in `$MISE_STATE_DIR/vars.toml` (never in config or dotfiles history):
+
+```toml
+[vars.git_name]
+default = "Ada Lovelace"
+prompt = "Git author name"
+
+[vars.git_email]
+required = "Run mise vars prompt to set git_email"
+prompt = "Git email"
+```
+
+```bash
+mise vars                  # list vars and their sources (also `mise vars ls`)
+mise vars prompt           # ask for every unanswered prompt var (`mise vars prompt git_name` for one)
+mise vars git_name=Ada     # save an answer without a terminal
+mise vars unset git_name   # forget it, to be asked again
+```
+
+Only `mise vars prompt` and `mise bootstrap --prompt-vars` ask; everything else uses the saved answer, then `default`, or fails like any `required` var. Precedence: process env > higher-precedence config value > saved answer > `default`. `prompt` works only in `[vars]`, not `[env]`.
 
 Shell-style expansion (`$VAR`, `${VAR}`, `${VAR:-default}`) runs after Tera rendering and is **on by default**. `env_shell_expand = false` disables it:
 

@@ -114,7 +114,7 @@ Two selected groups writing the same path fail before anything is written. `mise
 ## Commands
 
 ```bash
-mise dot status            # tracked/applied/missing/differs/orphaned per entry
+mise dot status            # per entry, grouped into sections (2026.10.9); also lists unsaved changes since the last checkpoint
 mise dot status --missing  # exit 1 if anything is out of sync
 mise dot diff [target]
 mise dot apply --dry-run --verbose
@@ -125,6 +125,7 @@ mise dot add ~/.zshrc [--mode copy|--no-apply|--group <name>]
 mise dot add --changed     # capture all changed copy-mode files
 mise dot edit [--apply] ~/.zshrc
 mise dot save              # checkpoint tracked files now
+mise dot save --re-encrypt # after changing recipients: re-encrypt every saved file (needs keys for all)
 mise dot history [show latest|diff 11 12]
 mise dot paths
 mise dot notify            # send a test notification (sync-conflict alerts only)
@@ -135,7 +136,7 @@ Tracking options:
 ```bash
 mise dot track --dry-run ~/.codex             # file count/size and what is left out; writes nothing
 mise dot track ~/.config/app/credentials --encrypt   # needs [history.encryption].recipients
-mise dot track --allow-plaintext ~/notes-token.md    # saves allow_plaintext = true; --yes does not imply it
+mise dot track --allow-plaintext ~/notes-token.md    # saves allow_plaintext = true; neither --yes nor a piped answer implies it
 mise dot exclude '~/.codex/sessions/**'       # global [history] exclude; `include` removes it again
 mise dot track --local ~/.config/app/state.json   # mode = "track-local"
 mise dot track --machine ~/.config/hypr/monitors.lua   # variants = [{ machine = true }]
@@ -164,6 +165,10 @@ Synchronization pushes checkpoints to a Git remote so another machine can restor
 Before a push, mise refuses to publish earlier plaintext versions of now-encrypted paths, and (since 2026.10.5) unpublished versions with a line that looks like a secret — provider tokens (`ghp_`, `sk-`, `AKIA…`), private key blocks, or `*_KEY`/`*_TOKEN`/`*_SECRET`/`*_PASSWORD` assignments. Removing the line from the file does not remove it from saved versions; encrypt the file instead. Override both checks once with `mise dot sync --allow-plaintext-history`, or always with `[settings.history] allow_plaintext_history = true` (global config only) — both publish the old content.
 
 On a machine whose files differ from the setup repository, `mise bootstrap --adopt <url> --take-remote-all` (or `mise dot pull --take-remote-all` after adopting) takes the repository's versions and saves the replaced local files first, so `mise dot undo` restores them. `--adopt <url> --replace-history --take-remote-all` discards this machine's own checkpoints and adopts the origin's history (mise setup repositories only; back up first); without `--take-remote-all` it refuses when files differ.
+
+`sync`, `pull`, and `apply` do different jobs: `mise dot sync` only fetches/pushes history and never touches files; `mise dot pull` writes fetched versions to tracked paths (including a `copy`/`template` *source*); `mise dot apply` copies or renders `[dotfiles]` targets. After a tracked template source changes on another machine, run `sync` → `pull` → `apply`; the `sync`-mode watcher pulls but does not render.
+
+When a variant becomes newly selected on a machine (e.g. a `-E work` profile another machine saved), `mise dot status` shows it as `not applied here` and saves skip it until `mise dot pull`; a differing local copy is a conflict — `--take-remote <path>` (unrecoverable here) or `--keep-local <path>` then `mise dot save <path>`.
 
 `history.notify` desktop notifications cover only sync conflicts that pause sharing; `mise doctor` and `mise dot status` show whether they can be delivered (Homebrew builds on macOS never notify), and `mise dot notify` triggers the macOS permission prompt.
 

@@ -230,7 +230,7 @@ mise :build          # current config root
 
 Shorten a deep root with `[monorepo.path_aliases]`, e.g. `"123" = "foo/bar/baz/abc/123"`, so `mise run //123:build` works (single segment, must point at a listed config root; the full path stays canonical).
 
-Dependency paths starting with `./` resolve relative to the task that declares them, so `depends = [{ task = "./...:test", optional = true }]` matches the current project and its descendants. The experimental workspace graph, `--affected`, and upstream `^` dependencies are in [workspaces-and-caching.md](workspaces-and-caching.md).
+Dependency paths starting with `./` resolve relative to the task that declares them, so `depends = [{ task = "./...:test", optional = true }]` matches the current project and its descendants. The workspace graph, `--affected`, and upstream `^` dependencies are in [workspaces-and-caching.md](workspaces-and-caching.md).
 
 ## Watch
 

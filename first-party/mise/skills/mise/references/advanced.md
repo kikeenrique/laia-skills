@@ -79,7 +79,7 @@ node = "24"
 
 Trust gates config features that can execute code: templates, env directives, tool-option tables, and `path:` plugin versions.
 
-- **Safe files load without trust**: those containing only `min_version`, `[tools]` entries with plain version strings or arrays, and `[tasks]` without templates or tool options. Since mise 2026.10.0, inline options in a tool name (`"tool[opt=value]"`, also in `.tool-versions`) and remote `include` entries require trust too.
+- **Safe files load without trust**: those containing only `min_version`, `[tools]` entries with plain version strings or arrays, and `[tasks]` without templates or tool options. Since mise 2026.10.0, inline options in a tool name (`"tool[opt=value]"`, also in `.tool-versions`) and remote `include` entries require trust too. Since 2026.10.9 a `path:<dir>` tool version (`node = "path:./local"`, or `node path:./local` in `.tool-versions`) also requires trust, so an untrusted clone can no longer put its own `bin/` first on `PATH` at `cd`; trusted configs work as before.
 - **Auto-trust**: in normal mode `mise run`, a naked `mise <task>`, `mise install`, `mise exec`, and `mise watch` automatically trust the active config, because they exist to execute project-defined behavior. Other commands still require trust.
 - **Worktrees**: trust is shared across git worktrees when the equivalent path in the main checkout is trusted. Paranoid mode disables that sharing and requires explicit content-bound trust everywhere.
 - **CI**: detected CI assumes configs are trusted unless paranoid mode is on.
@@ -142,6 +142,8 @@ mise generate install-script -l -w    # once, locally; commit bin/mise, gitignor
 Set `MISE_VERSION` to select a release; the wrapper otherwise defaults to the version that generated it. On GitHub Actions use `jdx/mise-action@v5`, which adds `--locked` automatically when a `mise.lock` is committed; see [github-actions.md](github-actions.md).
 
 Cache installed tools with a key covering runner OS/arch, mise config, and the lockfile, and still run `mise install` after restoring. Use `mise lock --platform ...` beforehand if lockfiles lack the CI platform, and configure GitHub authentication for uncached release metadata.
+
+Since 2026.10.7 mise keeps finished downloads in a content-addressed cache, `$MISE_CACHE_DIR/downloads-cas` (`download_cache`, default on; `download_cache_max_size`, default `2GiB`, `0` = unlimited, LRU eviction). A file is reused when the server answers `304 Not Modified` or when a checksum is pinned in tool options or `mise.lock`. With `locked` or `paranoid`, only pinned downloads are stored or reused, so restoring `downloads-cas` in CI is a cache you can trust — unlike a restored `installs/`, which mise cannot verify against the lockfile. `always_keep_download` is deprecated (warns from 2026.11.0, removed in 2027.11.0); it now only matters for files an asdf plugin script downloads itself.
 
 For untrusted PR config, run bots under `MISE_SAFE=1`.
 
@@ -252,7 +254,7 @@ mise deps add npm:react
 
 ## Monorepos
 
-Basic monorepo tasks are **stable**. See [tasks.md](tasks.md) for target syntax and [workspaces-and-caching.md](workspaces-and-caching.md) for the experimental workspace graph, `--affected`, and task artifact caching.
+Basic monorepo tasks are **stable**. See [tasks.md](tasks.md) for target syntax and [workspaces-and-caching.md](workspaces-and-caching.md) for the workspace graph, `--affected` (stable since 2026.10.6), and the experimental task artifact cache.
 
 ```toml
 monorepo_root = true

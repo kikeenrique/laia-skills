@@ -67,3 +67,5 @@ run = "python -m pytest"
 ## GitHub Rate Limits
 
 Many tool backends resolve releases through GitHub. If installs return 4xx/rate-limit errors, configure GitHub authentication or commit a complete `mise.lock` so CI and teammates reuse resolved URLs.
+
+Locally, mise can authorize itself with a GitHub App device flow (`mise settings github.oauth_client_id=<id>`, then `mise token github --oauth`). `github.oauth_copy_code = true` copies the device code to the clipboard (unset: asks in a terminal). To keep the six-month refresh token out of the cache file, set both global-only `github.oauth_cache_get` (prints it) and `github.oauth_cache_set` (reads it on stdin) to password-manager commands, e.g. `pass show mise/github-oauth` / `pass insert -m -f mise/github-oauth` (2026.10.9).

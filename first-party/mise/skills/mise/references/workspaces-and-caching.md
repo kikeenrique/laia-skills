@@ -2,7 +2,7 @@
 
 Use this reference for monorepo workspace inference, affected-task selection, and the artifact cache for tasks. Monorepo basics (`monorepo_root`, `[monorepo].config_roots`, `//path:task` syntax) are in [tasks.md](tasks.md).
 
-Everything on this page is **experimental** and requires `[settings] experimental = true` (or `MISE_EXPERIMENTAL=1`).
+The artifact cache (local and remote) is **experimental** and requires `[settings] experimental = true` (or `MISE_EXPERIMENTAL=1`). Since 2026.10.6 the workspace project graph, `mise tasks graph`, `--affected`, `[monorepo.task_defaults]`, `[monorepo.projects]`, and `task.auto_infer` are stable and need no experimental flag.
 
 ## Task Artifact Caching
 
@@ -96,8 +96,8 @@ mise can infer a provider-neutral project graph from ecosystem workspace metadat
 ```toml
 monorepo_root = true
 
-[settings]
-experimental = true
+[monorepo]
+config_roots = ["apps/*", "packages/*"]
 ```
 
 ```bash
@@ -115,9 +115,13 @@ mise run --affected build
 mise run --affected --affected-base origin/main --affected-head HEAD test
 mise run --affected --affected-explain --dry-run build
 mise run --affected --affected-json build
+mise run --affected --affected-committed build                          # ignore the working tree
+mise run --affected --affected-uncommitted --affected-untracked build   # only what is not committed yet
 ```
 
 mise selects projects owning changed paths, then follows reverse dependencies so downstream projects are included. Workspace-global paths and `task_config.global_inputs` select the whole workspace. Defaults are `HEAD~1`..`HEAD` locally; `MISE_AFFECTED_BASE`/`MISE_AFFECTED_HEAD` override, and GitHub Actions / GitLab MR metadata supply CI defaults.
+
+Since 2026.10.6 a change is the committed `<base>...<head>` range **plus** staged/unstaged edits to tracked files and untracked, unignored files — the working tree counts only when the head revision is the checked-out commit. Naming any of `--affected-committed`, `--affected-uncommitted`, `--affected-untracked` (env `MISE_AFFECTED_COMMITTED`/`_UNCOMMITTED`/`_UNTRACKED`) limits selection to those sources; the working-tree flags error with a different `--affected-head`. Use `--affected-committed` in CI jobs that write untracked files before running `--affected`.
 
 Normal task dependencies expand after selection, so a selected task can still pull a prerequisite from an unchanged project.
 

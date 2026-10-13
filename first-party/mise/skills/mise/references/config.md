@@ -20,16 +20,17 @@ All non-hidden TOML files in a `conf.d/` directory load in alphabetical order. D
 
 A folder inside any `conf.d/` (global, system, or project) is also a fragment: mise reads only its `mise.toml`, `mise.local.toml`, `mise.<env>.toml`, and `mise.<env>.local.toml` (not recursively), and the folder is the config root for its relative paths, `{{ config_root }}`, and tasks. Folder fragments load after single-file fragments in the same directory. It replaces the deprecated `[bootstrap].config_roots` (move `bundles/git` to `mise/conf.d/git`, or symlink it).
 
-`include` merges a remote fragment into the including file, ranked just below it:
+`include` merges another config fragment into the including file, ranked just below it (later entries override earlier ones):
 
 ```toml
 include = [
+  "./config/tools.toml",   # local path (2026.10.6+), relative to the including file or absolute
   "git::https://github.com/myorg/platform.git//mise.toml?ref=main",
   "oci::ghcr.io/myorg/platform-config@sha256:<digest>",
 ]
 ```
 
-Included files cannot nest `include`, set `[settings]` or monorepo keys, or define `[tasks]` (use `task_config.includes`). Since 2026.10.5 they may declare `[bootstrap]`, merged key by key below the including file. They follow the including file's trust; paranoid mode requires a full commit sha or OCI digest. Fetched fragments are cached under `MISE_CACHE_DIR`.
+Included files cannot nest `include`, set `[settings]` or monorepo keys, or define `[tasks]` (use `task_config.includes`). Since 2026.10.5 they may declare `[bootstrap]`, merged key by key below the including file. They follow the including file's trust; paranoid mode requires a full commit sha or OCI digest and rejects local includes (their content is not covered by the trust hash). Fetched fragments are cached under `MISE_CACHE_DIR`; local includes are read on every load.
 
 Dot-prefixed forms such as `.mise.toml` are also accepted. Use the CLI for the installed version's exact resolution:
 
