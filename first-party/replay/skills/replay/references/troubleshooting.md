@@ -26,6 +26,7 @@ The archive exists but no entry matched the incoming request. Almost always a ma
 2. Compare the logged request (method + URL) to the archive entries.
 3. Identify what differs — usually a query param, header, or body field that changed between recording and now.
 4. Relax the matcher: `matching: [.method, .path]` tolerates query noise.
+   - If the archive was recorded with query filters (`.queryParameters(removing:)` / `keeping:`), the trait must pass the same `filters:` at playback — `.url` / `.query` only match redacted URLs when those filters are present (1.0.0+). See [redaction.md](redaction.md#query-filters-and-matching).
 5. If the API genuinely changed: `REPLAY_RECORD_MODE=rewrite swift test --filter …`.
 
 ## "I added `scope: .test` and my tests hang / fail"
@@ -75,7 +76,7 @@ Causes:
 - A `rootURL:` on the `.replay(...)` trait pointing into DerivedData. Drop it.
 - Replay older than 0.6.0, where a `replaysFrom:` bundle was also used for recording. Upgrade to 0.6.0.
 
-With 0.6.0 and neither override set, recording always writes `Replays/` next to the test's source file (creating the directory if needed) — check there first before assuming it failed.
+With 0.6.0 or later and neither override set, recording always writes `Replays/` next to the test's source file (creating the directory if needed) — check there first before assuming it failed.
 
 ## `.headers` matcher never matches my stubs
 

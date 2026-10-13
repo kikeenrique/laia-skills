@@ -19,6 +19,11 @@ A bundle registered with `.playbackIsolated(replaysFrom:)` does **not** change t
 
 Point either at a build product and your fixtures land in DerivedData and vanish on the next build. See [troubleshooting.md](troubleshooting.md) and the resolution order in the main skill.
 
+## What gets recorded
+
+- Since 1.0.0, successful responses with an **empty body** (e.g. `204 No Content`) are recorded like any other.
+- If the response stream fails or is cancelled mid-transfer, the error reaches the caller and **no partial entry** is saved; re-run once the network is stable. (Before 1.0.0 the error was swallowed and the truncated body recorded.)
+
 ## Typical dev loop
 
 ```bash

@@ -10,7 +10,7 @@
 dependencies: [
     .package(
         url: "https://github.com/mattt/Replay.git",
-        from: "0.6.0",
+        from: "1.0.0",
         traits: ["AsyncHTTPClient"]
     )
 ]

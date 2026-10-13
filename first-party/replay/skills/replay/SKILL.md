@@ -17,7 +17,7 @@ allowed-tools: Bash, Read, Grep, Glob, Edit, Write
 
 Replay ships as a Swift Package. It is a **test-only** dependency — never add it to an app target. Minimums: Swift 6.1+, macOS 10.15+ / iOS 15+.
 
-Current version: **0.6.0**.
+Current version: **1.0.0**.
 
 ---
 
@@ -46,7 +46,7 @@ Add to `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/mattt/Replay.git", from: "0.6.0")
+    .package(url: "https://github.com/mattt/Replay.git", from: "1.0.0")
 ],
 targets: [
     .testTarget(
@@ -225,6 +225,8 @@ Prefer redacting at record time via `filters:` so secrets never touch disk:
     )
 )
 ```
+
+Since 1.0.0 query filters redact the recorded URL too, and `.url` / `.query` matching applies them to both sides — so keep the same `filters:` for playback, or redacted entries won't match.
 
 For body-level redaction and after-the-fact scrubbing via the `swift package replay filter` plugin, see [references/redaction.md](references/redaction.md).
 

@@ -20,6 +20,8 @@ Matchers decide whether an incoming request is served by a HAR entry. They compo
 | `.body` | Raw request body bytes | POST/PUT with deterministic payloads. |
 | `.custom((URLRequest, URLRequest) -> Bool)` | Anything you can compute | Escape hatch — prefer built-ins. |
 
+Since 1.0.0, `.url` and `.query` compare URLs after applying the trait's built-in query filters (`.queryParameters(removing:)` / `keeping:`) to both the incoming request and the recorded entry, so a redacted `token=[FILTERED]` still matches the live `token=abc`. That only works when the same filters are passed at playback — see [redaction.md](redaction.md#query-filters-and-matching). No other filter affects matching.
+
 ## Choosing a matcher set
 
 - **Start** with `[.method, .path]` for most APIs. It handles pagination cursors, timestamps, and cache-busters gracefully.

@@ -26,13 +26,24 @@ Filters run while recording, so secrets never touch disk. This is the safest opt
 
 | Form | Purpose |
 | --- | --- |
-| `.headers(removing: ["A","B"])` | Redact listed request + response headers (case-insensitive). Replaces value with `[FILTERED]` by default. |
-| `.headers(keeping: ["Content-Type"])` | Allowlist — redact everything else. |
+| `.headers(removing: ["A","B"])` | Redact listed request + response headers (case-insensitive). Replaces value with `[FILTERED]` by default. Listing `Cookie` / `Set-Cookie` also redacts the HAR `cookies` arrays. |
+| `.headers(keeping: ["Content-Type"])` | Allowlist — redact everything else. Also empties the HAR `cookies` arrays unless `Cookie` / `Set-Cookie` is kept. |
 | `.headers("A", "B", replacement: "…")` | Variadic form with custom replacement string. |
-| `.queryParameters(removing: [...])` / `keeping:` | Same, for URL query items. |
+| `.queryParameters(removing: [...])` | Redact listed query values in the request URL **and** the HAR `queryString` list (case-sensitive names). |
+| `.queryParameters(keeping: [...])` | Allowlist — drop every other query item from the URL and `queryString`. |
 | `.body(replacing: pattern, with: replacement)` | String replacement in request and response bodies. Best for text formats. |
 | `.body(decoding: Type.self, transform: { ... })` | Decode JSON to a Codable, mutate, re-encode. Use for structured redaction. |
 | `.custom { entry async in ... }` | Full control over a `HAR.Entry`. |
+
+## Query filters and matching
+
+Before 1.0.0, query filters only rewrote the HAR `queryString` list and left the secret in the recorded `url`; fixtures recorded with an older Replay may still carry it — re-record or scrub them.
+
+Since 1.0.0 query filters rewrite the URL as well, so the recorded entry no longer matches the raw request. The built-in `.url` and `.query` matchers apply the trait's query filters to both the incoming and the recorded URL before comparing: redacted values match, while kept values still tell requests apart. Consequences:
+
+- Pass the **same** query filters when recording and playing back. Archives don't store filter policies; without them playback falls back to strict matching and misses.
+- Header, body, and custom filters never run during matching, and `.custom` matchers see the original requests.
+- If a URL or its query can't be parsed safely, query filters drop the whole query (and the `queryString` list) rather than risk leaving a secret behind; such entries can't match on `.url` / `.query`.
 
 ## After-the-fact scrubbing
 
