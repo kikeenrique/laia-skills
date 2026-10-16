@@ -131,6 +131,7 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
 ```
 
 - `pypi:` is the Python CLI backend (uv first, pipx fallback); `pipx:` remains a supported alias but is a distinct tool identity. `with`, `expose` (uv 0.8.5+), and `dependency_prereleases` (`disallow`/`allow`/`if-necessary`/`explicit`) need uv; `uvx = false` switches the tool to pipx.
+- Since 2026.10.12 `python = "3.12"` (a CPython minor or exact patch) gives one tool its own Python, installed as a private dependency (not added to the shell's tools) and recorded as a `python` entry in the same lockfile scope: `"pypi:black" = { version = "latest", python = "3.12" }`. It works for uv and pipx and cannot be combined with `--python`/`-p` in `uvx_args`/`pipx_args`.
 - Git subdirectories use pip's fragment, quoted, with the ref after `@`: `mise use 'pypi:git+https://github.com/o/repo#subdirectory=cli@main'` (the `.git` suffix is optional; GitHub shorthand works too).
 - aqua `libc` overrides the `libc` setting for that tool and is recorded in the lockfile; reinstall with `mise install --force` to switch an installed version.
 - A `file://` URL is recorded in `mise.lock` as written, so it only works where that path exists.
@@ -248,7 +249,7 @@ For IDEs and programs that cannot run mise, each tool's install directory has ru
 
 ### Install Layout
 
-Experimental and opt-in: `install_layout = "identity"` (plus `experimental = true`) names each installation `installs/<label>-<hash>/` by backend, version, platform, and install-affecting options, with `installs/<tool>/<version>` kept as a link. Shorthand and full backend spellings then share one install, and variants of one version can coexist. Existing installs stay put; `mise installs migrate [--dry-run] [tool@version]` reinstalls them into the new layout. `mise installs ls [tool] [--json]` lists installations (`selected`, `pinned`, `shared`) and `mise installs select <installation>` picks the one requests without a lockfile use. `http:`, `rust`, and `dotnet` keep the legacy layout.
+Experimental and opt-in: `install_layout = "identity"` (plus `experimental = true`) names each installation `installs/<label>-<hash>/` by backend, version, platform, and install-affecting options, with `installs/<tool>/<version>` kept as a link. Shorthand and full backend spellings then share one install, and variants of one version can coexist. Existing installs stay put; `mise installs migrate [--dry-run] [tool@version]` reinstalls them into the new layout. `mise installs ls [tool] [--json]` lists installations (`selected`, `pinned`, `shared`) and `mise installs select <installation>` picks the one requests without a lockfile use. `http:`, `rust`, and `dotnet` keep the legacy layout. Since 2026.10.10, on Windows `experimental = true` alone turns the identity layout on; set `install_layout = "legacy"` there to keep the old one.
 
 ## Version Files
 

@@ -91,7 +91,7 @@ On Linux, `cache = { enabled = true, audit = true }` uses `strace` to report und
 
 ## Workspace Project Graph
 
-mise can infer a provider-neutral project graph from ecosystem workspace metadata (node/pnpm/yarn/bun, cargo, uv, go). This is separate from `[monorepo].config_roots`: a project needs no `mise.toml` to appear in the graph.
+mise can infer a provider-neutral project graph from ecosystem workspace metadata (node/pnpm/yarn/bun, cargo, uv, go, and since 2026.10.12 gradle). This is separate from `[monorepo].config_roots`: a project needs no `mise.toml` to appear in the graph.
 
 ```toml
 monorepo_root = true
@@ -107,6 +107,10 @@ mise tasks graph --json
 ```
 
 Override inferred values with `[monorepo.projects."node:@acme/web"]`; shared task defaults go in `[monorepo.task_defaults.<task>]`. `task.auto_infer` selects which ecosystems are inferred.
+
+Gradle projects come from literal `include` directives in the root `settings.gradle(.kts)` (Gradle is never run); IDs are Gradle paths, so `:app` is `gradle::app` and the root project `gradle::`. Edges come only from literal `project(":lib")` references in a top-level `dependencies {}` block — add ones from `subprojects {}`, `allprojects {}`, or convention plugins with `depends_add`. Non-literal or conditional `include`s are an error.
+
+If a provider cannot read its workspace (such as that Gradle error), `mise tasks graph` and `--affected` fail with it. Declaring any project in that provider's namespace under `[monorepo.projects]` (e.g. `[monorepo.projects."gradle::app"] root = "app"`) takes over: the error is ignored and the declared projects become the provider's whole contribution.
 
 ## Affected Tasks
 

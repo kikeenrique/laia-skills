@@ -208,6 +208,14 @@ Source exclusions use the same `!` convention as gitignore and watchexec. Entrie
 
 `{{ task_source_files(only_changed=true) }}` narrows a run to sources written since mise last considered the task up to date — useful for linters. A failing run does not advance the baseline, and the filter never narrows to nothing.
 
+For state no file records, `skip_if` (2026.10.10) runs a shell command before the task (after `depends`, before `confirm`, in the task's dir/shell/env/sandbox, no stdin, output discarded, no `secrets`); exit 0 skips the task as successful, anything else runs it. It takes templates and task args, works in file tasks as `#MISE skip_if="..."`, is bypassed by `mise run --force`, and a command that cannot start or times out fails the task. A skipped task does not count as having done work, so dependents with fresh `sources` still skip.
+
+```toml
+[tasks.setup]
+skip_if = "examplectl workspace show"
+run = "examplectl workspace init"
+```
+
 For content-addressed reuse of results across input switches and deleted outputs, see the experimental artifact cache in [workspaces-and-caching.md](workspaces-and-caching.md).
 
 ## Monorepo Tasks
@@ -254,7 +262,7 @@ otel.enabled = true   # MISE_OTEL_ENABLED
 otel.logs = true      # optional: also ship task stdout/stderr as OTLP logs (privacy boundary)
 ```
 
-Configure the endpoint with standard variables such as `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`; without `otel.enabled`, mise ignores them. Since 2026.10.5 exporting requires `experimental = true`, as do `git::` remote task files (`file = "git::..."`) and `git::`/`oci::` entries in `task_config.includes`: `mise run` refuses them, while `mise tasks ls/info` show the task with a warning, and gated includes are skipped.
+Configure the endpoint with standard variables such as `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`; without `otel.enabled`, mise ignores them. Since 2026.10.5 exporting requires `experimental = true`, as do `git::` remote task files (`file = "git::..."`) and `git::`/`oci::` entries in `task_config.includes`: `mise run` refuses them, while `mise tasks ls/info` show the task with a warning, and gated includes are skipped. Since 2026.10.11 a remote task file (`file = "https://..."` or `git::`) whose `#MISE` headers contain template syntax needs the naming config trusted before `mise tasks ls/info/validate` render it; untrusted, they fail with `Config files in … are not trusted`. Plain headers still list without trust.
 
 ## Secrets
 

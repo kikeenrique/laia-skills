@@ -91,7 +91,13 @@ run = "shellcheck scripts/*.sh"
 shell = "bash -c"
 ```
 
-Each `[[watch_files]]` entry should set either `run` or `task`, not both. Watch hooks receive `MISE_WATCH_FILES_MODIFIED`.
+Each `[[watch_files]]` entry should set either `run` or `task`, not both. Watch hooks receive `MISE_WATCH_FILES_MODIFIED` (`:`-separated, `:` in names escaped as `\:`). Since 2026.10.12 they also get `MISE_WATCH_FILES_GIT_REWRITTEN=1` when every changed file predates git's last HEAD move (checkout, pull, rebase — not a commit or `git stash pop`), so a formatter can skip files you did not edit:
+
+```toml
+[[watch_files]]
+patterns = ["**/*.go"]
+run = '[ -n "$MISE_WATCH_FILES_GIT_REWRITTEN" ] || { IFS=:; hk fix $MISE_WATCH_FILES_MODIFIED; }'
+```
 
 ## Shell Hooks
 

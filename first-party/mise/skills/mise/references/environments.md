@@ -34,6 +34,14 @@ _.python.venv = { path = ".venv", create = true }
 
 Shell-style expansion is disabled by default inside structured JSON/YAML/TOML files so literal `$` survives; `expand = true` re-enables it. `_.file = { path = ".env", tools = true }` loads the file after tools define their env.
 
+`_.file` resolves a relative path against the config root. Since 2026.10.12, `find_up = true` loads it from the current directory and every parent instead (root first, so a closer file wins; no effect on absolute paths). It works from global config, so one entry covers every project:
+
+```toml
+# ~/.config/mise/config.toml
+[env]
+_.file = [{ path = ".env", find_up = true }, { path = ".env.local", find_up = true }]
+```
+
 Dotenv quoting works as in a shell: single-quoted text is literal (backslashes included), adjacent quoted and unquoted parts are joined (`'it'\''s'` → `it's`), and an unpaired quote such as `O'Brien` is kept as written. Single-quote values that must keep their own quotes, such as JSON: `CONFIG='{"debug": true}'`. YAML values are read as written (`VERSION: 1.10` stays `1.10`, `ZIP: 02134` keeps its zero).
 
 Deprecated spellings — do not emit these:
@@ -71,6 +79,7 @@ mise env --json
 mise env --json-extended
 mise env --dotenv
 mise env --redacted
+mise env --paths         # PATH entries mise manages (tool bin dirs, _.path), in PATH order (2026.10.11)
 ```
 
 Use these to compare what mise would export with what the current shell actually contains.

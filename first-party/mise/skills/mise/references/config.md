@@ -13,6 +13,7 @@ Project paths, highest precedence first:
 - `.mise/config.toml`
 - `.mise/conf.d/*.toml`
 - `.config/mise.toml`
+- `.config/mise/mise.toml`
 - `.config/mise/config.toml`
 - `.config/mise/conf.d/*.toml`
 

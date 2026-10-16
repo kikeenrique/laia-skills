@@ -23,6 +23,10 @@ mise backends switch [tool] [--dry-run] # move lock entries to the registry's ne
 
 New lockfiles use the current format (`lockfile_version = 3`); older lockfiles keep their format during ordinary updates so collaborators on older mise can still read them, until `mise lock --upgrade`. Version 1 records each original request in `specifiers` so overlapping requests such as `"1"` and `"1.0.0"` resolve reliably; version 2 references native npm (aube) and uv dependency graphs in sidecar directories (`.mise/locks/<tool>/<version>/` next to `mise.lock` — commit them); version 3 records forge repository IDs for Packslip signatures. Older mise rejects newer lockfile versions.
 
+When you name platforms (`--platform` or `lockfile_platforms`), `mise lock` warns since 2026.10.12 for each tool version with no build for one of them (`apko@0.30.0 is not available for windows-x64; it will not install there`); exit status is unchanged.
+
+Commit `mise.lock` (and `.mise/locks/`) for CI and Docker builds too: with a matching entry mise skips the version-list lookup a fresh runner or Docker layer would otherwise make per tool. In a Dockerfile, copy `mise.lock` (and `.mise/locks/` when it records graphs) with `mise.toml` before `mise install --locked`. Without a lockfile, `install`/`use`/`run` reuse a cached version list for the tool's `minimum_release_age` minus an hour (1–24h; 23h by default), while `outdated`/`upgrade`/`ls-remote`/`lock`/`latest` refetch after `fetch_remote_versions_cache` (1h); `mise cache clear <tool>` forces a refresh.
+
 When the registry moves a tool to another backend, mise keeps installing from the backend recorded in `mise.lock` and warns; `mise backends switch` relocks and reinstalls from the new backend (`--global` for the global lockfile).
 
 `mise lock --bump` re-resolves fuzzy selectors (`latest`, `lts`, `"22"`) against the newest matching versions and rewrites the lockfile without installing anything and without touching `mise.toml`. Exact pins are untouched — use `mise upgrade --bump` for those. `--global`/`--local` pick the lockfile; `--json` emits machine-readable changes for scheduled dependency-bump PRs.

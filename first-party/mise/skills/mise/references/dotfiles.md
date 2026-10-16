@@ -109,7 +109,7 @@ exclude = ["README.md"]  # also: target, mode (symlink-each default, copy, symli
 dotfile_groups = ["home"]   # unset: every group applies
 ```
 
-Two selected groups writing the same path fail before anything is written. `mise dot status` lists files from deselected or shrunk groups as `orphaned`; `mise dot apply --prune` removes them and `mise dot unapply --group <name>` removes one group's files. `mise dot add`/`edit` route a file under a group's target into its root (`--group` when ambiguous).
+Two selected groups writing the same path fail before anything is written. `mise dot status` lists files from deselected or shrunk groups as `orphaned`; `mise dot apply --prune` removes them and `mise dot unapply --group <name>` removes one group's files. `mise dot add`/`edit` route a file under a group's target into its root (`--group` when ambiguous). Since 2026.10.12 a group entry with `mode = "template"` and no `source` falls back to the same path plus `.tera` (`"~/.config/git/config" = { mode = "template" }` renders `home/dot-config/git/config.tera`, not also deployed with the suffix). `mise dot add --changed` also captures files a copy-mode group discovers in its tree.
 
 ## Commands
 
@@ -161,6 +161,8 @@ builtin = "history-watch"
 then `mise bootstrap services apply`.
 
 Synchronization pushes checkpoints to a Git remote so another machine can restore them with `mise bootstrap --adopt <repo>`. Use a **private** repository: sync sends earlier checkpoints too, so temporary edits become part of the shared history. Configure encryption before first saving files that need it.
+
+The origin holds tracked-file history, not a checkout: `mise dot origin set` never pulls or pushes a `~/.config/mise` adopted with `mise bootstrap --adopt` (sync that with Git yourself). Give the origin its own repository, or a separate branch of the global-config repo adopted elsewhere with `--adopt '<url>?ref=<branch>'`; pointing it at the global-config repo's default branch makes later `--adopt` treat it as a setup repository instead of cloning it into `~/.config/mise`. To share the global config through the origin, `mise dot track ~/.config/mise/config.toml`.
 
 Before a push, mise refuses to publish earlier plaintext versions of now-encrypted paths, and (since 2026.10.5) unpublished versions with a line that looks like a secret — provider tokens (`ghp_`, `sk-`, `AKIA…`), private key blocks, or `*_KEY`/`*_TOKEN`/`*_SECRET`/`*_PASSWORD` assignments. Removing the line from the file does not remove it from saved versions; encrypt the file instead. Override both checks once with `mise dot sync --allow-plaintext-history`, or always with `[settings.history] allow_plaintext_history = true` (global config only) — both publish the old content.
 
