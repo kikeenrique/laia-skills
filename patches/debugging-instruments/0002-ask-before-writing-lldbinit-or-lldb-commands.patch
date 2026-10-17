@@ -1,0 +1,39 @@
+Reason: ask before writing ~/.lldbinit or ~/lldb_commands
+Date: 2026-10-17
+
+diff --git a/references/lldb-patterns.md b/references/lldb-patterns.md
+index e7157e3..60b5c13 100644
+--- a/references/lldb-patterns.md
++++ b/references/lldb-patterns.md
+@@ -199,6 +199,12 @@ Useful for bypassing a crash or testing a different code path.
+ 
+ ## Custom Type Summaries
+ 
++> **Ask the user before creating or editing `~/.lldbinit` or anything under
++> `~/lldb_commands/`.** Both live outside the project and run in every LLDB
++> and Xcode debug session. Show the exact lines you want to add and wait for
++> a yes. For a one-off session, type the commands at the `(lldb)` prompt or
++> load a project-local file with `command source <path>` instead.
++
+ Add type summaries to `.lldbinit` for cleaner debugger output:
+ 
+ ```text
+@@ -229,7 +235,7 @@ type summary add MyApp.UserProfile \
+ 
+ ### Custom Python Command
+ 
+-Create `~/lldb_commands/dump_views.py`:
++With the user's approval (see above), create `~/lldb_commands/dump_views.py`:
+ 
+ ```python
+ import lldb
+@@ -279,7 +285,8 @@ Set these in Xcode's Breakpoint Navigator for common debugging scenarios:
+ 
+ ## LLDB Init File
+ 
+-Place commonly used configuration in `~/.lldbinit`:
++Place commonly used configuration in `~/.lldbinit` (ask the user first; it
++applies to every debug session on the machine):
+ 
+ ```text
+ # Custom aliases
