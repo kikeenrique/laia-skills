@@ -2,7 +2,7 @@
 name: replay
 description: "HTTP recording, playback, and stubbing for Swift tests using the Replay framework (HAR fixtures + Swift Testing traits). Use whenever the user mentions Replay, the .replay(...) trait, HAR fixtures, VCR-style testing in Swift, stubbing URLSession / AsyncHTTPClient, recording network traffic for tests, redacting secrets from fixtures, parallel test execution / scope .test / .playbackIsolated / Replay.session isolation, or troubleshooting 'No Matching Entry in Archive' / 'Replay Archive Missing' errors. Also use for questions about archive resolution — where HAR files are written or read from, recordings landing in DerivedData or vanishing after a rebuild, replaysFrom: vs replaysRootURL: — and about TLS trust / client-certificate / auth-challenge delegates during recording or live mode. Also use when writing or reviewing a Swift @Test that hits the network, when adding fixtures under Replays/, when parallelizing a Replay-using test suite, or when configuring REPLAY_RECORD_MODE / REPLAY_PLAYBACK_MODE for CI."
 disable-model-invocation: false
-allowed-tools: Bash, Read, Grep, Glob, Edit, Write
+allowed-tools: Read, Grep, Glob, Bash(swift test *), Bash(swift package replay *), Bash(xcodebuild test *)
 ---
 
 # Replay — HTTP Recording & Playback for Swift Tests
