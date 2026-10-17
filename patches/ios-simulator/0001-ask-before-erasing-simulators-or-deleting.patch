@@ -1,0 +1,83 @@
+Reason: ask before erasing simulators or deleting CoreSimulator data
+Date: 2026-10-17
+
+diff --git a/SKILL.md b/SKILL.md
+index 902b42e..740494d 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -59,6 +59,11 @@ Use the returned UDID for subsequent commands.
+ 
+ ### Boot, Shutdown, Erase, Delete
+ 
++> **Always ask the user before running `simctl erase`, `simctl delete`, or
++> `rm` on anything under `~/Library/Developer/CoreSimulator`.** They destroy
++> app data and devices that may belong to other projects, and can't be undone.
++> Name the exact command and devices affected, and wait for a yes every time.
++
+ ```bash
+ # Boot a specific device
+ xcrun simctl boot <UDID>
+@@ -403,17 +408,20 @@ A simulator stuck in the "Booting" state will not recover by retrying `boot`. Th
+ xcrun simctl boot "$UDID"  # "Unable to boot device in current state: Booting"
+ xcrun simctl boot "$UDID"  # same error, forever
+ 
+-# CORRECT — shut down, erase, and retry
++# CORRECT — shut down, erase (after the user confirms), and retry
+ xcrun simctl shutdown "$UDID"
+ xcrun simctl erase "$UDID"
+ xcrun simctl boot "$UDID"
+ 
+-# If that fails, reset CoreSimulator entirely
++# If that fails, reset CoreSimulator entirely (ask first: wipes every simulator)
+ xcrun simctl shutdown all
+ xcrun simctl erase all
+-# Last resort: rm -rf ~/Library/Developer/CoreSimulator/Caches
++# Last resort, again only after the user confirms:
++# rm -rf ~/Library/Developer/CoreSimulator/Caches
+ ```
+ 
++Never run the erase or cache-deletion steps without asking the user first, even mid-recovery.
++
+ ## Review Checklist
+ 
+ - [ ] Simulator devices created with explicit device type and runtime identifiers
+diff --git a/references/simctl-commands.md b/references/simctl-commands.md
+index d926447..d2fec11 100644
+--- a/references/simctl-commands.md
++++ b/references/simctl-commands.md
+@@ -23,7 +23,7 @@ Common `xcrun simctl` subcommands with syntax, flags, and examples. For workflow
+ | `clone` | `simctl clone <UDID> <new-name>` | Copies device state including installed apps. |
+ | `delete` | `simctl delete <UDID\|unavailable\|all>` | `unavailable` removes devices whose runtime is missing. |
+ | `rename` | `simctl rename <UDID> <new-name>` | |
+-| `erase` | `simctl erase <UDID\|all>` | Factory reset — wipes apps and data, keeps the device. |
++| `erase` | `simctl erase <UDID\|all>` | Factory reset — wipes apps and data, keeps the device. Ask the user first. |
+ | `boot` | `simctl boot <UDID>` | Starts the device runtime. |
+ | `bootstatus` | `simctl bootstatus <UDID> [-b]` | Waits until the device finishes booting. Use `-b` in scripts to boot if needed and block until ready. |
+ | `shutdown` | `simctl shutdown <UDID\|all>` | Stops the device runtime. |
+@@ -289,14 +289,14 @@ The device shows state "Booting" and `simctl boot` returns "Unable to boot devic
+ # Step 1: force shutdown
+ xcrun simctl shutdown <UDID>
+ 
+-# Step 2: erase the device
++# Step 2: erase the device (ask the user first: wipes its apps and data)
+ xcrun simctl erase <UDID>
+ 
+ # Step 3: boot again
+ xcrun simctl boot <UDID>
+ ```
+ 
+-If erasing does not resolve it, delete and recreate the device. As a last resort, clear the CoreSimulator caches:
++If erasing does not resolve it, delete and recreate the device. As a last resort, clear the CoreSimulator caches. Ask the user before deleting a device or the caches:
+ 
+ ```bash
+ xcrun simctl shutdown all
+@@ -324,7 +324,8 @@ Runtime downloads can be large (5+ GB). In CI, pre-install runtimes in the base
+ Symptoms: devices fail to boot, `simctl list` shows stale data, or "Unable to determine simulator device status."
+ 
+ ```bash
+-# Nuclear option — reset everything
++# Nuclear option — reset everything. Ask the user first: this wipes every
++# simulator's apps and data, including other projects'.
+ xcrun simctl shutdown all
+ xcrun simctl erase all
+ rm -rf ~/Library/Developer/CoreSimulator/Caches
