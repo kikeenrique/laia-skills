@@ -1,0 +1,34 @@
+Reason: never delete a caller-supplied DerivedData path in cached-clean runs
+Date: 2026-10-17
+
+diff --git a/scripts/benchmark_builds.py b/scripts/benchmark_builds.py
+index 784a749..7341f56 100755
+--- a/scripts/benchmark_builds.py
++++ b/scripts/benchmark_builds.py
+@@ -222,12 +222,20 @@ def main() -> int:
+     # branch switching, pulling changes, or Clean Build Folder.
+     should_cached_clean = not args.no_cached_clean and detect_compilation_caching(base_command)
+     if should_cached_clean:
+-        dd_path = Path(args.derived_data_path) if args.derived_data_path else Path(
+-            tempfile.mkdtemp(prefix="xcode-bench-dd-")
+-        )
+-        cached_cmd = list(base_command)
+-        if not args.derived_data_path:
+-            cached_cmd.extend(["-derivedDataPath", str(dd_path)])
++        # Always use a fresh DerivedData folder created here: it is deleted
++        # before every run, so it must never be a path the caller passed in
++        # (via --derived-data-path or --extra-arg).
++        dd_path = Path(tempfile.mkdtemp(prefix="xcode-bench-dd-"))
++        cached_cmd = []
++        skip_next = False
++        for arg in base_command:
++            if skip_next:
++                skip_next = False
++            elif arg == "-derivedDataPath":
++                skip_next = True
++            else:
++                cached_cmd.append(arg)
++        cached_cmd.extend(["-derivedDataPath", str(dd_path)])
+ 
+         cache_warmup = run_command([*cached_cmd, "build"])
+         if cache_warmup.returncode != 0:
