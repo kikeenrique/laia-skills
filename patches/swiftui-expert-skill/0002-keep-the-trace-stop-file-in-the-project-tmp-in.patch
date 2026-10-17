@@ -1,0 +1,38 @@
+Reason: keep the trace stop-file in the project tmp in the reference too
+Date: 2026-10-17
+
+diff --git a/references/trace-recording.md b/references/trace-recording.md
+index fcfdd1d..6d83e04 100644
+--- a/references/trace-recording.md
++++ b/references/trace-recording.md
+@@ -59,15 +59,19 @@ recording to end cleanly:
+ ```bash
+ # Start recording (background)
+ python3 "${SKILL_DIR}/scripts/record_trace.py" \
+-  --attach Helm --stop-file /tmp/stop-trace \
++  --attach Helm --stop-file "$PWD/tmp/stop-trace" \
+   --output ~/Desktop/session.trace
+ 
+ # ...user does their thing...
+ 
+ # Stop cleanly (from another shell or tool call)
+-touch /tmp/stop-trace
++touch "$PWD/tmp/stop-trace"
+ ```
+ 
++Keep the stop-file in the project's own `tmp/` folder, never the shared
++system `/tmp`, where a leftover or planted file would end the next
++recording as soon as it starts.
++
+ The script polls every 0.5s for the stop-file, sends SIGINT to xctrace
+ when it appears, and waits up to 60s for the trace to finalise.
+ 
+@@ -136,7 +140,7 @@ path straight into `analyze_trace.py`:
+ 
+ ```bash
+ TRACE=$(python3 "${SKILL_DIR}/scripts/record_trace.py" \
+-    --attach Helm --stop-file /tmp/stop-trace --output ~/Desktop/session.trace \
++    --attach Helm --stop-file "$PWD/tmp/stop-trace" --output ~/Desktop/session.trace \
+     2>&1 | awk '/trace written:/ {print $NF}')
+ python3 "${SKILL_DIR}/scripts/analyze_trace.py" --trace "$TRACE" --json-only
+ ```
