@@ -34,13 +34,17 @@ _.python.venv = { path = ".venv", create = true }
 
 Shell-style expansion is disabled by default inside structured JSON/YAML/TOML files so literal `$` survives; `expand = true` re-enables it. `_.file = { path = ".env", tools = true }` loads the file after tools define their env.
 
-`_.file` resolves a relative path against the config root. Since 2026.10.12, `find_up = true` loads it from the current directory and every parent instead (root first, so a closer file wins; no effect on absolute paths). It works from global config, so one entry covers every project:
+`_.file` resolves a relative path against the config root. `find_up = true` (2026.10.12) loads it from the **config's root** and every parent instead (root first, so a closer file wins) — e.g. a monorepo root `.env` for every package. Since 2026.10.16 a relative path starts at the config root, not the current directory; an absolute path searches its own directory and each parent. So a global entry covering every project needs `cwd`:
 
 ```toml
 # ~/.config/mise/config.toml
 [env]
-_.file = [{ path = ".env", find_up = true }, { path = ".env.local", find_up = true }]
+_.file = { path = "{{cwd}}/.env", find_up = true }
 ```
+
+Separate entries are searched one by one and apply in list order (a parent's `.env.local` beats the project's `.env`). Since 2026.10.14, names in one entry's `path` list are searched together — closest directory wins, then later name: `_.file = { path = [".env", ".env.local"], find_up = true }` (plain relative names only).
+
+The separate `env_file` setting (`MISE_ENV_FILE`) also loads dotenv files from the current directory up, and since 2026.10.14 takes a list (`env_file = [".env", ".env.local"]`; env var `:`-separated). It applies after every config's `[env]` and overrides it (skipping files `_.file` already loaded), while `_.file` is an ordinary entry a project's `[env]` can override.
 
 Dotenv quoting works as in a shell: single-quoted text is literal (backslashes included), adjacent quoted and unquoted parts are joined (`'it'\''s'` → `it's`), and an unpaired quote such as `O'Brien` is kept as written. Single-quote values that must keep their own quotes, such as JSON: `CONFIG='{"debug": true}'`. YAML values are read as written (`VERSION: 1.10` stays `1.10`, `ZIP: 02134` keeps its zero).
 
@@ -94,7 +98,19 @@ MY_PROJ_LIB = "{{config_root}}/lib"
 LD_LIBRARY_PATH = "/some/path:{{env.MY_PROJ_LIB}}"
 ```
 
-Useful vars: `config_root` (the project directory) and `config_source` (the template's own config file as an absolute path, unresolved through symlinks — pipe through `canonicalize` for the real file).
+Useful vars: `config_root` (the project directory), `config_source` (the template's own config file as an absolute path, unresolved through symlinks — pipe through `canonicalize` for the real file), `mise_config_dir` (2026.10.19; `MISE_CONFIG_DIR`, else `xdg_config_home/mise`), and `system_brew_prefix` (`/opt/homebrew` on macOS, `/home/linuxbrew/.linuxbrew` elsewhere).
+
+Since 2026.10.15 `read_json()`, `read_yaml()`, and `read_toml()` parse a file (relative to the config file, like `read_file()`) so a value need not be repeated; they need trusted config and are refused in safe mode:
+
+```toml
+[tools]
+node = "{{ read_json(path='package.json')['volta']['node'] }}"
+mytool = "{{ read_toml(path='pyproject.toml')['tool']['mytool']['version'] | default(value='latest') }}"
+```
+
+Use `['key']` indexing after a call (`.key` works only on a `{% set %}` variable); a missing key is an error without `default`. In YAML, unquoted `3.270` becomes `3.27` — quote versions.
+
+Since 2026.10.19 templates in project config see an empty `env` under safe mode, and a project `.miserc.toml` (which loads without trust) gets an empty `env`, no `get_env()`, only `if`/`elif`/`else` statements, the platform functions plus `num_cpus()`, a short filter list, and a 16 KiB size cap; a file breaking these is left unrendered with a warning.
 
 Platform functions: `arch()`, `os()`, `os_family()`, and since 2026.10.9 `libc()` (`gnu`/`musl`, honoring the `libc` setting) and `avx2()` (`yes`/`no`; non-x86-64 reports `yes`). Keywords rename the result, e.g. `{{ libc(gnu="", musl="-musl") }}` or `{{ avx2(yes="", no="-baseline") }}` in an `http:` URL. Both also work in `.miserc.toml`.
 

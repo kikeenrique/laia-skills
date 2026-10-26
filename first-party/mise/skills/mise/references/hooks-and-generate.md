@@ -72,6 +72,10 @@ Arrays can mix inline scripts and task references:
 enter = ["echo entering", { task = "setup" }]
 ```
 
+A task hook's `mise run` does not auto-trust: an untrusted config, or an untrusted task the hook would run or depend on, makes the hook fail with a warning. A global task hook runs inside a project only once that project's config and task dirs are trusted; until then it runs in the global config root.
+
+A project's spawned `enter`/`leave` hooks (and `run` entries) run with the project root as cwd, even from a subdirectory; `cd` hooks and global hooks run in the directory the shell changed to. `MISE_ORIGINAL_CWD` holds the shell's directory in every hook.
+
 ## Watch Files
 
 Run a script or task when files change during an activated session:
@@ -91,7 +95,7 @@ run = "shellcheck scripts/*.sh"
 shell = "bash -c"
 ```
 
-Each `[[watch_files]]` entry should set either `run` or `task`, not both. Watch hooks receive `MISE_WATCH_FILES_MODIFIED` (`:`-separated, `:` in names escaped as `\:`). Since 2026.10.12 they also get `MISE_WATCH_FILES_GIT_REWRITTEN=1` when every changed file predates git's last HEAD move (checkout, pull, rebase — not a commit or `git stash pop`), so a formatter can skip files you did not edit:
+Each `[[watch_files]]` entry should set either `run` or `task`, not both. Watch hooks receive `MISE_WATCH_FILES_MODIFIED` (`:`-separated, `:` in names escaped as `\:`). Since 2026.10.12 they also get `MISE_WATCH_FILES_GIT_REWRITTEN=1` when every changed file predates git's last HEAD move (checkout, pull, rebase — not a commit or `git stash pop`; moves that leave HEAD on the same commit, such as `git checkout -b` or `git branch -m`, are ignored), so a formatter can skip files you did not edit:
 
 ```toml
 [[watch_files]]
@@ -106,10 +110,10 @@ Shell hooks execute in the current shell:
 ```toml
 [hooks.enter]
 shell = "bash"
-script = ["source completions.sh", "export PROJECT_READY=1"]
+script = ['source "$MISE_PROJECT_ROOT/completions.sh"', "export PROJECT_READY=1"]
 ```
 
-Here `shell` is a shell **name** (`bash`, `zsh`, `fish`), not an inline shell command, and `script`/`scripts` may be arrays. mise only emits the script when the active `mise activate` shell matches. Only `enter`, `leave`, and `cd` can be current-shell hooks.
+Here `shell` is a shell **name** (`bash`, `zsh`, `fish`), not an inline shell command, and `script`/`scripts` may be arrays. mise only emits the script when the active `mise activate` shell matches. The script runs in the shell's current directory, which may be a subdirectory, so reach project files through `$MISE_PROJECT_ROOT`. Only `enter`, `leave`, and `cd` can be current-shell hooks.
 
 On `preinstall`/`postinstall`, `script`/`scripts` are deprecated legacy aliases for `run`, and a `shell` set alongside them is ignored with a warning. Use `run = "..."` with `shell = "bash -c"` there.
 

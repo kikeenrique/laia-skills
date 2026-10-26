@@ -40,6 +40,8 @@ aws-cli = { version = "latest", symlink_bins = true }
 
 `install_env` applies during download, install, and that tool's `postinstall`. `mise use --tool-option k=v <tool>` sets an option from the CLI.
 
+Since 2026.10.14 an option the backend does not read is an **install error** (`cargo:eza: option 'asset_pattern' is not used by the cargo backend`), including keys under `platforms`, for cargo, conda, gem, github/gitlab/forgejo, go, http, npm, packslip, pipx, s3, spinel, spm, and ubi. aqua, plugin, and core-tool backends are not checked. Fix the spelling or remove the key; `mise config explain` helps.
+
 Per-tool release-age policy overrides the global setting:
 
 ```toml
@@ -137,6 +139,12 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
 - A `file://` URL is recorded in `mise.lock` as written, so it only works where that path exists.
 - `http:` `headers` (templated values, e.g. bearer or `X-Api-Key`) go to the artifact, `version_list_url`, and `checksum_url` requests on the `url` host only; they are dropped on a cross-host redirect unless listed per header in `headers_forward = { X-Api-Key = ["cdn.example.com", "*.assets.example.com"] }`. Changing a token does not reinstall the tool.
 - `npm:` git installs: `latest` is the repository's default branch; `mise.lock` does not pin it to a commit.
+- `cargo:` honors `rename_exe` (2026.10.14) to rename the installed executable.
+- `http:` tools can report release dates for `minimum_release_age` (2026.10.15): `version_date_expr` (expr-lang over `body`/`versions`, returning `[version, date]` pairs or a map), with optional `version_date_url` and paging via `version_date_next_expr`. Undated versions are never held back. Credentials in a URL's userinfo are stripped from `mise.lock`, and a credential query parameter (`?token=`, `?sig=`, …) makes locking fail — use `headers` or netrc.
+- `pypi:` private indexes behind a keyring (2026.10.16): set `[settings.pypi] keyring_provider = "subprocess"` and a `registry_url` with a username but no password; mise runs `keyring get` for version listing and `mise lock`, as uv does.
+- `dotnet` (core) accepts `lts` and `sts` version aliases (2026.10.15).
+
+`mise ls-remote <tool>` for a registry tool whose backends cover different version ranges (e.g. aqua before a release, packslip after) lists every range from the backend that serves it since 2026.10.13; a prefix lists only the matching range(s).
 
 Find and filter: `mise search npm:<name>` also queries that package registry (`npm:`, `cargo:`, `gem:`, `dotnet:`), `mise search --all` searches every backend; `mise ls --backend go --backend cargo` filters and `mise ls --grouped` groups by backend.
 
@@ -213,7 +221,7 @@ command = "uv"
 args = ["run", "python"]
 ```
 
-Run `mise reshim` after adding or removing a wrapper.
+Run `mise reshim` after adding or removing a wrapper. Since 2026.10.13 `command`, `args`, and `env` values are templates (`command` sees only `vars`, `config_root`, `config_source`, and the process env); wrap a literal `{{` such as Docker's `{{.Names}}` in `{% raw %}…{% endraw %}`.
 
 ## Upgrade And Prune
 
@@ -227,6 +235,10 @@ mise install --include-task-tools
 ```
 
 `mise upgrade --global [tool]` (2026.10.7) upgrades only the global config's requests, even inside a project that pins its own version, and never touches project config or lockfiles; `mise outdated --global [tool] --json` reports what it would install (`{}` = up to date). Self-updating tools (coding agents, editors) should update through these two commands instead of their own updater, which would overwrite `installs/<tool>/<version>/` or install an unmanaged copy.
+
+`mise upgrade --bump` keeps the config's precision (`"20"` → `"22"`). Since 2026.10.18 `--bump --pin` (or the `pin` setting, `MISE_PIN=1`) writes the resolved version instead, replacing `latest` or `"20"` with e.g. `"24.14.0"`.
+
+`mise unuse <tool>` without a version prunes all of that tool's unused versions; a version still needed by a tracked config or tool stub is kept and mise names the file.
 
 `-l` on `mise upgrade` is a deprecated shorthand for `--bump`; it becomes `--local` after mise 2027.8.5. Use `-b`/`--bump`.
 

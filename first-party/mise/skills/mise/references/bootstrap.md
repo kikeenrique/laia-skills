@@ -22,7 +22,8 @@ mise bootstrap status
 - `--yes` skips confirmation prompts for unattended runs.
 - Bootstrap is a sequence, not a transaction. If a later phase fails, earlier changes stay applied; fix and re-run.
 - Declarative parts converge, but hooks and `[tasks.bootstrap]` run on every apply, so make them idempotent.
-- Dotfile conflicts are refused by default; `--force-dotfiles` replaces conflicting whole-file targets.
+- Dotfile conflicts are refused by default; `--force-dotfiles` replaces conflicting whole-file targets. `--prune-dotfiles` (2026.10.15) removes orphaned group files at the end of the dotfiles phase, like `mise dot apply --prune`.
+- The `bootstrap` task runs only when it and every task it reaches come from global config or a trusted project (a task-only project file loads untrusted but could shadow it by name). Otherwise trust the project, run from another directory, or `--skip task`.
 
 ## Minimal Dev Machine
 
@@ -198,6 +199,12 @@ run = ["mise exec -- node --version"]
 post-defaults = "killall Dock || true"
 ```
 
+Since 2026.10.18 a hook table may set `run_windows`, which replaces `run` on Windows; a table with only `run_windows` does nothing elsewhere.
+
+## Login Shell
+
+`[bootstrap.user] login_shell` takes an absolute path or, since 2026.10.17, a bare name (`login_shell = "fish"`) resolved after packages install, from `PATH` (never shims) then the usual package-manager dirs; the resolved path goes into `/etc/shells` and `chsh`. It is also a template (`"{{ system_brew_prefix }}/bin/zsh"`, no `exec()`). Shells from package-manager *plugins* install after the user phase, so on a first run use `mise bootstrap --skip user` then `mise bootstrap user apply`.
+
 ## Status And Plan
 
 ```bash
@@ -220,7 +227,12 @@ Every mutating run records a pair of history checkpoints (tracked files before a
 
 `--from` clones into `$MISE_DATA_DIR/bootstrap-repo` (`--from-dir` overrides; append `?ref=<branch|tag|commit>` to the URL to check out a ref, e.g. `git::https://github.com/example/dotfiles.git?ref=v1`) and trusts the supplied repository for that invocation — review it first. `--adopt` clones into `$MISE_CONFIG_DIR`; since 2026.10.10 `--adopt '<repo>?ref=<branch>'` adopts another branch (a branch only — tags and commits are refused; an existing checkout is never switched, and `--update` fast-forwards the branch it is on). Both accept `-E <env>` to select `mise.<env>.toml` / `config.<env>.toml`, and `--update` to fast-forward an existing checkout. The old `--from-git` alias was removed in 2026.10.0; use `--from`. Use `--from` for a setup project you apply but don't make your own (your global config still loads alongside it); use `--adopt` when the repository becomes this machine's own config. On a fresh machine without `git` (or `ssh` for an SSH URL), mise offers to install them with the host package manager before cloning (`--yes` accepts; `--dry-run` only reports).
 
-`--prompt-vars` asks for `[vars]` entries with a `prompt` and no saved answer (see [environments.md](environments.md)), which is how `--adopt` answers per-machine values on a fresh machine. `[bootstrap.repos]` keys may render vars, e.g. `"{{ vars.repos_dir }}/project-a" = { url = "..." }` (2026.10.9), so each machine picks its own checkout base.
+`--prompt-vars` asks for `[vars]` entries with a `prompt` and no saved answer (see [environments.md](environments.md)), which is how `--adopt` answers per-machine values on a fresh machine. `[bootstrap.repos]` keys may render vars, e.g. `"{{ vars.repos_dir }}/project-a" = { url = "..." }` (2026.10.9), so each machine picks its own checkout base. Since 2026.10.13 `url` and `ref` also render vars and `env.NAME` (not `[env]` values), and optional clone options shape the first clone of a missing repo only: `filter` (e.g. `"blob:none"`), `depth` (not with a full SHA or `refs/` ref), `submodules = true`:
+
+```toml
+[bootstrap.repos]
+"~/src/large" = { url = "git@github.com:example/large.git", ref = "{{ vars.branch }}", filter = "blob:none", depth = 1 }
+```
 
 To drop an optional module, `mise bootstrap unapply <env>… [--dry-run]` removes the managed files, directories, user services, and dotfile entries that config environment contributes (based on the current config, not run history).
 

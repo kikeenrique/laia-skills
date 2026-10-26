@@ -38,7 +38,22 @@ Dot-prefixed forms such as `.mise.toml` are also accepted. Use the CLI for the i
 ```bash
 mise cfg
 mise config
+mise config explain [key] [--file <f>|-g] [--json]   # each key the file sets, its line and meaning; flags unknown and deprecated keys with a suggestion
 ```
+
+Editors can run `mise lsp` (2026.10.18), a language server for mise config files only (not `Cargo.toml` etc.): diagnostics for unknown/deprecated keys, wrong types, unknown task names and dependency cycles, key and tool-name completion, hover docs, formatting like `mise fmt`, and task go-to-definition/rename. It only parses, so opening untrusted config is safe. An older mise runs a task named `lsp` instead; check `mise help lsp` prints `Usage: mise lsp`.
+
+### Global Override Files
+
+Global config normally loses to project config. Since 2026.10.14, `config.override.toml` (and `config.<env>.override.toml` for an active `MISE_ENV`) in `MISE_CONFIG_DIR` outranks **all** project config, `mise.local.toml` included, for every section (`[env]`, `[tools]`, `[settings]`, `[tasks]`, …); keys it does not mention still come from the project:
+
+```toml
+# ~/.config/mise/config.override.toml
+[env]
+AWS_PROFILE = "personal"
+```
+
+It is never a default write target: pass `--override` (on `use`, `unuse`, `set`, `unset`, `settings set|add|unset`, `config get|set`; conflicts with `--global`/`--path`). `mise config ls` marks it in a `Tier` column. A tool declared there is resolved on its own and locked in the global `mise.lock`, not the project's. `MISE_GLOBAL_CONFIG_FILE` turns override files off. Unrelated to `MISE_OVERRIDE_CONFIG_FILENAMES`.
 
 ## Hierarchy And Merge Behavior
 
@@ -72,6 +87,8 @@ tools = "~/.config/mise/conf.d/10-tools.toml"
 packages = "~/.config/mise/conf.d/20-packages.toml"
 dotfiles = "~/.config/mise/conf.d/30-dotfiles.toml"
 ```
+
+A target must be a file mise loads from the global config directory. Since 2026.10.16 it may also be relative to the setting file's `config_root` (your home directory for global config) or templated, e.g. `tools = "{{ config_source | dirname }}/tools.toml"`.
 
 ## Core Sections
 

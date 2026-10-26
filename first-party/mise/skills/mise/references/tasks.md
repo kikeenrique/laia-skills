@@ -46,6 +46,8 @@ run = "cargo check"
 
 File tasks use a header: `#MISE extends="rust"` (the script stays the command; the template's `run` is ignored).
 
+Since 2026.10.14 `#MISE` headers accept every `[tasks.<name>]` property (now including `timeout`, `vars`, and the `deny_*`/`allow_*` sandbox keys) except `run`, `run_windows`, `file`, and `usage` (use `#USAGE` lines), which warn and are ignored. A property with the wrong type warns and is dropped, but a bad `confirm` or `deny_*` value is an error. In paranoid mode every project task file needs its own content-bound `mise trust <file>`.
+
 Share usage flags across tasks with a `.usage.kdl` flagset: `#USAGE include file="../shared.usage.kdl"` then `#USAGE use "common"`. In file tasks, relative include paths resolve from the task file's directory, and `$NAME`/`${NAME}` env refs work (inherited env, `MISE_CONFIG_ROOT`, `MISE_PROJECT_ROOT`, `MISE_TASK_DIR`, `MISE_TASK_FILE` — not task `env`). TOML tasks use `include file="{{ config_root }}/shared.usage.kdl"`.
 
 ## Run Tasks
@@ -55,6 +57,7 @@ mise run build
 mise r test
 mise run --all              # interactive selector across the whole monorepo
 mise tasks
+mise tasks -a               # --all (2026.10.15); `mise tasks list` is an alias for ls
 mise tasks deps --compact
 mise tasks validate
 mise --jobs 1 run test
@@ -299,6 +302,8 @@ Use `run_windows` when a task needs different commands on Windows:
 run = "cargo build"
 run_windows = "cargo build --features windows"
 ```
+
+Since 2026.10.18 `run_windows = []` skips the task on Windows.
 
 ## Troubleshooting
 

@@ -31,6 +31,8 @@ When the registry moves a tool to another backend, mise keeps installing from th
 
 `mise lock --bump` re-resolves fuzzy selectors (`latest`, `lts`, `"22"`) against the newest matching versions and rewrites the lockfile without installing anything and without touching `mise.toml`. Exact pins are untouched — use `mise upgrade --bump` for those. `--global`/`--local` pick the lockfile; `--json` emits machine-readable changes for scheduled dependency-bump PRs.
 
+Since 2026.10.19 `lockfile_mode` defaults to `generate`: lockfile writes (including automatic locking during `mise install`/`mise use`) rebuild the whole lockfile from the current requests, reusing unchanged entries and locking the other recorded platforms. Set `lockfile_mode = "merge"` (`MISE_LOCKFILE_MODE`) to go back to updating entries one at a time as tools install. Neither mode creates a lockfile.
+
 Full lock runs drop top-level tools the active config no longer declares. For a shared lockfile (e.g. `mise lock --global` used by profiles that configure different tools), set `lockfile_auto_prune = false` to keep unreferenced entries.
 
 Monorepos can use one root lockfile with `[monorepo] lockfile = true`. Per-subproject lockfiles start warning in mise 2026.12.0 and the unset default flips to root lockfiles in 2027.6.0.
@@ -84,10 +86,12 @@ node = "24"
 Trust gates config features that can execute code: templates, env directives, tool-option tables, and `path:` plugin versions.
 
 - **Safe files load without trust**: those containing only `min_version`, `[tools]` entries with plain version strings or arrays, and `[tasks]` without templates or tool options. Since mise 2026.10.0, inline options in a tool name (`"tool[opt=value]"`, also in `.tool-versions`) and remote `include` entries require trust too. Since 2026.10.9 a `path:<dir>` tool version (`node = "path:./local"`, or `node path:./local` in `.tool-versions`) also requires trust, so an untrusted clone can no longer put its own `bin/` first on `PATH` at `cd`; trusted configs work as before.
-- **Auto-trust**: in normal mode `mise run`, a naked `mise <task>`, `mise install`, `mise exec`, and `mise watch` automatically trust the active config, because they exist to execute project-defined behavior. Other commands still require trust.
-- **Worktrees**: trust is shared across git worktrees when the equivalent path in the main checkout is trusted. Paranoid mode disables that sharing and requires explicit content-bound trust everywhere.
+- **Untrusted settings and lockfiles**: since 2026.10.13 mise ignores the `[settings]` of an untrusted project config. Since 2026.10.19 an untrusted project's `mise.lock` only pins versions and checksums — entries that switch backend or add options are ignored, and downloads use the backend's normal URLs.
+- **Auto-trust**: in normal mode `mise run`, a naked `mise <task>`, `mise install`, `mise exec`, and `mise watch` automatically trust the active config, because they exist to execute project-defined behavior. Other commands still require trust. Since 2026.10.19, `--help` on those commands, the `mise x` a shim runs, and the `mise run` of a task hook record no trust. Writing config with `mise use`/`mise set` trusts the whole config root, so mise first asks about any other untrusted file there (`mise.local.toml`, `mise.<env>.toml`); in safe mode writes record no trust.
+- **Worktrees**: trust is shared across git worktrees when the equivalent path in the main checkout is trusted. The repository must list the worktree at its current location (run `git worktree repair` after moving one by hand), and a main-checkout path through a symlink shares nothing. Paranoid mode disables that sharing and requires explicit content-bound trust everywhere.
+- **Nested checkouts**: a `mise/`, `.mise/`, or `.config/` directory that is its own git checkout is a separate project, trusted on its own.
 - **CI**: detected CI assumes configs are trusted unless paranoid mode is on.
-- **Monorepos**: trusting a monorepo root also trusts descendant configs in normal mode.
+- **Monorepos**: trusting a monorepo root also trusts descendant configs in normal mode, only while the root stays trusted.
 
 ```bash
 mise trust --show
@@ -107,7 +111,7 @@ mise trust --ignore
 MISE_SAFE=1 mise lock --bump --dry-run --json
 ```
 
-Safe mode **refuses** template `exec()`/`read_file()`, task execution, tool `postinstall` and `install_env`, and asdf plugin scripts or plugin installation. It **ignores** shell and install hooks, project `[env]`/env directives/`[shell_alias]`, project `[settings]`, project `[bootstrap]` and `[dotfiles]`, `watch_files` hooks, and `_.source` everywhere. It loads otherwise-untrusted config without prompting, since those features are off. Operator-owned global and system config still applies.
+Safe mode **refuses** template `exec()`/`read_file()`/`read_json|yaml|toml()`/`get_env()` (and the file-inspecting filters and tests), task execution, tool `postinstall` and `install_env`, spm `install_command`, S3 requests, and asdf plugin scripts or plugin installation. It **ignores** shell and install hooks, project `[env]`/env directives/`[shell_alias]`, project `[settings]`, project `[deps]`, project lazy tools and `path:` versions, a project `[tool_alias]` redirecting a globally declared tool, project `[bootstrap]` and `[dotfiles]`, `watch_files` hooks, and `_.source` everywhere. Since 2026.10.19 project templates also see an empty `env`, and hosts a project config names (`api_url`, download URLs) get none of your forge tokens or netrc credentials, so private forges set only in project config cannot be reached. It loads otherwise-untrusted config without prompting, since those features are off. Operator-owned global and system config still applies.
 
 Safe mode is not an OS sandbox and does not make a command read-only.
 
@@ -127,7 +131,7 @@ Defaults for every invocation:
 deny_all = true
 ```
 
-`--deny-all` keeps implicit access to system libraries and tool dirs; it is not an empty container. Enforcement uses the host OS and differs between Linux and macOS; **Windows does not enforce filesystem or network restrictions**. Per-host `--allow-net=<host>` (task `allow_net`) is unsupported on both Linux and macOS and fails with an error; use `--deny-net` to block all network. Configuration evaluation and tool installation happen outside the child's sandbox — use safe mode for untrusted config.
+`--deny-all` keeps implicit access to system libraries and tool dirs; it is not an empty container. Enforcement uses the host OS and differs between Linux and macOS; **Windows does not enforce filesystem or network restrictions**. Per-host `--allow-net=<host>` (task `allow_net`) is unsupported on both Linux and macOS and fails with an error; use `--deny-net` to block all network. Since 2026.10.19: on Linux, write restrictions (`--deny-write`, `--allow-write`, `--deny-all`) need kernel 6.2+ and fail on older kernels instead of running weaker; `--deny-net` also blocks io_uring (programs that need it won't run); an allowed path that goes through a symlink in the project leading out of it is an error (name the target directly); an empty allowed path allows nothing but still restricts. Configuration evaluation and tool installation happen outside the child's sandbox — use safe mode for untrusted config.
 
 ## CI Pattern
 
@@ -153,7 +157,7 @@ For untrusted PR config, run bots under `MISE_SAFE=1`.
 
 ## Release-Age And Provenance Policy
 
-`minimum_release_age` defaults to **`24h`**. Raise it when the project wants a longer soak on moving versions; `"0s"` disables the delay entirely.
+`minimum_release_age` defaults to **`24h`**, and since 2026.10.15 the default applies to every backend (previously asdf, vfox, conda, dotnet, http, s3, and spinel had none). Only versions with a known release date can be held back; installing an undated one warns that the cutoff could not be checked (switch backend or add the tool to `minimum_release_age_excludes`). Take one release early with `mise upgrade --minimum-release-age 0s gh`; a later upgrade will not downgrade it. Raise it when the project wants a longer soak on moving versions; `"0s"` disables the delay entirely.
 
 ```toml
 [settings]
@@ -169,11 +173,19 @@ Precedence: `--minimum-release-age` CLI flag > per-tool option > global setting.
 
 It only affects fuzzy resolution (`node@24`, `latest`); explicit pins bypass it, and already-installed fuzzy matches stay eligible. This pairs well with lockfiles: the delay postpones adoption, then `mise.lock` records the vetted version and URLs. `npm:` and `pipx:` also forward the cutoff into transitive dependency resolution.
 
-For higher assurance, `paranoid = true` asks mise to verify provenance during installs regardless of lockfile contents when backend support exists:
+For higher assurance, `paranoid = true` (global-only; `MISE_PARANOID=1`) turns on every protection. Since 2026.10.14 it also takes a list of categories (`MISE_PARANOID=config,env_files`; unknown names error):
+
+| Category | Requires |
+| --- | --- |
+| `config` | Content-bound approval of every project config (and its task files and local aqua registries); no auto/CI trust, no worktree or monorepo sharing |
+| `env_files` | Content-bound approval of files `env._.file`, `env._.source`, and the `env_file` setting load from a repository (`mise trust .env`; plain `mise trust` covers the config plus its env files) |
+| `plugins` | Refuses unregistered community plugins by short name |
+| `provenance` | Re-verifies provenance on every install regardless of lockfile, and confirms a mise-versions "no attestations" answer with GitHub |
 
 ```toml
+# ~/.config/mise/config.toml
 [settings]
-paranoid = true
+paranoid = ["env_files"]   # e.g. approve find_up .env files without changing project trust
 ```
 
 ## Important Settings
@@ -198,6 +210,8 @@ task.timings = true
 Task settings now live under a `task.` table. The flat `task_output`, `task_timeout`, `task_timings`, `task_skip`, `task_disable_paths`, `task_run_auto_install`, `task_show_full_cmd`, `task_skip_depends`, and `task_remote_no_cache` spellings are deprecated: they warn from mise 2026.8.0 and are removed in 2027.2.0.
 
 Settings that have no effect are now deprecated — remove them: `plugin_autoupdate_last_check_duration`, `sops.age_recipients` (use `mise set --age-encrypt --age-recipient <r> KEY=value`), `task.cache.stats_report`, and `idiomatic_version_file` / `legacy_version_file*` (use `idiomatic_version_file_enable_tools`). `mise settings set` now refuses to write a setting where mise would ignore it: early-init settings (`env`, `auto_env`, `env_conf_d`, `ceiling_paths`, `ignored_config_paths`, `override_*_filenames`) belong in `miserc.toml` or env vars, and global-only ones (`yes`, `paranoid`, `trusted_config_paths`, …) cannot take `--local`.
+
+Global-only hardening settings added in 2026.10.19: `github.enterprise_hosts = ["github.mycompany.com"]` lists GitHub Enterprise Server hosts that may receive your GitHub token on `/api/v3` URLs (otherwise only `api.github.com`, `api.*.ghe.com`, and a tool's own `api_url` origin get it), and `extract_max_ratio` (default `100`, `0` = unlimited) fails an install whose archive unpacks past 256 MiB and that many times its download size.
 
 Useful env vars:
 
@@ -298,4 +312,10 @@ run = "pkg-config --exists openssl"
 hint = "Run `mise bootstrap packages apply`."
 timeout = "5s"              # default 10s
 os = ["linux", "macos"]     # also: dir, shell
+
+[doctor.checks."openssl:headers"]
+depends = ["openssl"]       # 2026.10.18: runs only after openssl passes, else reported `blocked`
+run = "test -f {{ vars.openssl_include | quote }}/ssl.h"
 ```
+
+Since 2026.10.17 `run`, `description`, and `hint` render as templates (`vars`, `env`, …; `quote` paths in `run`). A `depends` dependency that ends `fail`, `error`, `skipped`, or `blocked` blocks its dependents; `blocked` alone does not fail the run. An unknown name or a cycle in `depends` is an error and no check runs.

@@ -1,6 +1,6 @@
 ---
 name: mise
-description: "Manage mise-en-place (`mise`) workflows for dev tool versions, project configuration, shell activation/shims, environment variables, task runner setup and caching, hooks, machine bootstrap and dotfiles, generated install-script/CI/devcontainer/tool-stub files, plugins/backends, dependency providers, MCP integration, lockfiles, CI including GitHub Actions via `jdx/mise-action`, and troubleshooting. Use when the user mentions mise, `mise.toml`, `.mise.toml`, `.tool-versions`, `.miserc.toml`, `mise.lock`, `mise use/install/exec/run/tasks/deps/config/env/trust/plugins/generate/tool-stub/mcp`, `mise bootstrap` or `mise bs`, `[bootstrap.*]`, `[dotfiles]`, `packslip`, `mise lock --bump`, task artifact caching, `mise run --affected`, `MISE_SAFE`, migrating from asdf, configuring project dev environments, writing or debugging mise tasks, setting env vars, enabling config environments, managing tool backends, or creating reusable mise guidance."
+description: "Manage mise-en-place (`mise`) workflows for dev tool versions, project configuration, shell activation/shims, environment variables, task runner setup and caching, hooks, machine bootstrap and dotfiles, generated install-script/CI/devcontainer/tool-stub files, plugins/backends, dependency providers, MCP integration, lockfiles, CI including GitHub Actions via `jdx/mise-action`, and troubleshooting. Use when the user mentions mise, `mise.toml`, `.mise.toml`, `.tool-versions`, `.miserc.toml`, `mise.lock`, `mise use/install/exec/run/tasks/deps/config/env/trust/plugins/generate/tool-stub/mcp/lsp`, `config.override.toml`, `mise bootstrap` or `mise bs`, `[bootstrap.*]`, `[dotfiles]`, `packslip`, `mise lock --bump`, task artifact caching, `mise run --affected`, `MISE_SAFE`, migrating from asdf, configuring project dev environments, writing or debugging mise tasks, setting env vars, enabling config environments, managing tool backends, or creating reusable mise guidance."
 ---
 
 # mise
@@ -29,7 +29,7 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 | --- | --- |
 | Install mise, activate shells, or get a project started | [getting-started.md](references/getting-started.md) |
 | Choose between `mise activate`, shims, `mise exec`, `mise env`, and `mise run` | [activation.md](references/activation.md) |
-| Edit `mise.toml`, config precedence, local files, or config environments | [config.md](references/config.md) |
+| Edit `mise.toml`, config precedence, local files, global `config.override.toml`, config environments, `mise config explain`, or the `mise lsp` editor server | [config.md](references/config.md) |
 | Manage tool versions, backends, registry tools, tool auto-updates, Java vendors, or `.tool-versions` migration | [dev-tools.md](references/dev-tools.md) |
 | Add env vars, dotenv loading, templates, prompted `[vars]`, or exported env output | [environments.md](references/environments.md) |
 | Define, run, debug, or optimize `mise run` tasks, including monorepo targets, `[daemons]`, and fnox task secrets | [tasks.md](references/tasks.md) |
@@ -166,6 +166,7 @@ mise generate tool-stub ./bin/rg --lock
 - If the wrong tool version is active, run `mise config` and `mise ls --current` from the exact directory where the command fails.
 - If activation does not work, inspect shell setup and prefer `mise exec -- <command>` as a reliable temporary path.
 - If task output is confusing under parallel execution, remember style and verbosity are separate axes: `mise run --output interleave --quiet <task>`, or set `task.output` and `task.quiet`. `--jobs 1` already forces interleave.
+- If an install fails with ``option `x` is not used by the <backend> backend``, or config keys seem ignored, run `mise config explain` to spot unknown or deprecated keys; backends now reject options they do not read.
 - If mise warns about a deprecated setting, check for flat `task_*` names (move them under `task.*`) and `env.mise.*` directives (use `env._.*`).
 - If installs hit GitHub rate limits, configure GitHub authentication or use `mise.lock` so resolved URLs are reused.
 - If config is ignored or prompts for trust, run `mise trust --show` and `mise doctor`. Remember safe files load untrusted and `mise run/install/exec/watch` auto-trust; `mise trust --all` covers subdirectories too. Do not blanket-trust unknown config without reviewing it.

@@ -8,6 +8,10 @@ Use these official docs when exact behavior, flags, or current defaults matter:
 - Configuration: https://mise.jdx.dev/configuration.html
 - Config Environments: https://mise.jdx.dev/configuration/environments.html
 - Settings: https://mise.jdx.dev/configuration/settings.html
+- mise.toml Reference (every key): https://mise.jdx.dev/configuration/reference.html
+- Templates: https://mise.jdx.dev/templates.html
+- IDE Integration and `mise lsp`: https://mise.jdx.dev/ide-integration.html
+- Paranoid Mode: https://mise.jdx.dev/paranoid.html
 - Variables: https://mise.jdx.dev/configuration/vars.html
 - Dev Tools: https://mise.jdx.dev/dev-tools/
 - Backends: https://mise.jdx.dev/dev-tools/backends/

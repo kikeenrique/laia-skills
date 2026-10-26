@@ -36,7 +36,7 @@ my-backend-plugin/
 
 Implementation notes:
 
-- `BackendListVersions` must return versions sorted ascending, oldest to newest. mise does not sort them afterward.
+- `BackendListVersions` must return versions sorted ascending, oldest to newest. mise does not sort them afterward. An entry may be a table `{ version = "2.1.0", created_at = "2026-01-31T12:00:00Z" }` (RFC 3339) so `minimum_release_age` and `--before` apply — undated versions are never held back, so return dates when the registry has them. Moving names go in `aliases = { recommended = "9.10.3" }` next to `versions`; mise resolves `tool@recommended` to that version and locks it (older mise ignores the key).
 - `BackendInstall` receives `ctx.tool`, `ctx.version`, `ctx.install_path`, `ctx.download_path`, and `ctx.options`.
 - `BackendExecEnv` returns env vars such as PATH entries for the installed tool.
 - Optional hooks: `BackendListTools` (`hooks/backend_list_tools.lua`, a small `{tools = {{name, description}}}` catalog surfaced in `mise search`, completion, and the `mise use` selector), `BackendSearchTools` (per-query search of a large catalog via `ctx.query`), and `BackendUninstall` (`hooks/backend_uninstall.lua`, cleanup outside `install_path` on uninstall/upgrade/prune; an error keeps the install).
@@ -49,7 +49,11 @@ Tool plugins manage one tool and fit custom installs, source builds, legacy vers
 
 Required hooks include version listing and pre-install/download behavior. Use rolling release metadata and checksums when a channel like `nightly` or `stable` keeps the same version name but changes content.
 
-Tool plugins can support attestations for downloaded artifacts; record verification in lockfiles when available.
+Tool plugins can support attestations for downloaded artifacts; record verification in lockfiles when available. For SLSA provenance from a reusable workflow, also return `slsa_source_repository` (the publisher's `owner/repo`) and `slsa_source_tag` so another repository's or an older release's provenance cannot pass.
+
+`Available` entries take an optional `created_at` (RFC 3339) release date for `minimum_release_age`. `PreInstall` may return a `headers` table (e.g. `Authorization`) next to `url`; mise sends it only to that URL's origin, drops it on cross-origin redirects, and never records it in `mise.lock`.
+
+Every hook can use `RUNTIME.cacheDirPath` (2026.10.17), a per-plugin directory under `$MISE_CACHE_DIR/plugins/<name>` that survives plugin reinstalls but is wiped by `mise cache clear` — cope with it being empty or `nil`.
 
 `ctx.options` carries typed tool options in the download, install, and env hooks. Declare build prerequisites so mise can report or install them (gated by the `system_deps` setting):
 
