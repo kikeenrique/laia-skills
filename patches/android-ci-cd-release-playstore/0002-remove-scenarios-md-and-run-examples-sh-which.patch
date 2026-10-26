@@ -1,0 +1,39 @@
+Reason: remove scenarios.md and run_examples.sh, which point at scripts that do not ship
+Date: 2026-10-26
+
+diff --git a/references/scenarios.md a/references/scenarios.md
+deleted file mode 100644
+index b26fa0f..0000000
+--- a/references/scenarios.md
++++ /dev/null
+@@ -1,13 +0,0 @@
+-# Android CI CD Release PlayStore Runnable Scenarios
+-
+-## Happy path
+-- Goal: Validate the repo CI workflow, adapter generation, and version metadata flow.
+-- Command: `python3 scripts/validate_repo.py`
+-
+-## Edge case
+-- Goal: Check canary and stable release script behavior before tagging.
+-- Command: `python3 scripts/release.py --channel canary --dry-run`
+-
+-## Failure recovery
+-- Goal: Avoid routing pure build-logic or security work into release automation.
+-- Command: `python3 scripts/eval_triggers.py --skill android-ci-cd-release-playstore`
+diff --git a/scripts/run_examples.sh a/scripts/run_examples.sh
+deleted file mode 100755
+index 535285f..0000000
+--- a/scripts/run_examples.sh
++++ /dev/null
+@@ -1,11 +0,0 @@
+-#!/usr/bin/env bash
+-    set -euo pipefail
+-
+-    cat <<'EOF'
+-    Skill: Android CI CD Release PlayStore
+-    Canonical path: skills/android-ci-cd-release-playstore
+-    Example commands:
+-    Happy path: python3 scripts/validate_repo.py
+-Edge case: python3 scripts/release.py --channel canary --dry-run
+-Failure recovery: python3 scripts/eval_triggers.py --skill android-ci-cd-release-playstore
+-    EOF
