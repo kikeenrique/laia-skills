@@ -81,7 +81,7 @@
         "repo": "kikeenrique/laia-skills",
         "ref": "main"
       },
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "Router for visionOS / Apple Vision Pro spatial computing work: picks the right skill from Tom Krikorian's visionOSAgents set (spatial SwiftUI, RealityKit, ARKit providers, ShaderGraph and USD authoring, SharePlay, WidgetKit, immersive media, Swift Charts 3D). Install those skills from tomkrikorian/visionOSAgents.",
       "author": { "name": "Enrique Garcia" },
       "homepage": "https://github.com/kikeenrique/laia-skills",

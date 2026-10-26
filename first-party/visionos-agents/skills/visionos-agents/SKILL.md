@@ -42,4 +42,4 @@ Entry-point router for Apple Vision Pro / visionOS spatial computing work. Pick 
 
 - Prefer SwiftUI + documented RealityKit components; reach for custom ECS `System`s only when documented components can't express the needed state/behavior.
 - Consult the `visionos-design-guidelines` skill (Apple HIG for Vision Pro) for design decisions.
-- The skills this router points to are by [Tom Krikorian](https://github.com/tomkrikorian), from [tomkrikorian/visionOSAgents](https://github.com/tomkrikorian/visionOSAgents) (MIT), and are not part of this plugin. If a skill in the table is not available, install it from that repo. This router is not part of upstream: it was written for this plugin.
+- The skills this router points to are by [Tom Krikorian](https://github.com/tomkrikorian), from [tomkrikorian/visionOSAgents](https://github.com/tomkrikorian/visionOSAgents) (MIT), and are not part of this plugin. If a skill in the table is not available, don't install it yourself: tell the user which skill is missing and that it comes from that repo, and continue with the skills you have. This router is not part of upstream: it was written for this plugin.
