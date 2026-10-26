@@ -11,6 +11,8 @@ curl https://mise.run | sh
 ~/.local/bin/mise --version
 ```
 
+This runs a script fetched from the network. Suggest it to the user rather than running it yourself, and prefer a package manager (below) when one is available.
+
 On Windows, besides winget/Scoop/Chocolatey, a PowerShell 5.1+ installer (2026.10.15) installs to `~\.local\bin` with `mise-shim.exe`, verifies `SHASUMS256.txt`, adds it to the user `Path`, and upgrades on re-run (`MISE_VERSION`, `MISE_INSTALL_PATH`, `MISE_INSTALL_MODIFY_PATH=0`, `MISE_INSTALL_SHIMS_PATH=1`):
 
 ```powershell

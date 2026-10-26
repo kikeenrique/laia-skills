@@ -26,10 +26,12 @@ A folder inside any `conf.d/` (global, system, or project) is also a fragment: m
 ```toml
 include = [
   "./config/tools.toml",   # local path (2026.10.6+), relative to the including file or absolute
-  "git::https://github.com/myorg/platform.git//mise.toml?ref=main",
+  "git::https://github.com/myorg/platform.git//mise.toml?ref=v1.4.0",
   "oci::ghcr.io/myorg/platform-config@sha256:<digest>",
 ]
 ```
+
+Pin remote includes to a tag, a full commit sha, or an OCI digest. A branch (`?ref=main`) lets whoever can push to it change your config, and the change is applied on the next load under the trust you already gave.
 
 Included files cannot nest `include`, set `[settings]` or monorepo keys, or define `[tasks]` (use `task_config.includes`). Since 2026.10.5 they may declare `[bootstrap]`, merged key by key below the including file. They follow the including file's trust; paranoid mode requires a full commit sha or OCI digest and rejects local includes (their content is not covered by the trust hash). Fetched fragments are cached under `MISE_CACHE_DIR`; local includes are read on every load.
 

@@ -11,10 +11,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
       - run: mise run test
 ```
+
+Tags like `@v5` can be moved by whoever controls the action's repository. For hardened workflows, pin each action to a full commit SHA with the tag in a comment (`uses: jdx/mise-action@<40-char-sha> # v5.0.1`) and let Dependabot or Renovate bump it.
 
 Prefer `mise run <task>` in later steps so CI and local runs share one definition. Plain commands (`node`, `npm test`) also work because the action exports PATH entries.
 
@@ -76,7 +78,7 @@ strategy:
     os: [ubuntu-latest, macos-latest]
 runs-on: ${{ matrix.os }}
 steps:
-  - uses: actions/checkout@v6
+  - uses: actions/checkout@v7
   - uses: jdx/mise-action@v5
     with:
       version: 2026.10.5
@@ -105,11 +107,11 @@ v5 is breaking in one way: without `version`, the action now installs the newest
 
 ## Without The Action
 
-For runners where a third-party action is unwanted, commit a wrapper (`mise generate install-script -l -w`, see [advanced.md](advanced.md)) or install directly:
+For runners where a third-party action is unwanted, prefer committing a wrapper (`mise generate install-script -l -w`, see [advanced.md](advanced.md)), which is reviewed in the repo and pins the version. Piping a script from the network into `sh` runs whatever the server returns at that moment; if you must, pin the release with `MISE_VERSION` so every run installs the same one:
 
 ```yaml
 - run: |
-    curl https://mise.run | sh
+    curl -fsSL https://mise.run | MISE_VERSION=v2026.10.19 sh
     echo "$HOME/.local/share/mise/bin" >> "$GITHUB_PATH"
     echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
 - run: mise install --locked

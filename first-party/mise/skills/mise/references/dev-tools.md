@@ -116,14 +116,14 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
 
 - `matching` narrows candidates by case-sensitive substring while keeping platform autodetection; `matching_regex` does the same with a regex. Both are ignored (silently) when `asset_pattern` is set, because that replaces autodetection entirely.
 - `additional_asset_patterns` overlays supplemental archives onto the primary asset's install directory.
-- `github_attestations = false` disables attestation verification; `version_order = "semver"` changes tag ordering.
+- `github_attestations = false` disables attestation verification, which removes the check that the asset was built by the expected workflow. Use it only for a tool whose releases have no attestations, and never to silence a failing verification without finding out why. `version_order = "semver"` changes tag ordering.
 
 ### Other Backend Options
 
 ```toml
 [tools]
 "aqua:domcyrus/rustnet" = { version = "latest", libc = "musl" }   # or "glibc"/"gnu"; strict, no fallback
-"gem:internal-cli" = { version = "latest", source = "https://{{ env.GEM_TOKEN }}@gems.example.com/acme" }
+"gem:internal-cli" = { version = "latest", source = "https://{{ env.GEM_TOKEN }}@gems.example.com/acme" }   # token in the URL can surface in logs and errors; keep it in env, never literal
 "npm:@gmickel/gno" = { version = "2.3.0", allow_exotic_deps = ["xlsx"] }   # git/file/tarball deps aube blocks
 "http:my-tool" = { version = "1.0.0", url = "file:///opt/archives/my-tool.tar.gz", checksum = "sha256:..." }
 "http:polaris" = { version = "0.9.2", url = "https://ghcr.io/v2/acme/polaris/blobs/sha256:...", headers = { Authorization = "Bearer {{ env.GITHUB_TOKEN | b64_encode }}" } }

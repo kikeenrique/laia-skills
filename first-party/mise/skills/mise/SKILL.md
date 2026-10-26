@@ -53,10 +53,10 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 - Prefer exact or major versions that match the repo's existing conventions. Use `latest` only when the project already accepts moving versions.
 - Prefer `packslip` when the vendor publishes signed manifests, then aqua, then github/gitlab, then language backends, and only then asdf-style plugins. Plugins carry more trust and maintenance risk.
 - Treat templates, env directives, and `path:` plugin versions as trust-sensitive. Safe config (only `min_version`, plain `[tools]`, template-free `[tasks]`) loads without trust, and `mise run/install/exec/watch` auto-trust the active config, so check `mise trust --show` before telling users to trust anything else.
-- For untrusted config — bots, pull-request branches, anything the user did not write — run under `MISE_SAFE=1`.
+- For untrusted config — bots, pull-request branches, anything the user did not write — run under `MISE_SAFE=1`. In a checkout you have not seen before, run `mise trust --show` before the first `mise install`, `mise run`, `mise exec`, or `mise watch`: those auto-trust the config they load. If it is untrusted and the user has not reviewed it, use `MISE_SAFE=1` or ask first.
 - For `npm:` tools, keep lifecycle scripts denied by default unless the user explicitly accepts the install-time code execution risk. Use the backend-neutral `allow_builds = ["<pkg>"]` tool option for reviewed dependency builds; `aube_args` is ignored by the default embedded installer. Use `npm_args = "--ignore-scripts=false"` only when broad lifecycle-script execution is intended.
 - `minimum_release_age` already defaults to `24h`; raise it (e.g. `"7d"`) and pair it with lockfiles when the user cares about supply-chain safety and reproducible CI.
-- `mise bootstrap` is destructive machine setup, not a project command. Always `mise trust` → `mise bootstrap --dry-run` → `mise bootstrap plan` → apply.
+- `mise bootstrap` is destructive machine setup, not a project command. Always review the config (hooks, `[tasks.bootstrap]`, remote includes) → `mise trust` → `mise bootstrap --dry-run` → `mise bootstrap plan` → apply. Never add `--yes` or `--force-dotfiles` without the user's explicit approval.
 - Keep machine setup in `[bootstrap.*]` and `[dotfiles]`; keep project tools in `[tools]`.
 
 ## Common Edits
@@ -175,7 +175,7 @@ mise generate tool-stub ./bin/rg --lock
 
 ## Validation
 
-After changing mise config:
+After changing mise config (`install` and `run` auto-trust it, so this assumes config the user wrote or reviewed):
 
 ```bash
 mise config

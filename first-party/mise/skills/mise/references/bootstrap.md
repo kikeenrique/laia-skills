@@ -8,9 +8,10 @@ Use this reference when mise should set up a whole machine — OS packages, shel
 
 ## Safety Workflow
 
-Always in this order:
+Always in this order. Before trusting, read the config you are about to apply: its `[bootstrap.*]` hooks, `[tasks.bootstrap]`, `[dotfiles]`, remote `include` entries, and any `--from` repository. Bootstrap can install packages, add package repositories, write system files with `sudo`, and run those hooks, so trust is consent to all of it. Never run `mise trust` on config you have not reviewed with the user.
 
 ```bash
+# 1. review the config (above), then:
 mise trust
 mise bootstrap --dry-run
 mise bootstrap plan
@@ -19,7 +20,7 @@ mise bootstrap status
 ```
 
 - A dry run inspects state and prints proposed actions; hooks and the `bootstrap` task do not execute.
-- `--yes` skips confirmation prompts for unattended runs.
+- `--yes` skips confirmation prompts for unattended runs. As an agent, never add `--yes`, `--force-dotfiles`, or `--prune-dotfiles` on your own: show the user the plan and let them approve those flags explicitly.
 - Bootstrap is a sequence, not a transaction. If a later phase fails, earlier changes stay applied; fix and re-run.
 - Declarative parts converge, but hooks and `[tasks.bootstrap]` run on every apply, so make them idempotent.
 - Dotfile conflicts are refused by default; `--force-dotfiles` replaces conflicting whole-file targets. `--prune-dotfiles` (2026.10.15) removes orphaned group files at the end of the dotfiles phase, like `mise dot apply --prune`.
