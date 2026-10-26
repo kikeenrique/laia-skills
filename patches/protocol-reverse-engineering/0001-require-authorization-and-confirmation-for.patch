@@ -1,0 +1,61 @@
+Reason: require authorization and confirmation for active testing; keep TLS key logs in the project tmp
+Date: 2026-10-26
+
+diff --git a/SKILL.md b/SKILL.md
+index 1d5e761..9b9a49f 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,12 +1,21 @@
+ ---
+ name: protocol-reverse-engineering
+-description: Master network protocol reverse engineering including packet analysis, protocol dissection, and custom protocol documentation. Use when analyzing network traffic, understanding proprietary protocols, or debugging network communication.
++description: Master network protocol reverse engineering including packet analysis, protocol dissection, and custom protocol documentation. Use when analyzing network traffic from systems the user owns or is authorized to test, understanding proprietary protocols, or debugging network communication.
+ ---
+ 
+ # Protocol Reverse Engineering
+ 
+ Comprehensive techniques for capturing, analyzing, and documenting network protocols for security research, interoperability, and debugging.
+ 
++## Scope And Authorization
++
++Read this before running anything in this skill.
++
++- **Passive analysis is the default.** Reading a capture file the user gave you, or dissecting their own app's traffic, needs no extra step.
++- **Capture only traffic you are allowed to see:** the user's own devices, apps, and lab networks, or systems they say they are authorized to test. Never capture on a shared or public network, or traffic belonging to other people.
++- **Active testing needs explicit confirmation every time.** Before transparent interception, `--ssl-insecure`, fuzzing, or replaying or sending packets (`send()`, Scapy, boofuzz), name the exact target host and port and ask the user to confirm they own or are authorized to test it. Never point these at production or third-party services unless the user says they are in scope.
++- **Credentials and secrets:** don't extract, store, or reuse credentials, session tokens, or TLS keys belonging to anyone but the user. Keep captures and key logs in the project's `tmp/` folder, never commit them, and delete them when the work is done.
++
+ ## Traffic Capture
+ 
+ ### Wireshark Capture
+diff --git a/references/binary-encryption-analysis.md b/references/binary-encryption-analysis.md
+index 4a51275..923cd75 100644
+--- a/references/binary-encryption-analysis.md
++++ b/references/binary-encryption-analysis.md
+@@ -154,19 +154,22 @@ tshark -r capture.pcap -Y "tls.handshake.type == 2" \
+ 
+ # Certificate name/attribute strings. TLS 1.3 encrypts the certificate, so
+ # pass a key log (see Decryption Approaches below).
+-tshark -r capture.pcap -o tls.keylog_file:/tmp/keys.log \
++tshark -r capture.pcap -o tls.keylog_file:"$PWD/tmp/keys.log" \
+     -Y "tls.handshake.certificate" -T fields -e x509sat.PrintableString
+ ```
+ 
+ ### Decryption Approaches
+ 
+ ```bash
+-# Pre-master secret log (browser)
+-export SSLKEYLOGFILE=/tmp/keys.log
++# Pre-master secret log, set for one client process only. Don't `export` it:
++# every later TLS client in that shell would log its session keys too.
++SSLKEYLOGFILE="$PWD/tmp/keys.log" curl https://example.com/
+ 
+ # Configure Wireshark
+ # Edit > Preferences > Protocols > TLS
+-# (Pre)-Master-Secret log filename: /tmp/keys.log
++# (Pre)-Master-Secret log filename: <project>/tmp/keys.log
++# The key log decrypts every session it recorded: keep it out of shared /tmp
++# and out of git, and delete it when the analysis is done.
+ 
+ # Decrypt with private key (if available)
+ # Only works for RSA key exchange
