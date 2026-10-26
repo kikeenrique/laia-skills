@@ -1,0 +1,39 @@
+Reason: remove scenarios.md and run_examples.sh, which point at scripts that do not ship
+Date: 2026-10-26
+
+diff --git a/references/scenarios.md a/references/scenarios.md
+deleted file mode 100644
+index 9d9dfd9..0000000
+--- a/references/scenarios.md
++++ /dev/null
+@@ -1,13 +0,0 @@
+-# Android Gradle Build Logic Runnable Scenarios
+-
+-## Happy path
+-- Goal: Run the Compose showcase build from a clean checkout with version catalogs.
+-- Command: `cd examples/orbittasks-compose && ./gradlew :app:assembleDebug`
+-
+-## Edge case
+-- Goal: Validate shared repositories and plugin management in the XML fixture.
+-- Command: `cd examples/orbittasks-xml && ./gradlew :app:assembleDebug`
+-
+-## Failure recovery
+-- Goal: Benchmark build-logic trigger precision against modernization and CI skills.
+-- Command: `python3 scripts/eval_triggers.py --skill android-gradle-build-logic`
+diff --git a/scripts/run_examples.sh a/scripts/run_examples.sh
+deleted file mode 100755
+index d93d7e5..0000000
+--- a/scripts/run_examples.sh
++++ /dev/null
+@@ -1,11 +0,0 @@
+-#!/usr/bin/env bash
+-    set -euo pipefail
+-
+-    cat <<'EOF'
+-    Skill: Android Gradle Build Logic
+-    Canonical path: skills/android-gradle-build-logic
+-    Example commands:
+-    Happy path: cd examples/orbittasks-compose && ./gradlew :app:assembleDebug
+-Edge case: cd examples/orbittasks-xml && ./gradlew :app:assembleDebug
+-Failure recovery: python3 scripts/eval_triggers.py --skill android-gradle-build-logic
+-    EOF
