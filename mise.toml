@@ -6,6 +6,10 @@ run = "ruby tools/scripts/validate_skills.rb"
 description = "Run the laiaskills CLI, e.g. `mise run laiaskills check`"
 run = "swift run --quiet --package-path tools/laiaskills laiaskills"
 
+[tasks."xcode-skills:snapshot"]
+description = "Snapshot the selected Xcode's agent skills into third-party/kikeenrique__xcode-skills (`-- --release` tags a final release; never pushes)"
+run = "bash tools/scripts/snapshot_xcode_skills.sh"
+
 [tasks."laiaskills:build"]
 description = "Build laiaskills"
 run = "swift build --package-path tools/laiaskills"

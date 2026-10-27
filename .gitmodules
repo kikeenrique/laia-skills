@@ -75,3 +75,6 @@
 [submodule "third-party/tomkrikorian__visionOSAgents"]
 	path = third-party/tomkrikorian__visionOSAgents
 	url = https://github.com/tomkrikorian/visionOSAgents.git
+[submodule "third-party/kikeenrique__xcode-skills"]
+	path = third-party/kikeenrique__xcode-skills
+	url = https://github.com/kikeenrique/xcode-skills.git
