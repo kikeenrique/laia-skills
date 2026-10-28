@@ -32,9 +32,6 @@
 [submodule "third-party/dadederk__iOS-Accessibility-Agent-Skill"]
 	path = third-party/dadederk__iOS-Accessibility-Agent-Skill
 	url = https://github.com/dadederk/iOS-Accessibility-Agent-Skill.git
-[submodule "third-party/Dimillian__Skills"]
-	path = third-party/Dimillian__Skills
-	url = https://github.com/Dimillian/Skills.git
 [submodule "third-party/dpearson2699__swift-ios-skills"]
 	path = third-party/dpearson2699__swift-ios-skills
 	url = https://github.com/dpearson2699/swift-ios-skills.git
