@@ -1,0 +1,68 @@
+Reason: custom(_:size:) scales, correct text-style sizes, read files outside Xcode
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index 8c7439a..fd95a0c 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -35,7 +35,7 @@ Consult these for detailed examples of correct and incorrect patterns:
+ 
+ ## Step 1 — Read the source code
+ 
+-Use `XcodeRead` to read the current file. Identify:
++Read the file the user named (with your file-reading tool; `XcodeRead` when running inside Xcode). If no file was named, ask which one to audit. Identify:
+ 
+ 1. **Text elements:**
+    - SwiftUI: `Text`, `Label`, `Button` labels, `TextField`, `SecureField`, `TextEditor`
+@@ -73,6 +73,7 @@ For each text element, determine pass or fail:
+ | Pattern | Framework | Why it passes |
+ |---|---|---|
+ | `.font(.body)`, `.font(.headline)`, etc. | SwiftUI | Text style scales automatically |
++| `.font(.custom("Name", size: N))` or `.font(.custom("Name", size: N, relativeTo: .style))` | SwiftUI | Custom font scales with `.body` (or the given text style) |
+ | `UIFont.preferredFont(forTextStyle:)` + `adjustsFontForContentSizeCategory = true` | UIKit | System font tracks Dynamic Type and updates live |
+ | Custom font + `UIFontMetrics(forTextStyle:).scaledFont(for:)` | UIKit | Custom font scales proportionally |
+ | `NSFont.preferredFont(forTextStyle:)` | AppKit | System font tracks Dynamic Type (macOS 11+) |
+@@ -86,7 +87,7 @@ For each text element, determine pass or fail:
+ | Pattern | Framework | Why it fails |
+ |---|---|---|
+ | `.font(.system(size: N))` | SwiftUI | Hardcoded size, does not scale |
+-| `.font(.custom("Name", size: N))` without fixedSize parameter | SwiftUI | Custom font at fixed size |
++| `.font(.custom("Name", fixedSize: N))` | SwiftUI | Custom font at fixed size, does not scale |
+ | `UIFont.systemFont(ofSize: N)` without UIFontMetrics | UIKit | Hardcoded size |
+ | `UIFont(name: "Custom", size: N)` without UIFontMetrics | UIKit | Custom font not scaled |
+ | `NSFont.systemFont(ofSize: N)` without scaling | AppKit | Hardcoded size, does not scale |
+@@ -132,7 +133,7 @@ For each element that does NOT support Dynamic Type:
+ - The current font specification
+ - Why it fails
+ - **Concrete fix** — the exact code change to make. Examples:
+-  - "Line 15: Change `.font(.system(size: 14))` to `.font(.body)` — body is the closest text style to 14pt"
++  - "Line 15: Change `.font(.system(size: 14))` to `.font(.subheadline)` — subheadline (15pt) is the closest text style to 14pt"
+   - "Line 23: Change `UIFont.systemFont(ofSize: 17)` to `UIFont.preferredFont(forTextStyle: .body)` and add `label.adjustsFontForContentSizeCategory = true`"
+   - "Line 8: This custom font needs UIFontMetrics. Change to `UIFontMetrics(forTextStyle: .body).scaledFont(for: customFont)`"
+   - "Line 12: Change `NSFont.systemFont(ofSize: 13)` to `NSFont.preferredFont(forTextStyle: .body)` for automatic Dynamic Type scaling on macOS"
+@@ -143,13 +144,18 @@ When suggesting replacements, use the closest text style:
+ 
+ | Hardcoded size (approx.) | Suggested text style |
+ |---|---|
+-| 11-12pt | `.caption2` / `.footnote` |
+-| 13pt | `.caption` |
+-| 15-17pt | `.body` / `.callout` |
+-| 17-20pt | `.headline` / `.title3` |
+-| 20-22pt | `.title2` |
+-| 22-28pt | `.title` |
+-| 28-34pt | `.largeTitle` |
++| 11pt | `.caption2` |
++| 12pt | `.caption` |
++| 13pt | `.footnote` |
++| 14-15pt | `.subheadline` |
++| 16pt | `.callout` |
++| 17pt | `.body` / `.headline` (semibold) |
++| 18-20pt | `.title3` |
++| 21-22pt | `.title2` |
++| 23-28pt | `.title` |
++| 29-34pt | `.largeTitle` |
++
++These are the iOS default (Large) text-style sizes from the Human Interface Guidelines: caption2 11, caption 12, footnote 13, subheadline 15, callout 16, body/headline 17, title3 20, title2 22, title 28, largeTitle 34.
+ 
+ ### Assumptions
+ 
