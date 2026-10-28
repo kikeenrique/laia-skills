@@ -2,9 +2,16 @@
   "$schema": "./tools/config/schemas/skills.schema.json",
   "claudePlugins": ["swift-lsp@claude-plugins-official"],
   "skills": {
+    "accessibility-dynamic-type-specialist": { "source": "third-party/kikeenrique__xcode-skills" },
+    "accessibility-sufficient-contrast-specialist": { "source": "third-party/kikeenrique__xcode-skills" },
+    "accessibility-voiceover-specialist": { "source": "third-party/kikeenrique__xcode-skills" },
+    "adopt-c-bounds-safety": { "source": "third-party/kikeenrique__xcode-skills" },
     "android-ci-cd-release-playstore": { "source": "third-party/krutikJain__android-agent-skills", "path": "skills/android-ci-cd-release-playstore" },
     "android-clean-architecture": { "source": "third-party/affaan-m__ECC", "path": "skills/android-clean-architecture" },
     "android-gradle-build-logic": { "source": "third-party/krutikJain__android-agent-skills", "path": "skills/android-gradle-build-logic" },
+    "app-intents-specialist": { "source": "third-party/kikeenrique__xcode-skills" },
+    "app-intents-whats-new-27": { "source": "third-party/kikeenrique__xcode-skills" },
+    "app-resizability": { "source": "third-party/kikeenrique__xcode-skills" },
     "apple-appstore-reviewer": { "source": "third-party/github__awesome-copilot" },
     "apple-hig-designer": { "source": "third-party/jamesrochabrun__skills" },
     "arkit-camera-access-providers": { "source": "third-party/tomkrikorian__visionOSAgents" },
@@ -13,7 +20,9 @@
     "arkit-rendering-context-providers": { "source": "third-party/tomkrikorian__visionOSAgents" },
     "arkit-spatial-tracking-providers": { "source": "third-party/tomkrikorian__visionOSAgents" },
     "arkit-visionos-developer": { "source": "third-party/tomkrikorian__visionOSAgents" },
+    "audit-xcode-security-settings": { "source": "third-party/kikeenrique__xcode-skills" },
     "axe": { "source": "first-party/ios-simulator-ui-flow/upstream", "path": "Skills/CLI/axe" },
+    "building-document-based-swiftui-applications": { "source": "third-party/kikeenrique__xcode-skills" },
     "coding-standards-enforcer": { "source": "third-party/tomkrikorian__visionOSAgents" },
     "compose-multiplatform-patterns": { "source": "third-party/affaan-m__ECC", "path": "skills/compose-multiplatform-patterns" },
     "cupertino": { "source": "first-party" },
@@ -27,6 +36,7 @@
     "macos-design-guidelines": { "source": "third-party/ehmo__platform-design-skills" },
     "mise": { "source": "first-party" },
     "mobile-android-design": { "source": "third-party/wshobson__agents" },
+    "modernize-tests": { "source": "third-party/kikeenrique__xcode-skills" },
     "protocol-reverse-engineering": { "source": "third-party/wshobson__agents" },
     "realitykit-animation-physics": { "source": "third-party/tomkrikorian__visionOSAgents" },
     "realitykit-audio-spatial": { "source": "third-party/tomkrikorian__visionOSAgents" },
@@ -48,7 +58,9 @@
     "swiftui-liquid-glass": { "source": "third-party/Dimillian__Skills" },
     "swiftui-performance-audit": { "source": "third-party/Dimillian__Skills" },
     "swiftui-pro": { "source": "third-party/twostraws__SwiftUI-Agent-Skill", "path": "swiftui-pro" },
+    "swiftui-specialist": { "source": "third-party/kikeenrique__xcode-skills" },
     "swiftui-ui-patterns": { "source": "third-party/Dimillian__Skills" },
+    "swiftui-whats-new-27": { "source": "third-party/kikeenrique__xcode-skills" },
     "tkr-skill-writer": { "source": "third-party/tomkrikorian__visionOSAgents" },
     "ui-ux-pro-max": { "source": "third-party/nextlevelbuilder__ui-ux-pro-max-skill" },
     "usd-editor": { "source": "third-party/tomkrikorian__visionOSAgents" },
@@ -63,6 +75,7 @@
     "xcode-build-fixer": { "source": "third-party/AvdLee__Xcode-Build-Optimization-Agent-Skill" },
     "xcode-build-orchestrator": { "source": "third-party/AvdLee__Xcode-Build-Optimization-Agent-Skill" },
     "xcode-compilation-analyzer": { "source": "third-party/AvdLee__Xcode-Build-Optimization-Agent-Skill" },
-    "xcode-project-analyzer": { "source": "third-party/AvdLee__Xcode-Build-Optimization-Agent-Skill" }
+    "xcode-project-analyzer": { "source": "third-party/AvdLee__Xcode-Build-Optimization-Agent-Skill" },
+    "xctrace": { "source": "third-party/kikeenrique__xcode-skills" }
   }
 }
