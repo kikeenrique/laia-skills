@@ -1,0 +1,55 @@
+Reason: Ask before running the crash reproducer, keep the zip in tmp, ask before lldbinit
+Date: 2026-10-28
+
+diff --git a/references/adoption-strategies.md b/references/adoption-strategies.md
+index a37f99c..6a4d487 100644
+--- a/references/adoption-strategies.md
++++ b/references/adoption-strategies.md
+@@ -30,7 +30,7 @@ Once detected, record the VCS name and the concrete commands you will use for:
+ 
+ Use those captured commands for every VCS operation in the rest of this skill — do not switch VCSes mid-run, and do not assume git unless git is what you detected.
+ 
+-If no usable VCS is found, present the **No-VCS refusal** below and stop. If the working tree is not clean, present the **Dirty-tree refusal** below, including the status output, and stop. On user-reported remediation, re-run the checks before continuing.
++If no usable VCS is found, present the **No-VCS refusal** below and stop. If the working tree is not clean, present the **Dirty-tree refusal** below, including the status output, and stop. Untracked files that are not part of the adoption, such as a scratch `tmp/` folder, don't make the tree dirty: leave them alone and never stage them. On user-reported remediation, re-run the checks before continuing.
+ 
+ **No-VCS refusal:**
+ 
+@@ -323,20 +323,20 @@ Enable `-fbounds-safety` in implementation files one at a time. Use the order co
+ 
+ If a build during sub-step 1 (per-file flag enablement) or sub-step 2 (fixing compilation errors) crashes the compiler, clang's stderr will include a `PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT` block listing `.c` (preprocessed source) and `.sh` (replay script) paths in `$TMPDIR`, plus a pointer to `~/Library/Logs/DiagnosticReports/clang_<...>.crash`. That block is the cue to enter this procedure — don't keep chasing compile errors.
+ 
+-**1. Gather a reproducer via a sub-agent.** Spawn a sub-agent (Task tool, `general-purpose`) with these self-contained instructions:
++**1. Gather a reproducer via a sub-agent.** First, in the main conversation, extract the `.c` and `.sh` paths from the crash output, read the `.sh` script (it is short), and show it to the user, pointing out anything other than a clang invocation. Ask the user before running it; if they decline, the sub-agent skips the re-run and bundles the files as they are. Then spawn a sub-agent (Task tool, `general-purpose`) with these self-contained instructions, and tell it to make no edits to the project:
+ 
+-- Extract the `.c` and `.sh` paths from the crash output the parent provides.
+-- Re-run the `.sh` script and confirm it triggers the crash. If it does not, report that back — the crash may not be reliably reproducible.
++- Use the `.c` and `.sh` paths the parent provides.
++- Re-run the `.sh` script, only if the parent says the user approved it, and confirm it triggers the crash. If it does not, report that back — the crash may not be reliably reproducible.
+ - **Multi-arch handling:** if the original build used multiple `-arch` options, clang reports `Error generating preprocessed source(s) - cannot generate preprocessed source with multiple -arch options` instead of producing the `.c` / `.sh`. In that case, re-invoke the same compile command with each `-arch` value individually until one (or more) crashes, gathering the reproducer per crashing arch.
+ - Locate the matching crash log under `~/Library/Logs/DiagnosticReports/clang_<YYYY-MM-DD-HHMMSS>_<hostname>.crash` — pick the one whose timestamp matches the crash.
+-- Bundle the `.c`, `.sh`, and `.crash` into a single zip at `<project-root>/<crashing-filename>-crash-reproducer.zip` (one zip per crashing arch if multi-arch).
++- Bundle the `.c`, `.sh`, and `.crash` into a single zip at `<project-root>/tmp/<crashing-filename>-crash-reproducer.zip` (one zip per crashing arch if multi-arch). Create `tmp/` if it is missing, and never stage or commit the zip.
+ - Report back: the zip path(s), which arch(es) reproduced, and any missing files.
+ 
+ The preprocessed `.c` and `.sh` are large (often >1 MB combined); using a sub-agent keeps that bulk out of the main conversation context.
+ 
+ **2. Ask the user to file feedback using Feedback Assistant (non-blocking).** Say something like:
+ 
+-> "I gathered a crash reproducer at `<zip-path>`. Please file a feedback about this Clang `-fbounds-safety` crash using Feedback Assistant — either the Feedback Assistant app or https://feedbackassistant.apple.com — and attach the archive. You can continue with the workflow before or after filing; let me know the Feedback ID if you do file, since I'll reference it in any workaround comment."
++> "I gathered a crash reproducer at `<zip-path>`. It contains the full preprocessed source of `<file>` (with every header it includes) and a crash log with your hostname and local file paths, so review it before you share it. Please file a feedback about this Clang `-fbounds-safety` crash using Feedback Assistant — either the Feedback Assistant app or https://feedbackassistant.apple.com — and attach the archive. You can continue with the workflow before or after filing; let me know the Feedback ID if you do file, since I'll reference it in any workaround comment."
+ 
+ Then proceed immediately to Step 3 without waiting. If the user later supplies a Feedback ID, use it; otherwise the workaround comment in Step 5 falls back to referencing the local archive path.
+ 
+diff --git a/references/runtime-debugging.md b/references/runtime-debugging.md
+index fd6e77d..d899828 100644
+--- a/references/runtime-debugging.md
++++ b/references/runtime-debugging.md
+@@ -252,7 +252,7 @@ Resume execution with `c` (continue), just like any other breakpoint.
+ 
+ ### Disabling the Soft Trap Plugin
+ 
+-Add to `~/.lldbinit`:
++Add to `~/.lldbinit` (it's the user's global LLDB config: show them the line to add, or ask before editing it):
+ 
+ ```
+ plugin disable instrumentation-runtime.BoundsSafety
