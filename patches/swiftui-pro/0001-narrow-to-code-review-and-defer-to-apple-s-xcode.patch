@@ -1,0 +1,24 @@
+Reason: Narrow to code review and defer to Apple's Xcode skills
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index 916d0d5..585308b 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: swiftui-pro
+-description: Comprehensively reviews SwiftUI code for best practices on modern APIs, maintainability, and performance. Use when reading, writing, or reviewing SwiftUI projects.
++description: Reviews existing SwiftUI code and reports findings by file and line, each naming the rule broken with a before/after fix, then a prioritized summary. Covers deprecated API, view structure, data flow, navigation, HIG design, resizability and iPhone Duo, accessibility, localization, performance, and Swift hygiene, with iOS 27 / Xcode 27.2 toolbar rules. Use when asked to review, audit, or do a code-quality pass on SwiftUI code. When writing new SwiftUI code, prefer swiftui-specialist (data flow, environment, ForEach, localization, soft-deprecated APIs), swiftui-whats-new-27 (SDK 27 APIs), and swiftui-expert-skill (implementation patterns); for soft-deprecated APIs outside the code under review, follow swiftui-specialist's scoping rule.
+ license: MIT
+ metadata:
+   author: Paul Hudson
+@@ -27,6 +27,8 @@ Review process:
+ 
+ If doing a partial review, load only the relevant reference files.
+ 
++Where Apple's skills are installed, prefer them for their topics: swiftui-specialist for data flow, environment, ForEach identity, localization, and the soft-deprecated API list and its scoping rule; swiftui-whats-new-27 for SDK 27 API changes; accessibility-voiceover-specialist, accessibility-dynamic-type-specialist, and accessibility-sufficient-contrast-specialist for a per-file accessibility audit.
++
+ Keep `references/performance-plus.md` out of routine reviews. Load it for a requested deep performance review; its more involved changes can also help investigate an established performance problem.
+ 
+ 
