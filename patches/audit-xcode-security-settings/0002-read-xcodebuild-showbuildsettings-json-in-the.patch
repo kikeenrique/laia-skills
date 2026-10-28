@@ -1,0 +1,75 @@
+Reason: Read xcodebuild -showBuildSettings -json in the filter script
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index d61d9d0..8ec11cc 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -39,7 +39,7 @@ Fall back to Bash only for operations the Xcode tools cannot do (e.g., git opera
+ When the Xcode tools above (`XcodeListTargets`, `GetTargetBuildSettings`, `UpdateTargetBuildSetting`, `AddEntitlement`) are not available, as in a terminal agent:
+ 
+ - **Never hand-edit `project.pbxproj`**, and never rewrite it with a script. Reading it with `grep` stays allowed.
+-- **Audit read-only with `xcodebuild`:** `xcodebuild -project <ProjectName>.xcodeproj -target <TargetName> -configuration <Configuration> -showBuildSettings -json`. Its output is a list of `{"target": …, "buildSettings": {NAME: value}}` objects, not the `GetTargetBuildSettings` shape, so `scripts/filter_build_settings.py` cannot read it; pick out the settings named in `references/security-settings-reference.md` from it directly. It gives evaluated values only: find where a value is set by grepping the `.xcconfig` files and `project.pbxproj`.
++- **Audit read-only with `xcodebuild`:** `xcodebuild -project <ProjectName>.xcodeproj -target <TargetName> -configuration <Configuration> -showBuildSettings -json`. Save the output to a file and filter it with `scripts/filter_build_settings.py <saved-file>`, which reads this format as well as `GetTargetBuildSettings` output. It gives evaluated values only, so `--show-overrides` has no effect: find where a value is set by grepping the `.xcconfig` files and `project.pbxproj`.
+ - **Change settings** only in the project's `.xcconfig` files, or in the project generator's manifest when the project is generated (Tuist `Project.swift`, XcodeGen `project.yml`); a generated `project.pbxproj` is overwritten on the next generation. When neither applies, list the exact settings, values, and targets for the user to set in Xcode, or ask the user how to proceed.
+ 
+ ## Bundled Reference Documents
+diff --git a/scripts/filter_build_settings.py b/scripts/filter_build_settings.py
+index bb78270..bd16f31 100755
+--- a/scripts/filter_build_settings.py
++++ b/scripts/filter_build_settings.py
+@@ -1,6 +1,11 @@
+ #!/usr/bin/env python3
+ """Filter GetTargetBuildSettings JSON to security-relevant entries.
+ 
++Also reads `xcodebuild -showBuildSettings -json` output (a list of
++{"target": ..., "buildSettings": {NAME: value}} objects). That format has
++evaluated values only, so --show-overrides has no effect on it, and each
++line is prefixed with the target name when it covers more than one target.
++
+ Usage:
+     filter_build_settings.py <saved-file> [--show-overrides] [--unhardened-only] [--regex REGEX]
+ """
+@@ -39,9 +44,22 @@ def _default_regex() -> str:
+     return "|".join(re.escape(n) for n in _load_reference_names(REFERENCE_PATH))
+ 
+ 
++def _entries(data):
++    """Yield (prefix, name, evaluated value, is target override) for either input format."""
++    if isinstance(data, list):
++        many = len(data) > 1
++        for target in data:
++            prefix = f"{target.get('target', '?')}: " if many else ""
++            for name, val in target.get("buildSettings", {}).items():
++                yield prefix, name, str(val), False
++    else:
++        for s in data["buildSettings"]:
++            yield "", s["macroName"], s.get("evaluatedValue", ""), "targetValue" in s
++
++
+ def main():
+     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+-    parser.add_argument("saved_file", help="Path to the saved GetTargetBuildSettings JSON")
++    parser.add_argument("saved_file", help="Path to the saved GetTargetBuildSettings or xcodebuild -showBuildSettings -json output")
+     parser.add_argument("--regex", default=None,
+                         help="Override the reference-derived default regex")
+     parser.add_argument("--show-overrides", action="store_true",
+@@ -54,15 +72,13 @@ def main():
+     with open(args.saved_file) as f:
+         data = json.load(f)
+ 
+-    for s in data["buildSettings"]:
+-        name = s["macroName"]
+-        val = s.get("evaluatedValue", "")
++    for prefix, name, val, override in _entries(data):
+         if not rx.search(name):
+             continue
+         if args.unhardened_only and val in HARDENED_VALUES:
+             continue
+-        flag = "  [target-override]" if args.show_overrides and "targetValue" in s else ""
+-        print(f"{name}={val}{flag}")
++        flag = "  [target-override]" if args.show_overrides and override else ""
++        print(f"{prefix}{name}={val}{flag}")
+ 
+ 
+ if __name__ == "__main__":
