@@ -1,0 +1,95 @@
+Reason: @Animatable back-deploys to iOS 13; iOS 27.1 is no longer beta
+Date: 2026-10-28
+
+diff --git a/references/animation-advanced.md b/references/animation-advanced.md
+index 9425639..d78c45e 100644
+--- a/references/animation-advanced.md
++++ b/references/animation-advanced.md
+@@ -1,13 +1,13 @@
+ # SwiftUI Advanced Animations
+ 
+-Transactions, phase animations (iOS 17+), keyframe animations (iOS 17+), completion handlers (iOS 17+), and `@Animatable` macro (iOS 26+).
++Transactions, phase animations (iOS 17+), keyframe animations (iOS 17+), completion handlers (iOS 17+), and `@Animatable` macro (Xcode 26+; back-deploys to iOS 13).
+ 
+ ## Table of Contents
+ - [Transactions](#transactions)
+ - [Phase Animations (iOS 17+)](#phase-animations-ios-17)
+ - [Keyframe Animations (iOS 17+)](#keyframe-animations-ios-17)
+ - [Animation Completion Handlers (iOS 17+)](#animation-completion-handlers-ios-17)
+-- [@Animatable Macro (iOS 26+)](#animatable-macro-ios-26)
++- [@Animatable Macro (Xcode 26+)](#animatable-macro-xcode-26)
+ 
+ ---
+ 
+@@ -323,9 +323,9 @@ Circle()
+ 
+ ---
+ 
+-## @Animatable Macro (iOS 26+)
++## @Animatable Macro (Xcode 26+)
+ 
+-The `@Animatable` macro auto-synthesizes `animatableData` from all animatable stored properties, eliminating verbose manual conformance. Use `@AnimatableIgnored` to exclude properties that should not animate.
++The `@Animatable` macro auto-synthesizes `animatableData` from all animatable stored properties, eliminating verbose manual conformance. It needs the Xcode 26 SDK or later to build but back-deploys to iOS 13, so it needs no `#available` check. Use `@AnimatableIgnored` to exclude properties that should not animate.
+ 
+ ### Before (Manual)
+ 
+@@ -423,7 +423,7 @@ On earlier deployment targets, the same logic uses `AnimatablePair` with `newVal
+ - Use `.transaction(value:)` for handlers that should refire on every value change
+ - Without `value:` parameter, completion only fires once
+ 
+-### @Animatable Macro (iOS 26+)
++### @Animatable Macro (Xcode 26+)
+ - Use `@Animatable` to auto-synthesize `animatableData` from stored properties
+ - Use `@AnimatableIgnored` to exclude non-animatable properties
+ - Replaces verbose manual `animatableData` getters/setters
+diff --git a/references/animation-transitions.md b/references/animation-transitions.md
+index e522466..4384d9d 100644
+--- a/references/animation-transitions.md
++++ b/references/animation-transitions.md
+@@ -264,7 +264,7 @@ struct BadShakeModifier: ViewModifier {
+ 
+ ### Multiple Properties with AnimatablePair
+ 
+-For deployment targets below iOS 26, use `AnimatablePair` to combine multiple animated properties. For iOS 26+ targets, prefer `@Animatable` or `AnimatableValues` — see [@Animatable Macro (iOS 26+)](animation-advanced.md#animatable-macro-ios-26) in `animation-advanced.md`.
++Prefer `@Animatable`, which back-deploys to iOS 13 — see [@Animatable Macro (Xcode 26+)](animation-advanced.md#animatable-macro-xcode-26) in `animation-advanced.md`. When you write `animatableData` by hand, use `AnimatableValues` on iOS 26+ targets and `AnimatablePair` below iOS 26.
+ 
+ ```swift
+ // GOOD (below iOS 26) - AnimatablePair for two properties
+diff --git a/references/iphone-duo.md b/references/iphone-duo.md
+index ba39e63..1b34d12 100644
+--- a/references/iphone-duo.md
++++ b/references/iphone-duo.md
+@@ -1,6 +1,6 @@
+ # iPhone Duo SwiftUI Guidance
+ 
+-> iPhone Duo support in Xcode 27.1 and the iOS 27.1 SDK is beta. Confirm behavior against the shipping SDK.
++> iPhone Duo support needs Xcode 27.1 or later and the iOS 27.1 SDK. Gate runtime use with `#available(iOS 27.1, *)`.
+ 
+ > For UIKit or Objective-C code (`UIScreen.main`, `interfaceOrientation`, `userInterfaceIdiom`, AppDelegate→SceneDelegate, Info.plist resizability checks), prefer app-resizability.
+ 
+diff --git a/references/latest-apis.md b/references/latest-apis.md
+index 1f5b1d5..44bc723 100644
+--- a/references/latest-apis.md
++++ b/references/latest-apis.md
+@@ -523,7 +523,7 @@ Search this file's lookup table when migrating an API that the 27 SDK marks soft
+ - `ToolbarContent.axisBehavior(_:)`, `toolbarVerticalEdge`, `toolbarVerticalCompressionBehavior(_:)`, and `toolbarVerticalBehavior(_:)` support adaptive vertical bars. See [`toolbar-patterns.md`](toolbar-patterns.md).
+ - `onHingeChange` and the optional `DeviceHingeContext.hinge` support live effects and interactions, not layout decisions. For iPhone Duo-specific use, see [`iphone-duo.md`](iphone-duo.md).
+ 
+-These APIs are from the beta iOS 27.1 SDK. Gate runtime use with `#available(iOS 27.1, *)`, provide an earlier-system fallback, and recheck semantics against the shipping SDK.
++These APIs are from the iOS 27.1 SDK. Gate runtime use with `#available(iOS 27.1, *)` and provide an earlier-system fallback.
+ 
+ ---
+ 
+diff --git a/references/layout-best-practices.md b/references/layout-best-practices.md
+index 7045f41..29926a7 100644
+--- a/references/layout-best-practices.md
++++ b/references/layout-best-practices.md
+@@ -172,7 +172,7 @@ struct AdaptivePlayer: View {
+ 
+ Both split and overlay styles accept `axes(_:)`. Leave the axes unconstrained when either orientation is valid. Restrict the set only when the content relationship requires it; if a split cannot use the permitted axis in the current proposal, the arrangement may show a single region instead of forcing an unsuitable split. Keep the earlier-OS fallback equivalent in hierarchy and functionality.
+ 
+-Treat these nesting combinations conservatively in the Xcode 27.1 beta:
++Avoid these nesting combinations:
+ 
+ - Do not put `NavigationSplitView` inside `ArrangementView`, or `ArrangementView` inside `NavigationSplitView`.
+ - Do not put `ArrangementView` inside `List` or `ScrollView`.
