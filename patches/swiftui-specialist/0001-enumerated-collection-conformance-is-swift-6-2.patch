@@ -1,0 +1,16 @@
+Reason: enumerated() collection conformance is Swift 6.2 and OS 26
+Date: 2026-10-28
+
+diff --git a/references/foreach.md b/references/foreach.md
+index af1a438..e65805a 100644
+--- a/references/foreach.md
++++ b/references/foreach.md
+@@ -77,7 +77,7 @@ ForEach(items.enumerated(), id: \.element.id) { index, item in
+ 
+ ### `.enumerated()` and `RandomAccessCollection`
+ 
+-As of Swift 6.1, the sequence returned by `.enumerated()` conditionally conforms to `Collection`, `BidirectionalCollection`, and `RandomAccessCollection` when the base collection does. `ForEach` requires its data to be a `RandomAccessCollection`, so on Swift 6.1 and later you can pass `items.enumerated()` directly - no `Array(...)` wrapper is needed. On earlier toolchains the wrapper is still required. Favor the direct form in new code; it avoids an eager copy of the collection on every body evaluation.
++As of Swift 6.2 (SE-0459), the sequence returned by `.enumerated()` conditionally conforms to `Collection`, `BidirectionalCollection`, and `RandomAccessCollection` when the base collection does. The conformances live in the OS standard library, so they're available on iOS 26, macOS 26, tvOS 26, watchOS 26, and visionOS 26 and later. `ForEach` requires its data to be a `RandomAccessCollection`, so with Swift 6.2 and a deployment target of those releases or later you can pass `items.enumerated()` directly - no `Array(...)` wrapper is needed. On earlier toolchains or lower deployment targets (without an `#available` check) the wrapper is still required. Favor the direct form in new code; it avoids an eager copy of the collection on every body evaluation.
+ 
+ ## Don't create a new id on every body evaluation
+ 
