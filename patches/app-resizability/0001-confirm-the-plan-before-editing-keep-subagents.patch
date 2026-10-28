@@ -1,0 +1,75 @@
+Reason: Confirm the plan before editing, keep subagents read-only, never hand-edit pbxproj
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index a164c7c..64b8f86 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: app-resizability
+-description: "Use when an app's layout must adapt to a window that changes size while the app runs, or when an app must support more than one window. That includes being asked to make an app resizable or support a resizable window, a layout that breaks or does not adapt as the window resizes, and preparing or optimizing an app for the foldable iPhone Duo, split-screen multitasking, or Stage Manager. Modernizes the app by replacing legacy shared-state APIs with context-appropriate alternatives: mainScreen, interfaceOrientation, userInterfaceIdiom, application and scene lifecycle, and safe area insets."
++description: "Use when an app's layout must adapt to a window that changes size while the app runs, or when an app must support more than one window. That includes being asked to make an app resizable or support a resizable window, a layout that breaks or does not adapt as the window resizes, and preparing or optimizing an app for the foldable iPhone Duo, split-screen multitasking, or Stage Manager. Modernizes the app by replacing legacy shared-state APIs with context-appropriate alternatives: mainScreen, interfaceOrientation, userInterfaceIdiom, application and scene lifecycle, and safe area insets. For SwiftUI fold or iPhone Duo layouts (ArrangementView, ReservedRegion, hinge effects), use the swiftui-expert-skill skill."
+ ---
+ # App Resizability Skill
+ 
+@@ -13,7 +13,9 @@ Use this skill whenever the request is about any of the following, whether or no
+ - Split-screen multitasking, Stage Manager, or a resizable scene.
+ - Any deprecated API named in the Scope section below.
+ 
+-The request does not have to be technical. "Get my app ready for the iPhone Duo", "optimize this app for the foldable iPhone", and "make this app resize properly" all activate this skill. iPhone Duo is the foldable iPhone, so treat questions about iPhone Duo or the foldable iPhone as the same request. Treat a request about the foldable iPhone Duo as a request for every task in the Task Registry, because a screen that changes size exposes all of them at once.
++The request does not have to be technical. "Get my app ready for the iPhone Duo", "optimize this app for the foldable iPhone", and "make this app resize properly" all activate this skill. iPhone Duo is the foldable iPhone, so treat questions about iPhone Duo or the foldable iPhone as the same request. Treat a request about the foldable iPhone Duo as a request for every task in the Task Registry, because a screen that changes size exposes all of them at once. This skill owns the UIKit and Objective-C modernizations (`UIScreen.main`, `interfaceOrientation`, `userInterfaceIdiom`, scene lifecycle, safe areas). For SwiftUI layout around the fold (`ArrangementView`, `ReservedRegion`, hinge effects), use the swiftui-expert-skill skill.
++
++**Confirm a plan before editing.** A broad request like these authorizes detection and a plan, not edits. Before you edit any file, show the user the plan: the files × tasks found in detection, plus any Info.plist or project change. Wait for the user to confirm it, and edit only what they confirmed.
+ 
+ ## Purpose
+ 
+@@ -103,6 +105,8 @@ The active task's reference file may add task-specific bullets to this list.
+ 
+ Use subagents to identify code that needs to be updated to keep your context window small.
+ 
++Every subagent this skill launches is read-only (for example, the `Explore` agent type): it detects, analyzes, and verifies, and never edits. Make every edit in the main thread.
++
+ ### Phase 3: Decision & Validation
+ 
+ | Condition | Action |
+@@ -119,7 +123,7 @@ Use subagents to validate against the active task's Post-file Checklist before a
+ 
+ **Explicit file tracking:** At the start of processing, write out the complete list of files to be modified using available task / todo tools or a markdown file. As you process each file, mark it done. Before finishing, compare this list against your output — any file without a diff or an explicit skip reason is a failure that must be addressed before completing.
+ 
+-**Context size:** If you are concerned about context size, use subagents to process individual files or tasks.
++**Context size:** If you are concerned about context size, use read-only subagents to analyze individual files or tasks, and make the edits in the main thread.
+ 
+ **Silent-drop prevention:** Before finishing, use subagents to compare the list of files you were given against the list of files you produced output for. If any file is missing from your output, go back and process it. Common causes of silent drops:
+ - **File size:** Large files (1000+ lines) are not exempt. Process them with the same approach.
+@@ -135,7 +139,7 @@ If you find empty diffs for files that should have straightforward replacements,
+ 
+ ### Phase 4: Implementation
+ 
+-Apply the active task's implementation gates, rules, and post-file checklist from its reference file. The pattern-specific decision tree, gate questions, and validation rules live alongside the patterns they govern in each task file. Use subagents for verification.
++Start only after the user has confirmed the plan (see [When to Use](#when-to-use)). Apply the active task's implementation gates, rules, and post-file checklist from its reference file. The pattern-specific decision tree, gate questions, and validation rules live alongside the patterns they govern in each task file. Use subagents for verification.
+ 
+ ### Phase 5: Final Verification
+ 
+@@ -147,7 +151,7 @@ The active task's reference file may add task-specific verification steps.
+ 
+ ## Task Registry
+ 
+-Apply every task in this registry to the codebase unless the developer's request explicitly scopes to a subset. Each task is independent and has its own detection patterns, decision tree, and verification rules in its reference file. Run them in order from top to bottom.
++Apply every task in this registry to the codebase unless the developer's request explicitly scopes to a subset, once the user has confirmed the plan. Make every edit in the main thread; subagents stay read-only. Each task is independent and has its own detection patterns, decision tree, and verification rules in its reference file. Run them in order from top to bottom.
+ 
+ | Task | File | Description |
+ |------|------|-------------|
+diff --git a/references/scene-lifecycle-task.md b/references/scene-lifecycle-task.md
+index f8b3bfe..af5a423 100644
+--- a/references/scene-lifecycle-task.md
++++ b/references/scene-lifecycle-task.md
+@@ -49,7 +49,7 @@ UIKit apps must adopt scene-based lifecycle (`UISceneDelegate`) to function corr
+ | Move 4 lifecycle methods (all four together) | **Auto-fix** |
+ | Choose Info.plist vs dynamic configuration | **Ask** |
+ | Split `didFinishLaunchingWithOptions` (one-time vs per-scene) | **Ask** |
+-| Add `SceneDelegate.swift` to `.pbxproj` | **Auto-fix** |
++| Add `SceneDelegate.swift` to the project's sources | **TODO** for the user. Never hand-edit `project.pbxproj`. In a generated project (Tuist `Project.swift`, XcodeGen), change the manifest instead; with file-system-synchronized folders there is nothing to add |
+ | URL handling / user activity / notification migration | **TODO** |
+ 
+ **Out of scope:** Multiple window support (`UIApplicationSupportsMultipleScenes` set to `false`), external display support.
