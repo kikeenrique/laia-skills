@@ -1,0 +1,57 @@
+Reason: Defer migration to modernize-tests; serialized does serialize suites
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index b264294..11a2e6a 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: swift-testing-pro
+-description: Writes, reviews, and improves Swift Testing code using modern APIs and best practices. Use when reading, writing, or reviewing projects that use Swift Testing.
++description: "Writes, reviews, and improves Swift Testing code using modern APIs and best practices: test structure, #expect and #require, parameterized tests, tags and traits, async tests and confirmations, exit tests, attachments, and test scoping. Use when writing new Swift Testing tests or reviewing existing ones. For migrating XCTest to Swift Testing or modernizing an existing test suite, prefer modernize-tests."
+ license: MIT
+ metadata:
+   author: Paul Hudson
+@@ -15,7 +15,7 @@ Review process:
+ 1. Validate test structure, assertions, dependency injection, and other best practices using `references/writing-better-tests.md`.
+ 1. Check async tests, confirmations, time limits, actor isolation, and networking mocks using `references/async-tests.md`.
+ 1. Ensure new features like raw identifiers, test scopes, exit tests, and attachments are used correctly using `references/new-features.md`.
+-1. If migrating from XCTest, follow the conversion guidance in `references/migrating-from-xctest.md`.
++1. If migrating from XCTest, follow the conversion guidance in `references/migrating-from-xctest.md`; prefer the modernize-tests skill for XCTest migration or modernizing an existing suite when it is installed.
+ 
+ If doing partial work, load only the relevant reference files.
+ 
+diff --git a/references/async-tests.md b/references/async-tests.md
+index 4e207a4..8938c01 100644
+--- a/references/async-tests.md
++++ b/references/async-tests.md
+@@ -5,11 +5,13 @@ Swift Testing is built to be async and run tests in parallel; special care must
+ 
+ ## Serializing tests
+ 
+-The `serialized` trait allows tests to be run serially rather than in parallel, but it only works on parameterized tests. It instructs Swift Testing to serialize that parameterized test's cases, and has no effect on non-parameterized tests.
++The `serialized` trait allows tests to be run serially rather than in parallel. What it does depends on where you apply it:
+ 
+-This also applies to using `.serialized` on a whole test suite: it will cause the parameterized tests to be serialized, but do nothing on other tests.
++- On a parameterized test function, it runs that test's cases serially.
++- On a non-parameterized test function, it has no effect.
++- On a suite, it runs all the suite's test functions (including their cases, when parameterized) and sub-suites serially, recursively.
+ 
+-**Important:** Most agents very strongly believe that `.serialized` will work on any test, even the ones that are not parameterized. They are wrong. It only works on parameterized tests.
++It does not order a test relative to its peers or to unrelated tests, and it has no effect when parallelization is disabled globally (for example, `swift test --no-parallel`).
+ 
+ 
+ ## Confirming async work
+diff --git a/references/migrating-from-xctest.md b/references/migrating-from-xctest.md
+index dc29761..467e24c 100644
+--- a/references/migrating-from-xctest.md
++++ b/references/migrating-from-xctest.md
+@@ -1,5 +1,7 @@
+ # Migrating from XCTest
+ 
++For a requested XCTest migration or modernization of an existing suite, prefer the modernize-tests skill when it is installed; this page is a short summary.
++
+ If the project has existing tests written using XCTest, do *not* rewrite to Swift Testing unless requested. Even then, remember that XCTest supports UI testing, whereas Swift Testing does not.
+ 
+ Most things in XCTest have a direct equivalent in Swift Testing:
