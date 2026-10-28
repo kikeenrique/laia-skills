@@ -1,0 +1,76 @@
+Reason: Defer xctrace to the xctrace skill; Xcode 27 hang thresholds
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index 338800d..b00c744 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: debugging-instruments
+-description: "Debug iOS apps and profile performance using LLDB, the interactive Memory Graph Debugger, and Instruments. Use for crashes, retain-cycle inspection, memory growth, hangs, build failures, and CPU, memory, energy, or network profiling."
++description: "Debug iOS apps with LLDB, the interactive Memory Graph Debugger, Thread Sanitizer, and the Instruments app: crashes, retain-cycle inspection, memory growth, data races, hangs reproduced while debugging, build failures, and choosing an Instruments template for CPU, memory, energy, or network profiling in the Instruments GUI. For xctrace on the command line (recording, reading .trace or .atrc files, hang triage), use the xctrace skill instead; for SwiftUI-specific trace analysis (SwiftUI update lane, cause graph), use swiftui-expert-skill."
+ ---
+ 
+ # Debugging and Instruments
+@@ -144,10 +144,14 @@ leaks MyApp.memgraph
+ 
+ ### Identifying Main Thread Hangs
+ 
+-For discrete interactions, delays under 100 ms are rarely noticeable. Apple
+-developer tools commonly report main-run-loop busy periods over 250 ms, but
+-that reporting threshold is not a product target: a few hundred milliseconds
+-can still feel unresponsive. Common detection tools:
++For discrete interactions, delays under 100 ms are rarely noticeable. Xcode
++27's Hangs instrument reports main-thread unresponsiveness from 33 ms, in five
++tiers: Potential Interaction Delay (> 33 ms), Brief Unresponsiveness
++(> 100 ms), Microhang (> 250 ms), Hang (> 500 ms), and Severe Hang (> 2 s).
++Earlier tools started reporting at 250 ms. Reporting thresholds are not
++product targets: a few hundred milliseconds can still feel unresponsive. For
++the tiers and for triaging hangs in a recorded trace, prefer the xctrace skill.
++Common detection tools:
+ 
+ - **Thread Checker** (Xcode Diagnostics): warns about non-main-thread UI calls
+ - **Thread Performance Checker**: reports priority inversions while debugging
+@@ -241,6 +245,8 @@ Build settings to inspect first:
+ 
+ ### xctrace CLI for CI Profiling
+ 
++> For xctrace on Xcode 27 (`toc`, `show`, `triage --style hangs`, `.atrc`, `symbolicate`), prefer the xctrace skill; `show` beats `export --xpath`.
++
+ ```bash
+ # Record a trace from the command line
+ xcrun xctrace record --device "My iPhone" \
+diff --git a/references/instruments-guide.md b/references/instruments-guide.md
+index 73465ef..621e8c2 100644
+--- a/references/instruments-guide.md
++++ b/references/instruments-guide.md
+@@ -165,7 +165,7 @@ redraws, or identity churn in lists.
+ 
+ - Filter by view name to focus on a specific component.
+ - Cross-reference with Time Profiler to see if body evaluations are expensive.
+-- See the `swiftui-performance` skill for remediation patterns.
++- For SwiftUI trace analysis (update lane, cause graph, hang-to-view correlation), prefer the swiftui-expert-skill skill; for invalidation fixes, swiftui-specialist.
+ 
+ ## Animation Hitches and Core Animation
+ 
+@@ -249,6 +249,8 @@ need OS-level detail.
+ 
+ ## xctrace CLI
+ 
++> For xctrace on Xcode 27 (`toc`, `show`, `triage --style hangs`, `.atrc`, `symbolicate`), prefer the xctrace skill; `show` beats `export --xpath`.
++
+ ### Recording
+ 
+ ```bash
+@@ -337,9 +339,7 @@ func fetchUser(id: String) async throws -> User {
+ 
+ On iOS 27, signposts emitted through a retained
+ `MetricManager.logHandle(category:)` are reported in the daily
+-`MetricReport` as `MetricResult.signpostInterval`. See the `metrickit` skill
+-for the current custom-signpost pattern and the isolated iOS 26 compatibility
+-path.
++`MetricReport` as `MetricResult.signpostInterval`.
+ 
+ ## Automation and CI Integration
+ 
