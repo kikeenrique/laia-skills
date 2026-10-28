@@ -1,0 +1,44 @@
+Reason: Correct contrast ratios and fixes that fail the threshold
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index a5a27d6..389b994 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -27,7 +27,7 @@ iOS, macOS, tvOS, watchOS, visionOS. This skill works with SwiftUI, UIKit, and A
+ 
+ ## Step 1 — Read the source code
+ 
+-Use `XcodeRead` to read the current file. Identify:
++Read the file the user named (with your file-reading tool; `XcodeRead` when running inside Xcode). If no file was named, ask which one to audit. Identify:
+ 
+ 1. **Text elements**: `Text`, `Label`, `Button` labels, `TextField` placeholders, `NavigationTitle`, attributed strings
+ 2. **Foreground colors**: `.foregroundColor()`, `.foregroundStyle()`, `tint()`, explicit color parameters
+@@ -142,7 +142,7 @@ For each element that does NOT meet the required ratio, list:
+ - Computed contrast ratio
+ - Required ratio for its element type
+ - **Concrete fix suggestion** referencing the actual code. Examples:
+-  - "Change `.foregroundColor(Color(.systemGray4))` on line 23 to `.foregroundColor(Color(.systemGray))` for a 5.2:1 ratio"
++  - "Change `.foregroundColor(Color(.systemGray4))` on line 23 to `.foregroundStyle(Color(.label))` for a 21:1 ratio in light mode"
+   - "Add `.foregroundStyle(.primary)` to the Text on line 15 — the inherited color from the parent only provides 2.8:1"
+   - "The background on line 8 is `Color(.secondarySystemBackground)` (#F2F2F7). Either darken the text or use a white background"
+ 
+@@ -186,14 +186,14 @@ VStack {
+ ```
+ 
+ **Analysis:**
+-- "Welcome" — large text (title = ~28pt), foreground `systemGray3` ≈ #C7C7CC (0.78, 0.78, 0.80), background white (1.0, 1.0, 1.0). Luminance fg ≈ 0.573, bg = 1.0. Ratio ≈ 1.84:1. Required 3:1 for large text. **FAIL.**
+-- "Sign in to continue" — normal text (body = ~17pt), foreground `systemGray2` ≈ #AEAEB2 (0.68, 0.68, 0.70), background white. Luminance fg ≈ 0.417, bg = 1.0. Ratio ≈ 2.37:1. Required 4.5:1 for normal text. **FAIL.**
++- "Welcome" — large text (title = ~28pt), foreground `systemGray3` ≈ #C7C7CC (0.78, 0.78, 0.80), background white (1.0, 1.0, 1.0). Luminance fg ≈ 0.573, bg = 1.0. Ratio ≈ 1.68:1. Required 3:1 for large text. **FAIL.**
++- "Sign in to continue" — normal text (body = ~17pt), foreground `systemGray2` ≈ #AEAEB2 (0.68, 0.68, 0.70), background white. Luminance fg ≈ 0.425, bg = 1.0. Ratio ≈ 2.21:1. Required 4.5:1 for normal text. **FAIL.**
+ 
+ **Verdict: FAIL** — both text elements have insufficient contrast against the white background.
+ 
+ **Fix suggestions:**
+-- Line 3: Change `.foregroundStyle(Color(.systemGray3))` to `.foregroundStyle(Color(.systemGray))` for ≈ 3.5:1 (meets large text threshold)
+-- Line 5: Change `.foregroundStyle(Color(.systemGray2))` to `.foregroundStyle(.primary)` for 21:1 (meets normal text threshold), or to `.foregroundStyle(.secondary)` for ≈ 4.6:1
++- Line 3: Change `.foregroundStyle(Color(.systemGray3))` to `.foregroundStyle(Color(.systemGray))` for ≈ 3.26:1 (meets large text threshold)
++- Line 5: Change `.foregroundStyle(Color(.systemGray2))` to `.foregroundStyle(.primary)` for 21:1 (meets normal text threshold). Don't use `.secondary` here: #3C3C43 at 60% over white is ≈ 3.44:1, below 4.5:1
+ 
+ ## Example — needs verification
+ 
