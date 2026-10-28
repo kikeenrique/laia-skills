@@ -1,0 +1,49 @@
+Reason: Defer audits to Apple's specialists; XCUIElement has no traits
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index 363bd73..380f67f 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: ios-accessibility
+-description: 'Expert guidance on iOS accessibility best practices, patterns, and implementation. Use when developers mention: (1) iOS accessibility, VoiceOver, Dynamic Type, or assistive technologies, (2) accessibility labels, traits, hints, or values, (3) automated accessibility testing, auditing, or manual testing, (4) Switch Control, Voice Control, or Full Keyboard Access, (5) inclusive design or accessibility culture, (6) making apps work for users with disabilities.'
++description: "Expert guidance on implementing and testing iOS accessibility: VoiceOver, Voice Control, Switch Control and Full Keyboard Access; Dynamic Type layout adaptation; accessibility labels, traits, hints, values, custom actions, rotors, focus and announcements; Reduce Motion and other accessibility settings; manual and automated accessibility testing; inclusive design and accessibility culture. Use when building or fixing accessibility features in UIKit or SwiftUI, planning accessibility testing, or making apps work for users with disabilities. For a per-file audit with a PASS/FAIL verdict against Apple's accessibility nutrition labels, prefer accessibility-voiceover-specialist (VoiceOver), accessibility-dynamic-type-specialist (Dynamic Type) and accessibility-sufficient-contrast-specialist (contrast)."
+ ---
+ 
+ # iOS Accessibility
+@@ -74,6 +74,8 @@ If you can't determine the above, ask the developer to confirm before giving ver
+ 
+ When a developer needs accessibility guidance, follow this decision tree:
+ 
++> For a per-file PASS/FAIL audit against Apple's accessibility nutrition labels, or for AppKit, tvOS, watchOS, or visionOS code, prefer accessibility-voiceover-specialist (VoiceOver), accessibility-dynamic-type-specialist (Dynamic Type), and accessibility-sufficient-contrast-specialist (contrast) when installed; use this skill for implementation, the other assistive technologies, and testing.
++
+ 1. **VoiceOver issues?**
+    - Core concepts: Read `references/voiceover.md`
+    - UIKit implementation: Read `references/voiceover-uikit.md`
+diff --git a/references/testing-automated.md b/references/testing-automated.md
+index bb1ed77..f7e739c 100644
+--- a/references/testing-automated.md
++++ b/references/testing-automated.md
+@@ -40,12 +40,17 @@ XCTAssertTrue(submitButton.exists)
+ 
+ ### Assert on accessibility properties
+ 
++`XCUIElement` has no `accessibilityTraits`. Its attributes are `label`, `value`, `identifier`, `elementType`, `isEnabled`, `isSelected`, `hasFocus`, and friends; traits surface through `elementType` (the button trait makes an element a `.button`) and state traits through `isSelected` / `isEnabled`.
++
+ ```swift
+-let cell = app.cells["order-cell"]
+-XCTAssertEqual(cell.label, "Order #1234, $42.00")
+-XCTAssertTrue(cell.accessibilityTraits.contains(.button))
++let order = app.buttons["order-row"] // only matches if the element is exposed as a button
++XCTAssertTrue(order.exists)
++XCTAssertEqual(order.label, "Order #1234, $42.00")
++XCTAssertEqual(order.elementType, .button)
+ ```
+ 
++On iOS 17+, `try app.performAccessibilityAudit()` runs the Accessibility Inspector audit checks from a UI test and fails it for each issue found.
++
+ ### Test VoiceOver experience programmatically
+ 
+ Query the accessibility tree:
