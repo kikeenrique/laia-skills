@@ -1,0 +1,16 @@
+Reason: Read the named file outside Xcode
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index 6ce9c98..b282686 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -40,7 +40,7 @@ Consult these for detailed good/bad code examples per framework:
+ 
+ ## Step 1 — Read the source code
+ 
+-Use `XcodeRead` to read the current file. Identify:
++Read the file the user named (with your file-reading tool; `XcodeRead` when running inside Xcode). If no file was named, ask which one to audit. Identify:
+ 
+ 1. **Interactive elements:**
+    - SwiftUI: `Button`, `Toggle`, `Slider`, `Stepper`, `Picker`, `DatePicker`, `Link`, `NavigationLink`, `Menu`, `TextField`, `SecureField`
