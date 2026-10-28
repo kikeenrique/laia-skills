@@ -1,0 +1,78 @@
+Reason: Make memory tagging opt-in, idempotent plutil recipe, audit outside Xcode
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index 11ce70d..d61d9d0 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -34,6 +34,14 @@ To read or edit a specific file:
+ 
+ Fall back to Bash only for operations the Xcode tools cannot do (e.g., git operations).
+ 
++## Outside Xcode
++
++When the Xcode tools above (`XcodeListTargets`, `GetTargetBuildSettings`, `UpdateTargetBuildSetting`, `AddEntitlement`) are not available, as in a terminal agent:
++
++- **Never hand-edit `project.pbxproj`**, and never rewrite it with a script. Reading it with `grep` stays allowed.
++- **Audit read-only with `xcodebuild`:** `xcodebuild -project <ProjectName>.xcodeproj -target <TargetName> -configuration <Configuration> -showBuildSettings -json`. Its output is a list of `{"target": …, "buildSettings": {NAME: value}}` objects, not the `GetTargetBuildSettings` shape, so `scripts/filter_build_settings.py` cannot read it; pick out the settings named in `references/security-settings-reference.md` from it directly. It gives evaluated values only: find where a value is set by grepping the `.xcconfig` files and `project.pbxproj`.
++- **Change settings** only in the project's `.xcconfig` files, or in the project generator's manifest when the project is generated (Tuist `Project.swift`, XcodeGen `project.yml`); a generated `project.pbxproj` is overwritten on the next generation. When neither applies, list the exact settings, values, and targets for the user to set in Xcode, or ask the user how to proceed.
++
+ ## Bundled Reference Documents
+ 
+ All reference material lives under `references/` next to this file.
+@@ -247,8 +255,8 @@ Edit the items below — set what steps to perform now, or leave them unchecked
+ - **Enhanced Security** — the project's runtime-protection bundle. Apply to: <target list>. (Group — check the sub-items below.)
+   - [x] **[Enable Enhanced Security](doc://com.apple.documentation/documentation/Xcode/enabling-enhanced-security-for-your-app)** — sets `ENABLE_ENHANCED_SECURITY=YES` at the project level. (Your project doesn't use a project-level xcconfig — I'll walk you through enabling it in Xcode's Build Settings UI yourself, then verify by reading project file.)
+   - [x] **[Update entitlements](doc://com.apple.documentation/documentation/BundleResources/Entitlements/com.apple.security.hardened-process)** — adds the hardened-process entitlement family per target (Memory Safety, Runtime Protections).
+-  - [x] **[Hardware memory tagging](doc://com.apple.documentation/documentation/BundleResources/Entitlements/com.apple.security.hardened-process.checked-allocations)** — adds the hardware memory tagging entitlement, in soft mode, on supported platforms (<target list filtered to MTE-supported platforms>).
+-  - [x] **[Checked pointer arithmetic](doc://com.apple.documentation/documentation/BundleResources/Entitlements/com.apple.security.hardened-process.checked-allocations.enforce-checked-pointer-arithmetic-overflow)** — adds the arm64e.x1 slice and the entitlement to enforce pointer-arithmetic overflow checking (<target list filtered to arm64e.x1-supported platforms>). Run time enforcement requires hardware memory tagging enabled. Latent pointer-arithmetic bugs will terminate the app on capable hardware.
++  - [ ] **[Hardware memory tagging](doc://com.apple.documentation/documentation/BundleResources/Entitlements/com.apple.security.hardened-process.checked-allocations)** — adds the hardware memory tagging entitlement, in soft mode, on supported platforms (<target list filtered to MTE-supported platforms>). Off by default: it has a runtime and compatibility cost, so opt in deliberately.
++  - [ ] **[Checked pointer arithmetic](doc://com.apple.documentation/documentation/BundleResources/Entitlements/com.apple.security.hardened-process.checked-allocations.enforce-checked-pointer-arithmetic-overflow)** — adds the arm64e.x1 slice and the entitlement to enforce pointer-arithmetic overflow checking (<target list filtered to arm64e.x1-supported platforms>). Run time enforcement requires hardware memory tagging enabled. Latent pointer-arithmetic bugs will terminate the app on capable hardware. Off by default: opt in only after testing on capable hardware.
+ - **[Warnings](doc://com.apple.documentation/documentation/Xcode/build-settings-reference)** — additional diagnostics on all C/C++/ObjC targets. (Group — check the sub-items below.)
+   - [x] **Compiler warnings** — <N> settings promoting security-relevant compiler diagnostics (fire on every build).
+   - [x] **Static analyzer warnings** — <N> security checkers (run during Build and analyze).
+@@ -285,6 +293,8 @@ A plan item is omitted entirely when it doesn't apply:
+ 
+ **Group headings carry no checkbox.** The parent lines that have sub-items — **Enhanced Security** and **Warnings** — are plain bold group labels, not checkable items; their sub-items carry the checkboxes. This avoids the ambiguity of a checked parent whose sub-items are all unchecked. Every other item (including leaf items with no sub-items, like **Inquire about disabled settings**, **Additional diagnostic settings**, **Bounds safety adoption**) is checkable.
+ 
++**Hardware memory tagging** and **Checked pointer arithmetic** start unchecked (`- [ ]`). Both have a runtime and compatibility cost (checked pointer arithmetic has no soft mode and terminates the app on a latent bug), and the references list them as default-OFF, so they are opt-in.
++
+ The user can flip items and sub-items under **Phases** by editing the plan file before picking **Run**.
+ 
+ #### Step 4: Ask for approval
+diff --git a/references/pointer-authentication.md b/references/pointer-authentication.md
+index 40bc183..c5fb068 100644
+--- a/references/pointer-authentication.md
++++ b/references/pointer-authentication.md
+@@ -48,22 +48,21 @@ Swift Package dependencies are not automatically built for arm64e when the main
+ For a `.xcodeproj` (which contains an implicit workspace at `MyProject.xcodeproj/project.xcworkspace/`):
+ 
+ ```bash
+-plutil -create xml1 MyProject.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+-plutil -insert iOSPackagesShouldBuildARM64e -bool YES MyProject.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+-plutil -insert macOSPackagesShouldBuildARM64e -bool YES MyProject.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+-plutil -insert visionOSPackagesShouldBuildARM64e -bool YES MyProject.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
++F=MyProject.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
++mkdir -p "$(dirname "$F")"
++test -f "$F" || plutil -create xml1 "$F"
++plutil -replace iOSPackagesShouldBuildARM64e -bool YES "$F"
++plutil -replace macOSPackagesShouldBuildARM64e -bool YES "$F"
++plutil -replace visionOSPackagesShouldBuildARM64e -bool YES "$F"
+ ```
+ 
+-For a standalone `.xcworkspace`:
++For a standalone `.xcworkspace`, use the same commands with:
+ 
+ ```bash
+-plutil -create xml1 MyWorkspace.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+-plutil -insert iOSPackagesShouldBuildARM64e -bool YES MyWorkspace.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+-plutil -insert macOSPackagesShouldBuildARM64e -bool YES MyWorkspace.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+-plutil -insert visionOSPackagesShouldBuildARM64e -bool YES MyWorkspace.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
++F=MyWorkspace.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+ ```
+ 
+-Set the flags for each platform your project targets.
++Set the flags for each platform your project targets. The file can already hold other workspace settings: create it only when it is missing (`plutil -create` overwrites an existing file with an empty plist), and use `-replace`, which adds the key or updates it in place, so the recipe is safe to re-run (`-insert` fails when the key already exists). Ask the user before changing workspace settings.
+ 
+ For binary SPM dependencies (XCFrameworks), the XCFramework must include an arm64e slice. If it only contains arm64, linking will fail. Contact the dependency vendor for a universal (arm64 + arm64e) build.
+ 
