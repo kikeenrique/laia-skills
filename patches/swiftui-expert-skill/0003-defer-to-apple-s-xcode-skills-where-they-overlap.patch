@@ -1,0 +1,76 @@
+Reason: Defer to Apple's Xcode skills where they overlap; topBarLeading
+Date: 2026-10-28
+
+diff --git a/SKILL.md b/SKILL.md
+index 685e9ee..19c7466 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: swiftui-expert-skill
+-description: Use when writing, reviewing, or refactoring SwiftUI code for iOS or macOS, including state and `@Observable` data flow, view composition, resizable layouts, safe areas, display scale, performance, lists, environment, localization, animation, Liquid Glass, and API migration. Also use for iPhone Duo, foldable, or large-display layouts (`NavigationSplitView` on large displays, iPhone tab sidebar, two-column reflow, foldable grids, `ArrangementView`, `ReservedRegion`), hinge effects, vertical bars, `@State` initialization or synthesized-property diagnostics, `@ContentBuilder` ambiguity, `reorderable` drag/drop, custom `AsyncImage` `URLSession`, swipe actions outside List, item-bound `alert`/`confirmationDialog`, `ToolbarOverflowMenu`, `AnimatableValues`, Document APIs (`Document`/`DocumentReader`), and Instruments `.trace` capture or analysis.
++description: "Use when implementing SwiftUI features from worked patterns: iPhone Duo, foldable, or large-display layouts (`ArrangementView`, `ReservedRegion`, hinge effects, two-column reflow, `NavigationSplitView` on large displays, tab sidebar, vertical bars), resizable layouts and safe areas, sheets and navigation, scroll, focus, Swift Charts, Liquid Glass, macOS scenes and windows, WebKit, styled text editing, image downsampling, previews, and SwiftUI-specific Instruments trace recording and analysis (SwiftUI update lane, cause graph, view-linked hangs and hitches). For data flow, `@Observable`, `@Entry`, ForEach identity, localization, and soft-deprecated APIs prefer swiftui-specialist; for SDK 27 API changes (`@State` macro, `@ContentBuilder`, `reorderable`, swipe actions, `AsyncImage`, toolbar overflow, item-bound alerts) prefer swiftui-whats-new-27; for Document apps, building-document-based-swiftui-applications; for general xctrace, xctrace; for UIKit resizability, app-resizability."
+ ---
+ 
+ # SwiftUI Expert Skill
+@@ -95,6 +95,8 @@ Full reference: `references/trace-analysis.md`. Summary of the composition patte
+ 
+ Consult the reference file for each topic relevant to the current task:
+ 
++> Where Apple's skills are installed, they win on their topics: prefer swiftui-specialist for state, environment/`@Entry`, ForEach identity, localization, and soft-deprecated APIs; swiftui-whats-new-27 for SDK 27 API changes; building-document-based-swiftui-applications for document apps; xctrace for general xctrace queries and hang tiers; app-resizability for UIKit resizability. Use the references below for those topics only as a supplement.
++
+ | Topic | Reference |
+ |-------|-----------|
+ | State management | `references/state-management.md` |
+diff --git a/references/iphone-duo.md b/references/iphone-duo.md
+index 6b41871..ba39e63 100644
+--- a/references/iphone-duo.md
++++ b/references/iphone-duo.md
+@@ -2,6 +2,8 @@
+ 
+ > iPhone Duo support in Xcode 27.1 and the iOS 27.1 SDK is beta. Confirm behavior against the shipping SDK.
+ 
++> For UIKit or Objective-C code (`UIScreen.main`, `interfaceOrientation`, `userInterfaceIdiom`, AppDelegate→SceneDelegate, Info.plist resizability checks), prefer app-resizability.
++
+ ## Displays and Continuity
+ 
+ iPhone Duo has an outer display and a larger inner display. The outer display uses the familiar compact-horizontal, regular-vertical iPhone context in portrait; the inner display can provide regular width and height, including sidebar and multi-column presentations. Use the current proposal and size classes, not a device check, orientation, fixed breakpoint, or global screen.
+diff --git a/references/toolbar-patterns.md b/references/toolbar-patterns.md
+index c7586ae..e73554a 100644
+--- a/references/toolbar-patterns.md
++++ b/references/toolbar-patterns.md
+@@ -30,7 +30,7 @@ Use `.toolbar(id:)` when people should be able to add, remove, or rearrange tool
+ ```swift
+ .toolbar {
+     DefaultToolbarItem(kind: .search, placement: .bottomBar)
+-    DefaultToolbarItem(kind: .sidebarToggle, placement: .navigationBarLeading)
++    DefaultToolbarItem(kind: .sidebarToggle, placement: .topBarLeading)
+ }
+ ```
+ 
+diff --git a/references/trace-analysis.md b/references/trace-analysis.md
+index 98f279f..a7ad82e 100644
+--- a/references/trace-analysis.md
++++ b/references/trace-analysis.md
+@@ -5,6 +5,8 @@ file. A target SwiftUI source file is **optional** — if provided, you can
+ cite specific lines; without one, the trace still surfaces view names,
+ hot symbols, and high-severity events that tell the user where to look.
+ 
++> For general xctrace queries (`toc`, `show`, `triage --style hangs`, `.atrc`, symbolication) and Xcode 27 hang tiers, prefer the xctrace skill; use this script for the SwiftUI lanes and correlation.
++
+ The bundled parser reads five lanes for SwiftUI responsiveness (Time
+ Profiler, Hangs, Animation Hitches, SwiftUI updates, and the SwiftUI
+ cause graph) and exposes three discovery modes (`--list-logs`,
+diff --git a/references/trace-recording.md b/references/trace-recording.md
+index 6d83e04..eec8bc6 100644
+--- a/references/trace-recording.md
++++ b/references/trace-recording.md
+@@ -4,6 +4,8 @@ Use this reference when the user asks to record a new trace — either to
+ attach to a running app, launch one fresh, or capture a specific session
+ of actions they'll perform interactively.
+ 
++> For non-SwiftUI recordings or xctrace flags this wrapper doesn't expose, prefer the xctrace skill.
++
+ The bundled `scripts/record_trace.py` wraps `xctrace record` with:
+ 
+ - The **SwiftUI** template by default (override with `--template`).
