@@ -1,0 +1,50 @@
+Reason: iOS 15 heading levels; registerForTraitChanges instead of traitCollectionDidChange
+Date: 2026-10-28
+
+diff --git a/references/dynamic-type-uikit.md b/references/dynamic-type-uikit.md
+index f39ba01..32624a0 100644
+--- a/references/dynamic-type-uikit.md
++++ b/references/dynamic-type-uikit.md
+@@ -80,7 +80,19 @@ if traitCollection.preferredContentSizeCategory >= .accessibilityLarge {
+ 
+ ## Respond to Size Changes
+ 
+-### traitCollectionDidChange
++### registerForTraitChanges (iOS 17+)
++
++`traitCollectionDidChange(_:)` is deprecated since iOS 17. Register for the one trait you need instead, once (in `init` or `awakeFromNib`):
++
++```swift
++registerForTraitChanges([UITraitPreferredContentSizeCategory.self], action: #selector(updateLayout))
++```
++
++The action method must be `@objc`.
++
++The `traitCollectionDidChange(_:)` overrides in the examples below are for apps that still support iOS 16 or earlier; on iOS 17+ replace them with the registration above.
++
++### traitCollectionDidChange (before iOS 17)
+ 
+ ```swift
+ override func traitCollectionDidChange(_ previous: UITraitCollection?) {
+@@ -118,6 +130,8 @@ func updateLayout() {
+ 
+ ### Listen for changes
+ 
++On iOS 17+, use `registerForTraitChanges` as shown above. Before iOS 17:
++
+ ```swift
+ override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+     if previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
+diff --git a/references/voiceover-swiftui.md b/references/voiceover-swiftui.md
+index 435f0de..4f99617 100644
+--- a/references/voiceover-swiftui.md
++++ b/references/voiceover-swiftui.md
+@@ -173,7 +173,7 @@ Text("Settings")
+ 
+ ### Heading levels
+ 
+-For documents with hierarchical structure, use semantic heading levels for screen reader navigation (iOS 17+) with [`.accessibilityHeading(_:)`](https://developer.apple.com/documentation/swiftui/view/accessibilityheading(_:)):
++For documents with hierarchical structure, use semantic heading levels for screen reader navigation (iOS 15+) with [`.accessibilityHeading(_:)`](https://developer.apple.com/documentation/swiftui/view/accessibilityheading(_:)):
+ 
+ ```swift
+ Text("Main Title")
