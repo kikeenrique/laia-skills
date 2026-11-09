@@ -1,0 +1,43 @@
+Reason: audit 2026-11: add @Test to the example, one naming rule, use-when
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index ad956a1..15ebb28 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: modernize-tests
+-description: "Modernize test suites to use modern Swift Testing features or migrate from XCTest."
++description: "Migrates XCTest suites to Swift Testing and updates existing Swift Testing tests to current patterns: assertions to #expect/#require, setUp/tearDown to init/deinit, expectations to confirmation(), skips and expected failures to traits and withKnownIssue, loops to parameterized tests. Use when asked to migrate from XCTest, convert XCTestCase classes, or modernize a test suite. For writing or reviewing new Swift Testing tests, prefer swift-testing-pro."
+ ---
+ # Modernize Tests
+ 
+@@ -33,7 +33,7 @@ types, and move their initial assignment from `setUp` to either be initialized i
+ ```
+ struct MyTests {
+     var fixture = Fixture()
+-    mutating func `Fixture behaves as expected`() {
++    @Test mutating func `Fixture behaves as expected`() {
+         #expect(fixture.doSomething())
+     }
+ }
+@@ -44,8 +44,7 @@ If the test mutates an instance variable with value semantics, you may need to m
+ 
+ ### Test Methods
+ 
+-Replace the `test` name prefix with the `@Test` attribute. If the resulting test name includes multiple camelCase words,
+-use a raw identifier with the test name in sentence case.
++Replace the `test` name prefix with the `@Test` attribute. If the remaining name reads like a sentence, use a raw identifier in sentence case.
+ 
+ - `func testEngineDoesNotStall() { ... }` -> `@Test func `Engine does not stall`() { ... }`
+ - `func testIgnition() { ... }` -> `@Test func ignition() { ... }`
+@@ -241,5 +240,4 @@ improve readability, e.g. `@Test func `Authenticate, fetch summary, then check c
+ - For suites with shared mutable state between tests, add `@Suite(.serialized)` and consider using `actor` or `class` instead of `struct`.
+ - Do not introduce usage of underscore-prefixed symbols such as `#_sourceLocation`; only use public API.
+   For source locations, always use the full `SourceLocation(fileID:filePath:line:column:)` initializer.
+-- If the test suite already uses #_sourceLocation, do not replace the existing usage as part of modernization.
+-- Split this work over multiple agents if necessary if the modernization task is complex
+\ No newline at end of file
++- If the test suite already uses #_sourceLocation, do not replace the existing usage as part of modernization.
+\ No newline at end of file
