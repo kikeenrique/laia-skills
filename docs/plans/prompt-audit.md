@@ -45,10 +45,13 @@ Five reviewers each read one batch; their reports (kept untracked in `tmp/prompt
 | First-party: replay and mise descriptions rewritten as intent categories (both near the 1024-character cap, and mise's grew with every re-check); version-relative and pre-1.0 history dropped; an upstream Xcode 27 beta note removed; `ios-simulator-ui-flow` names its boundary with `axe` and `ios-simulator`; `AGENTS.md` makes the mirror push the owner's step | `e032c43` (mise 0.4.7, replay 0.2.4, ios-simulator-ui-flow 0.3.4) |
 | Third-party: 19 patches, one per skill: `app-resizability`, `swiftui-expert-skill`, `swiftui-specialist`, `swiftui-whats-new-27`, `building-document-based-swiftui-applications`, `app-intents-specialist`, `app-intents-whats-new-27`, `accessibility-voiceover-specialist`, `accessibility-sufficient-contrast-specialist`, `audit-xcode-security-settings`, `modernize-tests`, `adopt-c-bounds-safety`, `xctrace`, `swiftui-pro`, `xcode-build-orchestrator`, `debugging-instruments`, `watchos`, `swift-concurrency-pro`, `ui-ux-pro-max` | `e53f014`..`5da7dee`, `patches/<skill>/` |
 
+**User-level files, changed on the owner's go (2026-11-10, outside the repo):**
+
+- **`~/.claude/agents/visionos-engineer.md`** named `swiftui-liquid-glass`, removed on 2026-10-28; it now names `swiftui-expert-skill` (which covers Liquid Glass) and `swiftui-specialist`. It also told the agent to describe the UI and drive it with AXe on the visionOS Simulator, but AXe refuses input on visionOS; the step is now launch, screenshot or video, and saying what couldn't be driven.
+- **`~/.claude/CLAUDE.md`** sent `find` to the Glob/Grep tools with no fallback, and this audit's sessions had neither tool. It now falls back to `ls` and `grep -rl`. Was a low flag in the first audit.
+
 **Open decisions** (owner):
 
-- **`~/.claude/agents/visionos-engineer.md`** (user-level, affects every project). It names `swiftui-liquid-glass`, removed on 2026-10-28; `swiftui-expert-skill` covers Liquid Glass now. It also tells the agent to describe the UI and drive it with AXe on the visionOS Simulator, but AXe refuses input on visionOS (`axe` skill), so only launch, screenshots, and video work there.
-- **`~/.claude/CLAUDE.md`** (user-level). It sends `find` to the Glob/Grep tools with no fallback; this audit's subagent sessions had neither tool. Proposed: "the Glob/Grep tools when the session has them; otherwise `ls` and `grep -rl` (both allowlisted)". Was a low flag in the first audit.
 - **Hidden interactive elements.** `accessibility-voiceover-specialist` exempts every `.accessibilityHidden(true)` element from its audit; `ios-accessibility` calls hiding an interactive one an anti-pattern. Both are upstream text. The suggested patch limits the exemption to non-interactive elements.
 - The `axe` fork is missing our `describe-ui`-as-data line; that is roadmap item *`axe` and the AXe fork*.
 
