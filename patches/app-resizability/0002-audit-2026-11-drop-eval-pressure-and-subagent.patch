@@ -1,0 +1,88 @@
+Reason: audit 2026-11: drop eval pressure and subagent mandates, align coverage rules
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index 64b8f86..13898a6 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -39,7 +39,7 @@ This skill performs **specific, targeted modernizations** in both **Swift and Ob
+ ## Core Principles
+ 
+ 1. **Closest to consumer** — Prefer information nearest the point of use (e.g., view's trait collection over window's).
+-2. **Always apply a replacement when the target API is present.** A TODO alone is a failure. **An empty diff for a file containing the target API is also a failure.** If the file contains the target deprecated API and a concrete replacement is feasible under any pattern in the active task's reference file, apply it. Only skip when the target API appears exclusively inside dead code (`#if 0`/`#endif`). When uncertain between two valid replacements, pick the one that best fits the user's request rather than producing an empty diff. **Never silently skip a file**: if you are unwilling to apply a change, talk to the user about possible options — never produce no output for it. **Do not get stuck weighing edge cases on simple files; when the substitution is obvious, apply it and move on.**
++2. **Always apply a replacement when the target API is present.** A TODO alone is not a fix. If the file contains the target deprecated API and a concrete replacement is feasible under any pattern in the active task's reference file, apply it. Only skip when the target API appears exclusively inside dead code (`#if 0`/`#endif`). When two replacements are valid, ask the user (Phase 3). If no one can answer, pick the one that best fits the request. **Never silently skip a file**: if you are unwilling to apply a change, talk to the user about possible options — never produce no output for it.
+ 3. **TODOs must be actionable.** State why the change is needed, what the replacement would look like, and any lifecycle or threading concerns. Place the TODO on its own line above the unchanged code, never inline. A vague TODO ("fix this later") is worse than none, because it consumes review attention and informs nobody.
+ 
+    **Indent every line of an inserted comment to match the line it precedes.** A continuation line at a different indent leaves the block misaligned. Re-emitting the following line to realign it edits a line you were not asked to touch.
+@@ -48,7 +48,7 @@ This skill performs **specific, targeted modernizations** in both **Swift and Ob
+ 6. **Honor explicit user instructions; otherwise apply the defaults from the task reference file.** When the user asks for a specific approach — a particular attribute, parameter name, parameter position, trait source, or fallback behavior — use that exactly. Don't silently substitute what you consider the modern equivalent. When the user is general ("modernize this app", "fix `UIScreen.main` usages"), apply the defaults from the active task's reference file.
+ 7. **Never replace dynamic values with literals** — Always keep replacements dynamic.
+ 8. **Preserve control flow** — Prefer drop-in replacements that maintain the original code structure. Only add guard/early-return patterns when a direct substitution does not work. **When editing code around control flow (`if`/`else`, `switch`/`case`/`default`, `do`/`catch`), verify that the branching structure is preserved after your edit. Never collapse an `if`/`else` into sequential execution: both bodies then run unconditionally, which is a critical bug. Keep every branch whose condition is sound, and replace only the deprecated value inside it. Remove a branch only when the active task names that condition itself as the defect and states that the correct behavior is unconditional. In that case delete the condition, keep the body that matches the correct behavior, and name the branch you removed in your summary so a reviewer can check it.**
+-9. **Stay in scope — no opportunistic cleanup.** Only modify lines containing the target deprecated API for the active task. Do NOT also fix other deprecation that happens to live nearby. Do NOT trim trailing whitespace, reformat blank lines, or "clean up" surrounding formatting. Even if you see an obvious modernization opportunity on an adjacent line, leave it alone — each task is independent and out-of-scope edits convert a successful in-scope change into a warning.
++9. **Stay in scope — no opportunistic cleanup.** Only modify lines containing the target deprecated API for the active task. Do NOT also fix other deprecation that happens to live nearby. Do NOT trim trailing whitespace, reformat blank lines, or "clean up" surrounding formatting. Even if you see an obvious modernization opportunity on an adjacent line, leave it alone: each task is independent, and an edit nobody asked for makes the diff harder to review and to revert.
+ 10. **Extract repeated expressions** — When the same replacement value is used multiple times in a scope, extract it into a named local variable.
+ 11. **Never walk global scene/window state** — Never use `UIApplication.shared`, `UIDevice.current`, `UIScreen.main`, or other shared objects as a replacement. If no local object is available, modify the method to accept a new parameter and update its callers to pass one.
+ 12. **Complete patterns — atomic, never partial** — Every multi-part pattern the active task defines requires ALL of its parts applied together as a single unit. **When the active task requires both an API replacement AND a reactive update (e.g., trait change observation), these form a single atomic change — never apply one without the other.** If you cannot complete every part the task specifies, do not apply a partial change — either complete the pattern or skip with an explicit reason.
+@@ -87,7 +87,7 @@ Both keys in the last row stay exactly as you found them. Never delete `UIRequir
+ | `[UIScreen mainScreen].scale` (ObjC) inside a UIView/UIViewController instance method, used inline (not stored) | `self.traitCollection.displayScale` |
+ | `UIScreen.main.scale` inside `layoutSubviews`, `drawRect:`, `updateConstraints`, or `viewIsAppearing:` | `self.traitCollection.displayScale` (no registration needed — UIKit auto-calls these on trait change) |
+ 
+-**Do not over-think simple substitutions.** If the enclosing class is `UIView`/`UIViewController` and the value isn't being assigned to an ivar, layer property, constraint, or stored image, just substitute. **Empty diffs on simple files are the most common mistake — apply the substitution and move on.** Reach for the decision tree only when the simple case doesn't fit (non-view class, cached value, class/static method, special user instructions).
++If the enclosing class is `UIView`/`UIViewController` and the value isn't assigned to an ivar, layer property, constraint, or stored image, substitute directly. Use the decision tree only when the simple case doesn't fit (non-view class, cached value, class/static method, special user instructions).
+ 
+ ### Phase 1: Detection
+ 
+@@ -103,47 +103,29 @@ For each occurrence, read surrounding context to understand:
+ 
+ The active task's reference file may add task-specific bullets to this list.
+ 
+-Use subagents to identify code that needs to be updated to keep your context window small.
+-
+ Every subagent this skill launches is read-only (for example, the `Explore` agent type): it detects, analyzes, and verifies, and never edits. Make every edit in the main thread.
+ 
++On a large codebase, read-only subagents can detect, analyze, or verify to keep your context small; use them when that helps.
++
+ ### Phase 3: Decision & Validation
+ 
+ | Condition | Action |
+ |-----------|--------|
+ | Safe 1:1 replacement exists | **Apply it.** No added commentary (no `// TODO: FIXME`, no `// TODO`, no `// FIXME` — just the replacement). Use the replacement specified by the active task's reference file. |
+ | Multiple valid approaches or code relocation >10 lines | **Ask the user.** |
+-| No safe replacement possible (extremely rare) | **Add todo** with an explicit task outlined for the user. Never produce a silent empty diff. Re-check every pattern with a subagent before concluding nothing applies. |
+-
+-Use subagents to validate against the active task's Post-file Checklist before any code change.
++| No safe replacement possible (extremely rare) | **Add todo** with an explicit task outlined for the user. Re-check every pattern before concluding nothing applies. |
+ 
+ ### Phase 3b: File Processing Completeness
+ 
+-**Process EVERY file that contains the target deprecated API.** Do not stop early, skip files, or silently drop files from the work queue. A file that was identified in Phase 1 but produces no diff and no skip explanation is a processing failure.
+-
+-**Explicit file tracking:** At the start of processing, write out the complete list of files to be modified using available task / todo tools or a markdown file. As you process each file, mark it done. Before finishing, compare this list against your output — any file without a diff or an explicit skip reason is a failure that must be addressed before completing.
+-
+-**Context size:** If you are concerned about context size, use read-only subagents to analyze individual files or tasks, and make the edits in the main thread.
+-
+-**Silent-drop prevention:** Before finishing, use subagents to compare the list of files you were given against the list of files you produced output for. If any file is missing from your output, go back and process it. Common causes of silent drops:
+-- **File size:** Large files (1000+ lines) are not exempt. Process them with the same approach.
+-- **Complexity:** Files with preprocessor macros, complex class hierarchies, or unusual code patterns still need changes.
+-- **Project grouping:** Do not skip all files from a specific project or directory. If you notice you've dropped multiple files from the same project, that indicates a systematic issue — investigate and fix.
+-- **Ambiguity:** If you're unsure how to fix a file, ask the user — do not silently produce an empty diff.
+-
+-**Large or complex files:** Files with heavy preprocessor usage (`#if`/`#ifdef` nesting), 1000+ lines, or less common patterns (C++ interop, `dispatch_once` caching, deeply nested macros) are not exempt from processing. If the target API appears in such a file, apply the same decision tree. If the file is too large to edit in one pass, process the deprecated API usages one at a time. Use subagents if helpful. If you genuinely cannot determine a safe replacement due to macro expansion or preprocessor complexity, ask the user — never silently skip it.
+-
+-**Batch processing discipline:** When processing a list of files, do NOT attempt to analyze all files first and then produce all diffs at once. Instead, process files **one at a time or in small batches (3–5 files)**: read context, decide, produce the diff, then move to the next batch. This prevents the tail end of the file list from being silently dropped due to output limits or context exhaustion. If you notice you have produced output for fewer files than you were given, STOP and process the remaining files before finishing.
+-
+-If you find empty diffs for files that should have straightforward replacements, go back and process them — straightforward files are fast to handle and should never be dropped.
++Track every file Phase 1 found (a todo list or a markdown file in the project's `tmp/`) and mark each one done. Large or macro-heavy files get the same treatment as small ones; work through them one usage at a time if needed. Before finishing, every tracked file has a diff or a stated reason it has none.
+ 
+ ### Phase 4: Implementation
+ 
+-Start only after the user has confirmed the plan (see [When to Use](#when-to-use)). Apply the active task's implementation gates, rules, and post-file checklist from its reference file. The pattern-specific decision tree, gate questions, and validation rules live alongside the patterns they govern in each task file. Use subagents for verification.
++Start only after the user has confirmed the plan (see [When to Use](#when-to-use)). Apply the active task's implementation gates, rules, and post-file checklist from its reference file. The pattern-specific decision tree, gate questions, and validation rules live alongside the patterns they govern in each task file.
+ 
+ ### Phase 5: Final Verification
+ 
+-**File coverage audit:** Use subagents to compare the list of files you were given (or detected in Phase 1) against the files you actually produced diffs for. Every input file must have a non-empty diff. If any file is missing changes, go back and process it now.
++**File coverage audit:** Compare the files found in Phase 1 with the files you changed. Each one has a diff or a stated reason it has none (dead code only, declined by the user, or waiting on a question).
+ 
+ The active task's reference file may add task-specific verification steps.
+ 
