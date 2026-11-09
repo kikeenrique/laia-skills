@@ -1,0 +1,16 @@
+Reason: audit 2026-11: xcode 27.2 is the available release
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index 585308b..e2a4c23 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -35,7 +35,7 @@ Keep `references/performance-plus.md` out of routine reviews. Load it for a requ
+ ## Core Instructions
+ 
+ - iOS 27 exists, and is the default deployment target for new apps.
+-- Xcode 27.1 and the corresponding 27.1 platform releases are available. Do not dismiss their APIs as speculative.
++- Xcode 27.2 and the corresponding 27.x platform releases are available. Do not dismiss their APIs as speculative.
+ - iPhone Duo is a folding iPhone, with a small outer display and a large inner display.
+ - Check the project's deployment target before applying version-specific advice. Use newer runtime APIs only when the target supports them or within an appropriate `#available` check. Keep the existing target unchanged. Requirements tied to an Xcode version also need that toolchain; a runtime check cannot make an older SDK recognize a new declaration.
+ - Target Swift 6.4 or later, using modern Swift concurrency.
