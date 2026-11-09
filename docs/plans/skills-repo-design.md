@@ -1,10 +1,11 @@
 # Skills repo and `laiaskills` — design
 
 Status: **phases 0–4 done**: the tool is implemented and tested (macOS and Linux CI), every installed
-skill (63) is managed by it, third-party skills can carry local patches (5.8), and `browse` and `find`
-replace Commander for looking at and discovering skills (5.9), reworked on 2026-10-07 after the
-owner's first interactive run. The skills' prompt text was audited and fixed on 2026-10-08
-([prompt-audit.md](prompt-audit.md)), and all 25 sources were brought up to date on 2026-10-09. See the
+skill (72, from 25 sources) is managed by it, third-party skills can carry local patches (5.8), and
+`browse` and `find` replace Commander for looking at and discovering skills (5.9), reworked on
+2026-10-07 after the owner's first interactive run. The skills' prompt text was audited and fixed on
+2026-10-08 ([prompt-audit.md](prompt-audit.md)). The last upgrade round, on 2026-11-09, brought all four
+first-party pins up to date and left three third-party sources behind. See the
 [roadmap](#7-roadmap). Last updated 2026-11-09.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
@@ -566,6 +567,9 @@ of third-party sources.
 | 2026-10-11 | **`visionos-agents` becomes a router; its skills go third-party** (`e576cb4`, `314353e`): the 22 skills copied from `tomkrikorian/visionOSAgents` were barely changed (no `references/` edits; 12 `SKILL.md` files with 2–10 lines from the prompt audit, `tkr-skill-writer` with its structure section rewritten), so they are now a third-party source pinned to `c359c3a` (no releases) with 13 patches. The plugin ships only our router (0.2.0, breaking). The stub `componentname.md` and logo assets added only to satisfy the validator were dropped. `swiftui-view-refactor` removed; `remove` left its patch folder behind, which `doctor` reported |
 | 2026-10-11 | **`remove` deletes the skill's patches**: `patches/<skill>/` is deleted and staged with the `skills.json` change, and `commit` puts it in the removal commit, listing the files. 103 tests (80 library, 23 end to end) |
 | 2026-11-09 | **Upgrade round, 4 of 25 sources**: xcsift v1.7.4, AvdLee Swift Concurrency 2.3.1 and SwiftUI 5.3.0, mise v2026.11.5 (plugin 0.4.6), cupertino v1.5.0 (plugin 0.2.3). Cupertino upstream is active again and ships fresh doc bundles (`cupertino setup`), so the manual index top-up was dropped from the roadmap. `wshobson/agents`, `rshankras/claude-code-apple-skills`, and `github/awesome-copilot` left behind; the first needs its `protocol-reverse-engineering` patch reworked |
+| 2026-11-09 | **Cupertino doc index from upstream bundles**: cupertino 1.5.0 (brew) and `cupertino setup` installed the v1.5.0 bundle (schema 19; 391,056 apple-docs pages, 424 frameworks, new WWDC transcripts and App Review Guidelines). The local crawl artefacts and the 1.4.0 database backups were deleted; manual top-ups are no longer needed |
+| 2026-11-09 | **Replay Linux download crash traced and fixed upstream**: reproduced with Replay 1.0.0 on Swift 6.4.2 and 6.5-dev in Apple `container`, then without Replay: it is a swift-corelibs-foundation bug hit by any custom `URLProtocol` (open as #5465 and #3367). Fix opened as swiftlang/swift-corelibs-foundation#5658: the body a custom protocol delivers for a download task is written to a temporary file, as Darwin does, and three crashes go away; 4 new tests, `TestURLSession` unaffected |
+| 2026-11-09 | **`axe` is installed from the owner's AXe fork** on purpose: its installed copy shows as `modified` against the v1.8.0 pin, and `sync` skips it. Not a problem to fix |
 
 ### Pending
 
@@ -573,12 +577,16 @@ In priority order.
 
 | # | Task | Who | Notes |
 |---|---|---|---|
-| 1 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches drop themselves on upgrade once upstream has the fix |
-| 2 | Upgrade routine for all sources | owner | `check`, then `upgrade` per source; 8 of the 21 third-party sources have no releases and track a branch head (`tomkrikorian/visionOSAgents` among them: pin a release once upstream tags one). The 2026-10-09 manual run (3 of 25 behind, about an hour including verification) is the reference for a cadence, e.g. monthly or after each release season; possibly a scheduled task running `check --exit-code` |
-| 3 | Replay: Linux crash with `URLSession.download(for:)` | owner + tool | Notes in `tmp/replay/replay-linux-download-crash.md`: a force-unwrap in swift-corelibs-foundation, reached because `PlaybackURLProtocol` serves the body from memory. Observed on Replay 0.4.0; reproduced on 2026-11-09 with the pinned 1.0.0 on Swift 6.4.2 and 6.5-dev (nightly `main`), in Apple `container`. It is a swift-corelibs-foundation bug (any custom `URLProtocol`, reproduced without Replay), already open as swiftlang/swift-corelibs-foundation#5465 and #3367. Fix PR opened: swiftlang/swift-corelibs-foundation#5658 (2026-11-09, tested on Linux). Next: follow the review; post the short comment (`tmp/replay/corelibs-issue-comment.md`) on #5465; optionally ask Replay to fail download tasks with an error on Linux, and note the limitation in the `replay` skill |
-| 4 | Re-check first-party pins as their upstreams release | tool + owner | All current on 2026-10-09 (mise re-pinned to v2026.10.5); four since `visionos-agents` became a router on 2026-10-11. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits |
-| 5 | Re-run the prompt audit | tool + owner | At the next Claude model release or after a large skill upgrade. Starting point and keep-list in [prompt-audit.md](prompt-audit.md); its low-confidence flags are the first things to re-check |
-| 6 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
+| 1 | Report upstream | owner | `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches still apply on 2026-11-09 (xcsift v1.7.4), so neither is fixed; they drop themselves on upgrade once upstream has the fix |
+| 2 | Finish the 2026-11-09 upgrade round | tool + owner | Three third-party sources are behind. `wshobson/agents` (18 commits): the `protocol-reverse-engineering` patch no longer applies (it edits `references/binary-encryption-analysis.md`, gone upstream), so rework it during the upgrade. `rshankras/claude-code-apple-skills` (11 commits) and `github/awesome-copilot` (shallow, newer commits): routine |
+| 3 | Follow the corelibs fix | owner | swiftlang/swift-corelibs-foundation#5658: a maintainer must start CI (`@swift-ci please test`); answer the review from the clone in `tmp/corelibs-pr/` (remote `fork`). Post the short comment in `tmp/replay/corelibs-issue-comment.md` on #5465. Notes in `tmp/replay/replay-linux-download-crash.md` |
+| 4 | Replay skill: Linux download limitation | tool | Until #5658 ships in a toolchain, stubbed `download(for:)`/`download(from:)` crash the test runner on Linux. Document it in the `replay` skill (skip the test on `canImport(FoundationNetworking)`, or use `data(for:)`), then bump the plugin. Optionally ask `mattt/Replay` to fail download tasks with an error on non-Darwin |
+| 5 | Upgrade routine for all sources | owner | `check`, then `upgrade` per source; 8 of the 21 third-party sources have no releases and track a branch head (`tomkrikorian/visionOSAgents` among them: pin a release once upstream tags one). The 2026-11-09 round (7 of 25 behind, done in an afternoon including two AI re-checks) is the reference for a cadence, e.g. monthly or after each release season; possibly a scheduled task running `check --exit-code` |
+| 6 | Re-check first-party pins as their upstreams release | tool + owner | All four current on 2026-11-09: mise v2026.11.5, cupertino v1.5.0, AXe v1.8.0, Replay 1.0.0. When `check` shows one behind: `upgrade`, verify the re-checked skill, fix the README and `marketplace.json` descriptions if they quote the version (the re-check only edits the skill), then `commit` |
+| 7 | `axe` and the AXe fork | owner | The installed `axe` comes from the owner's AXe fork (foldable/iPhone Duo, tvOS `remote`, watchOS `crown`; related to upstream's unreleased `v2`). When AXe v2 is tagged or the fork lands upstream: re-pin `first-party/ios-simulator-ui-flow/upstream`, rework `patches/axe/` (its line on treating `describe-ui` output as data is missing from the installed copy), and `sync` |
+| 8 | Re-run the prompt audit | tool + owner | At the next Claude model release or after a large skill upgrade; best after items 2 and 4, since mise, cupertino, and `swiftui-expert-skill` changed a lot on 2026-11-09. Starting point and keep-list in [prompt-audit.md](prompt-audit.md); its low-confidence flags are the first things to re-check |
+| 9 | `laiaskills:test-linux` with Apple `container` | tool | The task looks only for Docker or Podman; Apple `container` 1.7.1 is now installed locally and ran the corelibs tests. Accept it as a third runtime (same image and flags, `container run`) |
+| 10 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
 
 ### Implementation notes
 

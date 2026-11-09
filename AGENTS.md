@@ -65,6 +65,7 @@ The submodule *names* in `.gitmodules` (e.g. `replay/upstream`) predate the move
 - Submodules are **only** for skill authors and CI. They are intentionally placed outside `first-party/<plugin>/skills/<name>/` so they are not scanned by the validator and not shipped to users via `/plugin install` — git does not auto-init submodules, and Claude Code's plugin install pulls only the plugin subtree (the root `.gitmodules` is not part of the install).
 - Clone with submodules locally when working on a skill: `git clone --recurse-submodules` or `git submodule update --init <path>`. Skip them entirely if you only need to read the skill.
 - To re-pin: `mise run laiaskills upgrade first-party/<plugin>/upstream` (add `--to <tag>` for a specific release, `--no-agent` to update the skill by hand), then `mise run laiaskills commit`. By hand: `git -C first-party/<plugin>/upstream fetch --tags && git -C first-party/<plugin>/upstream checkout <tag>`, then `git add first-party/<plugin>/upstream`.
+- The re-check agent only edits the skill folder. If the plugin's `description` in `plugin.json` and `marketplace.json`, or its README row, quotes the upstream version or counts, update them and `git add` them before `laiaskills commit`; it commits `plugin.json` and `marketplace.json` with the bump, but not `README.md`, so commit that with a pathspec (or amend it into the bump commit).
 
 ## Adding a plugin
 
