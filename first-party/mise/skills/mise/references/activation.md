@@ -33,6 +33,8 @@ To keep shims out of full activation regardless, `mise settings set activate_shi
 
 To manage these snippets declaratively as part of machine setup, use `[bootstrap.mise_shell_activate]` — see [bootstrap.md](bootstrap.md).
 
+`mise completion` supports nushell since 2026.10.20 (fish 4.9.3+ loads mise's completions itself). In an activated shell, `mise shell --unset --all` (2026.10.22) clears every `mise shell` override at once.
+
 ## Shims
 
 Shims are small executables under the mise shims directory, commonly `~/.local/share/mise/shims`. They route commands through mise so the correct tool version is selected.

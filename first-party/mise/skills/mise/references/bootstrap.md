@@ -83,9 +83,11 @@ Entries are `"manager:package" = "<version>"`; `"latest"` accepts an already-ins
 "winget:BurntSushi.ripgrep.MSVC" = { os = "windows" }
 ```
 
-Managers: `apk`, `apt`, `aur`, `dnf`, `zypper`, `pacman`, `brew`, `brew-cask`, `macos-app`, `flatpak`, `flatpak-user`, `nix`, `mas`, `scoop`, `snap` (2026.10.10), `winget`, plus package plugins. Entries for a manager unavailable on the current platform are skipped, so one config works everywhere. `pacman`, `scoop`, `snap`, and `zypper` support `state = "absent"`.
+Managers: `apk`, `apt`, `aur`, `choco` (2026.10.20), `dnf`, `zypper`, `pacman`, `brew`, `brew-cask`, `macos-app`, `flatpak`, `flatpak-user`, `nix`, `mas`, `scoop`, `snap` (2026.10.10), `winget`, plus package plugins. Entries for a manager unavailable on the current platform are skipped, so one config works everywhere. `pacman`, `scoop`, `snap`, and `zypper` support `state = "absent"`.
 
 `snap` needs snapd (mise does not install it) and uses sudo. snapd refreshes snaps itself, so version pins are skipped with a warning; set `channel` (`"<track>/<risk>"`, e.g. `"22/stable"`; drift is fixed with `snap refresh --channel`) and `classic = true` for classic-confinement snaps: `"snap:node" = { channel = "22/stable", classic = true }`. Commands land in `/snap/bin`, not mise shims.
+
+`choco:` needs Chocolatey already installed and `apply`/`upgrade` run from an elevated terminal (mise never bypasses UAC; `status` needs no elevation). Use the exact package ID; a pin is passed as `--version` (with `--allow-downgrade`). No `state = "absent"`, `import`, or `prune` — uninstall with `choco uninstall`. Use `scoop` for per-user apps.
 
 `"dnf:@development-tools"` (a leading `@`) is a dnf package group; use `"latest"` (environment groups `@^name` are unsupported). On Fedora Atomic hosts (Silverblue, Bazzite, …) `dnf:` entries fail with an explanation by default; `system_packages.ostree = "layer"` (2026.10.9) layers them in one `rpm-ostree install` transaction instead (reboot needed, pins skipped, `upgrade` refused).
 
@@ -97,7 +99,7 @@ ghostty = { copr = "scottames/ghostty" }
 caddy = { copr = "@caddy/caddy" }    # group project
 ```
 
-Package managers that need root run through `sudo`; since 2026.10.9 mise falls back to `run0` (systemd 256+) and then `doas` when `sudo` is missing, and `system_packages.elevate_with = "run0"` (or `"doas"`) pins one. `system_packages.sudo = false` forbids elevation.
+Package managers that need root run through `sudo`; since 2026.10.9 mise falls back to `run0` (systemd 256+) and then `doas` when `sudo` is missing, and `system_packages.elevate_with = "run0"` (or `"doas"`) pins one — in global config or `MISE_SYSTEM_PACKAGES_ELEVATE_WITH` only since 2026.10.20 (a project value is ignored). `system_packages.sudo = false` forbids elevation.
 
 Since 2026.10.9 `[bootstrap.apt.sources]` adds apt repositories before `apt:` packages install, writing `/etc/apt/sources.list.d/mise-<name>.sources` with the key embedded in `Signed-By` (apt 2.4+) and running `apt-get update` once when a source changes. PPAs are added only on Ubuntu and derivatives; other sources need `uris`, `key`, and `fingerprint` (`suites`, `components`, `architectures` optional). A declared source also replaces an already-installed package from elsewhere (unless pinned or arch-qualified). mise never removes sources; delete the file yourself.
 
@@ -112,7 +114,7 @@ key = "https://download.docker.com/linux/ubuntu/gpg"
 fingerprint = "9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
 ```
 
-`brew`/`brew-cask` do **not** require Homebrew to be installed: mise pours bottles into the canonical prefix itself. Third-party taps use the fully qualified name; add non-inferable tap URLs under `[bootstrap.brew.taps]`. A cask entry can set its own install directory: `"brew-cask:1password" = { appdir = "/Applications" }`.
+`brew`/`brew-cask` do **not** require Homebrew to be installed: mise pours bottles into the canonical prefix itself. Third-party taps use the fully qualified name; add non-inferable tap URLs under `[bootstrap.brew.taps]`. A cask entry can set its own install directory: `"brew-cask:1password" = { appdir = "/Applications" }`. Casks mise installs are invisible to Homebrew unless `[bootstrap.brew] homebrew_metadata = true` (2026.10.20), after which Homebrew owns their upgrades. `mise bootstrap packages prune --manager brew-cask` removes only casks it can prove unchanged; it names the rest, and `--force` (2026.10.21) removes them anyway.
 
 `macos-app` installs a `.app` with no cask from a pinned download (all four fields required; no `latest`, no pruning):
 
@@ -153,7 +155,7 @@ Select or exclude phases with `--only` / `--skip` (repeatable or comma-separated
 ```bash
 mise bootstrap --only dotfiles,tools --dry-run
 mise bootstrap --skip tools,task
-mise bootstrap --update          # refresh package metadata and declared repos first
+mise bootstrap --update          # fast-forward the global config checkout (2026.11.0), refresh package metadata and declared repos first
 mise bootstrap --upgrade         # also upgrade installed packages and tools (2026.10.11)
 ```
 
@@ -176,7 +178,8 @@ source = "./files/docker-daemon.json"
 - Compose project values render Tera, e.g. `project_dir = "{{ config_root }}/mempalace"`, so shared config needs no machine-specific paths (no `exec()`).
 - systemd units support `state = "absent"` and `mise bootstrap unapply`.
 - systemd units (`[bootstrap.linux.systemd.units.<name>]`) accept `before`, `binds_to`, `part_of`, and `conflicts` (lists of unit names) next to `after`/`wants`/`requires`, and service-only `exec_start_pre` / `exec_start_post` lists (one `ExecStartPre=`/`ExecStartPost=` line each).
-- LaunchAgents accept `process_type` = `Background`, `Standard`, `Adaptive`, or `Interactive` (exact launchd spelling; anything else is an error).
+- LaunchAgents accept `process_type` = `Background`, `Standard`, `Adaptive`, or `Interactive` (exact launchd spelling; anything else is an error), and since 2026.10.20 `launch_events` (launchd `LaunchEvents`, tables keyed by quoted stream then event name, properties in launchd's case), e.g. `[bootstrap.macos.launchd.agents.usb-handler.launch_events."com.apple.iokit.matching".apple-usb]` with `IOProviderClass = "IOUSBHostDevice"`. The program must consume the stream (`xpc_set_event_stream_handler`).
+- To start and enable a systemd **user** unit a package already ships (e.g. `gnome-keyring-daemon`), declare `[bootstrap.services.<unit>]` with `scope = "user"`, `state = "running"`, `enabled = true` and no `command`/`builtin` (2026.10.20, Linux-only; no root needed; a bare name gets `.service`).
 - `[bootstrap.macos.login_items] apps = ["/Applications/Ghostty.app", "~/Applications/Example.app"]` (2026.10.9) declares Open-at-Login apps. It is additive by default; `exclusive = true` makes `apply` remove undeclared entries too. Applied with the macOS defaults.
 - For `defaults -currentHost` preferences, use an explicit entry with `host = "current"` (default `"any"`):
 
@@ -200,7 +203,7 @@ run = ["mise exec -- node --version"]
 post-defaults = "killall Dock || true"
 ```
 
-Since 2026.10.18 a hook table may set `run_windows`, which replaces `run` on Windows; a table with only `run_windows` does nothing elsewhere.
+Since 2026.10.18 a hook table may set `run_windows`, which replaces `run` on Windows; a table with only `run_windows` does nothing elsewhere. Since 2026.10.22 a table's `description` is printed in place of the command; otherwise mise prints only the command's first line (`--verbose` and `--dry-run` print it in full).
 
 ## Login Shell
 
@@ -227,6 +230,15 @@ Every mutating run records a pair of history checkpoints (tracked files before a
 | Tracked dotfile history (setup repository) | `mise bootstrap --adopt <repo>` |
 
 `--from` clones into `$MISE_DATA_DIR/bootstrap-repo` (`--from-dir` overrides; append `?ref=<branch|tag|commit>` to the URL to check out a ref, e.g. `git::https://github.com/example/dotfiles.git?ref=v1`) and trusts the supplied repository for that invocation — review it first. `--adopt` clones into `$MISE_CONFIG_DIR`; since 2026.10.10 `--adopt '<repo>?ref=<branch>'` adopts another branch (a branch only — tags and commits are refused; an existing checkout is never switched, and `--update` fast-forwards the branch it is on). Both accept `-E <env>` to select `mise.<env>.toml` / `config.<env>.toml`, and `--update` to fast-forward an existing checkout. The old `--from-git` alias was removed in 2026.10.0; use `--from`. Use `--from` for a setup project you apply but don't make your own (your global config still loads alongside it); use `--adopt` when the repository becomes this machine's own config. On a fresh machine without `git` (or `ssh` for an SSH URL), mise offers to install them with the host package manager before cloning (`--yes` accepts; `--dry-run` only reports).
+
+To share your own setup, the docs now start with `mise dot track ~/.config/mise` plus an origin, adopted elsewhere with `--adopt`. To keep mise's config inside your own dotfiles checkout instead, `--config-dir` (2026.10.21, requires `--from`) links `~/.config/mise` to a directory in the checkout and bootstraps from it; the target must be missing, empty, or already that link:
+
+```bash
+mise bootstrap --from https://github.com/you/dotfiles.git --from-dir ~/.dotfiles --config-dir .config/mise
+mise bootstrap --update   # later: fast-forwards the checkout the link (or an --adopt checkout) points into, then re-runs
+```
+
+`mise use -g` and `mise dot add` then write into the checkout through the link. With `--update` and neither `--from` nor `--adopt`, only a fast-forward is accepted. `--save-env` (2026.11.1) saves the `-E`/`MISE_ENV` selection to `miserc.local.toml` so later runs need no `-E` (see `[env_sets]` in [config.md](config.md)).
 
 `--prompt-vars` asks for `[vars]` entries with a `prompt` and no saved answer (see [environments.md](environments.md)), which is how `--adopt` answers per-machine values on a fresh machine. `[bootstrap.repos]` keys may render vars, e.g. `"{{ vars.repos_dir }}/project-a" = { url = "..." }` (2026.10.9), so each machine picks its own checkout base. Since 2026.10.13 `url` and `ref` also render vars and `env.NAME` (not `[env]` values), and optional clone options shape the first clone of a missing repo only: `filter` (e.g. `"blob:none"`), `depth` (not with a full SHA or `refs/` ref), `submodules = true`:
 

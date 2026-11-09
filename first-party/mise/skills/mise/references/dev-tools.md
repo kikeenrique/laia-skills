@@ -96,7 +96,7 @@ Backend preference order:
 "packslip:github.com/jdx/hk" = "latest"
 ```
 
-`packslip:` takes a host and path without `https://`; GitHub may be abbreviated (`packslip:jdx/hk`). Releases can carry version-matched completions, man pages, and agent skills. mise remembers accepted signers; inspect with `mise packslip pins` and reset one with `mise packslip forget <project>` only after confirming the publisher announced the change.
+`packslip:` takes a host and path without `https://`; GitHub may be abbreviated (`packslip:jdx/hk`). Releases can carry version-matched completions, man pages, and agent skills (`mise skills sync`, or `skills.auto_sync = true`, links them into the project; since 2026.11.0 an unset `skills.dir` uses an existing `.agents/skills`, else an existing `.claude/skills`, else creates `.agents/skills` with `.claude/skills` symlinked to it — the same rule under `~` for `--global`, and with auto-sync `mise use -g` links global tools' skills there). mise remembers accepted signers; inspect with `mise packslip pins` and reset one with `mise packslip forget <project>` only after confirming the publisher announced the change.
 
 By default any workflow of the repository may sign a GitHub release. Pin the signing workflow on tags with `workflow` (a file name, or a list when the project moved its release workflow); it cannot be combined with `pubkey`, `identity`, `identity_prefix`, or `issuer`:
 
@@ -117,6 +117,7 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
 - `matching` narrows candidates by case-sensitive substring while keeping platform autodetection; `matching_regex` does the same with a regex. Both are ignored (silently) when `asset_pattern` is set, because that replaces autodetection entirely.
 - `additional_asset_patterns` overlays supplemental archives onto the primary asset's install directory.
 - `github_attestations = false` disables attestation verification, which removes the check that the asset was built by the expected workflow. Use it only for a tool whose releases have no attestations, and never to silence a failing verification without finding out why. `version_order = "semver"` changes tag ordering.
+- `version_regex` (2026.10.20) lists only release tags matching the pattern (unanchored, so use `^…$`), e.g. to skip data-only releases: `"github:owner/tool" = { version = "latest", prerelease = true, version_regex = '^(v\d+\.\d+\.\d+|nightly)$' }`. It only filters (`v1.2.3` is still listed as `1.2.3`); with `version_prefix`, a tag must satisfy both.
 
 ### Other Backend Options
 
@@ -142,6 +143,7 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
 - `cargo:` honors `rename_exe` (2026.10.14) to rename the installed executable.
 - `http:` tools can report release dates for `minimum_release_age` (2026.10.15): `version_date_expr` (expr-lang over `body`/`versions`, returning `[version, date]` pairs or a map), with optional `version_date_url` and paging via `version_date_next_expr`. Undated versions are never held back. Credentials in a URL's userinfo are stripped from `mise.lock`, and a credential query parameter (`?token=`, `?sig=`, …) makes locking fail — use `headers` or netrc.
 - `pypi:` private indexes behind a keyring (2026.10.16): set `[settings.pypi] keyring_provider = "subprocess"` and a `registry_url` with a username but no password; mise runs `keyring get` for version listing and `mise lock`, as uv does.
+- `pypi:` `registry_index` (2026.10.24) controls dependency locking against a tool's `registry_url`: `"default"` makes the registry replace PyPI (full mirrors, air-gapped), `"priority"` searches it first and PyPI second — for a registry hosting only its own packages (Gitea, Forgejo, pypiserver). A package the registry hosts is never taken from PyPI. Locking only; not recorded in the lockfile.
 - `dotnet` (core) accepts `lts` and `sts` version aliases (2026.10.15).
 
 `mise ls-remote <tool>` for a registry tool whose backends cover different version ranges (e.g. aqua before a release, packslip after) lists every range from the backend that serves it since 2026.10.13; a prefix lists only the matching range(s).
@@ -174,6 +176,13 @@ Other aube-only options:
 - `allow_low_downloads = true` — admit a package below aube's weekly-download threshold. A tool resolved from `mise.lock` is already exempt.
 
 `minimum_release_age` is forwarded into transitive dependency resolution by the `npm:` and `pipx:` backends; the embedded aube installer honors it natively.
+
+**Provenance (breaking in 2026.11.1):** `npm.provenance` is now **on by default** (`MISE_NPM_PROVENANCE`). With the embedded aube installer, mise verifies the Sigstore provenance the tool's own package publishes (not its dependencies) against the integrity it locks, accepting GitHub Actions and gitlab.com CI provenance, and records the source repository in `mise.lock`; later installs must show the same repository. A package with no provenance (or a private registry serving none) installs as before — unless `mise.lock` already pins a repository for it. A package whose provenance does not verify, or whose repository changed, now fails to install. Other `npm.package_manager` values and checksum-pinned local archives install unchecked. Verification fetches Sigstore trust roots, so a network that blocks them breaks installs of packages that publish provenance until you set:
+
+```toml
+[settings.npm]
+provenance = false   # still verified while the paranoid `provenance` category is on
+```
 
 ## Tool Stubs
 
@@ -240,7 +249,9 @@ mise install --include-task-tools
 
 `mise unuse <tool>` without a version prunes all of that tool's unused versions; a version still needed by a tracked config or tool stub is kept and mise names the file.
 
-`-l` on `mise upgrade` is a deprecated shorthand for `--bump`; it becomes `--local` after mise 2027.8.5. Use `-b`/`--bump`.
+`-l` on `mise upgrade` (and `mise outdated`) is a deprecated shorthand for `--bump`; use `-b`/`--bump`.
+
+Scope flags (2026.10.22): on `ls`, `outdated`, `upgrade`, and `tasks ls`, `--no-global` selects only non-global config (parent directories included; also skips system config and `MISE_<TOOL>_VERSION`). `--local` there means the same but is deprecated: silent for now, warns from 2027.1.0, removed in 2027.7.0. `--project` (on `ls` and `uninstall`) means the nearest project's config files only: `mise ls --project` previews what `mise uninstall --project` removes (it asks first). `settings --local` and `lock --local` are unchanged. Older mise rejects `--no-global`, so keep `--local` in scripts shared with older clients for now.
 
 `prune.exclude = ["node", "aqua:BurntSushi/ripgrep"]` (`MISE_PRUNE_EXCLUDE`) keeps every version of those tools from `mise prune`, `ls --prunable`, and post-upgrade pruning — for tools something outside mise reaches by install path (a virtualenv, an editor SDK). `mise uninstall` is unaffected.
 
@@ -274,7 +285,7 @@ mise settings add idiomatic_version_file_enable_tools node
 mise settings add idiomatic_version_file_disable_files node:package.json
 ```
 
-mise reads fields that state the version a project is *built with*, not compatibility floors. `package.json` `devEngines` and `packageManager` are read; `engines` is not. In `go.mod` (and `go.work`, which wins when a workspace is active), `toolchain goX.Y.Z` is read — or, since 2026.10.9, an exact three-part `go X.Y.Z` line when there is no `toolchain` line — while the `go X.Y` floor is deprecated and removed in mise 2026.11.0 (as is `cmake_minimum_required`); `idiomatic_version_file_ignore_minimum_versions` opts into the final behavior early.
+mise reads fields that state the version a project is *built with*, not compatibility floors. `package.json` `devEngines` and `packageManager` are read; `engines` is not. In `go.mod` (and `go.work`, which wins when a workspace is active), only `toolchain goX.Y.Z` is read — or an exact three-part `go X.Y.Z` line when there is no `toolchain` line. Since 2026.11.0 a bare `go X.Y` floor no longer selects a Go version, `CMakeLists.txt` (`cmake_minimum_required`) is no longer a version file, and the `idiomatic_version_file_ignore_minimum_versions` setting is gone; add a `toolchain` line, `.go-version`, or a `mise.toml` entry instead.
 
 ## Ruby
 

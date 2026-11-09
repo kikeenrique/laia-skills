@@ -33,6 +33,7 @@ which records in the global config:
 | `track` | Leave the file in place, save its history only. |
 | `track-local` | Like `track`, but the history stays on this machine and is never synced. |
 | `absent` | Remove a file or symlink at the target; takes no source. |
+| `fnox` | Write the file [fnox](https://fnox.jdx.dev) stores for the target; takes no source (2026.10.23). |
 
 ```toml
 [dotfiles]
@@ -40,7 +41,9 @@ which records in the global config:
 "~/.config/app.conf" = { source = "dotfiles/app.conf", mode = "copy" }
 ```
 
-`dotfiles.root` (default `~/.dotfiles`) is where `add` saves captured sources; `dotfiles.default_mode` (default `symlink`) is what `add` applies. In `copy` mode, `apply` overwrites edits made directly to the target — run `add` first to capture them.
+`dotfiles.root` (default `~/.dotfiles`) is where `add` saves captured sources; since 2026.10.20 it renders templates, e.g. `root = "{{ mise_config_dir }}/home"` (a relative result resolves against the config root). `dotfiles.default_mode` (default `symlink`) is what `add` applies. In `copy` mode, `apply` overwrites edits made directly to the target — run `add` first to capture them. A `template` target edited by hand is still overwritten, but since 2026.10.21 `apply` warns first.
+
+`mode = "fnox"` keeps a secret file such as `~/.npmrc` out of the dotfiles repository: store it with `fnox set --file ~/.npmrc` (fnox 1.44.0+), declare `"~/.npmrc" = { mode = "fnox" }`; `apply` runs `fnox get --file` (may prompt), `mise dot edit` runs `fnox edit --file`, and `mise dot add` never captures it.
 
 More entry keys:
 
@@ -53,6 +56,10 @@ dotfiles.relative_symlinks = true   # Stow-style relative links; per-entry `rela
 "~" = { source = "home", mode = "symlink-each", dot_prefix = true, exclude = ["README.md"] }
 "~/.netrc" = { source = "netrc.tera", mode = "template", permissions = "0600" }
 "~/.ssh" = { permissions = "0700" }   # manage only the mode, not the contents
+# seed once, then leave it to the user (2026.10.22); an existing file is never touched
+"~/.config/mise/conf.d/private.local.toml" = { source = "templates/private.toml", mode = "copy", permissions = "0600", create_if_missing = true }
+# write after other entries/groups of the same apply (2026.11.0): group names or target paths
+"~/.workrc" = { mode = "fnox", depends = ["secrets", "~/.ssh/encryption_ed25519"] }
 
 # one source, a different destination per platform (most specific variant wins)
 [dotfiles."vscode/settings.json"]
@@ -80,16 +87,20 @@ Edit entries manage one block or line inside a file, keyed by target path plus a
 
 For an edit entry, `source` must be paired with `template = "tera"` or `merge`; a table with only `source` is a whole-file entry using `dotfiles.default_mode`.
 
-**Merge entries** own only some keys of a JSON, TOML, or YAML file that an application also writes (Codex, Claude Code settings). The format comes from the target's extension:
+**Merge entries** own only some keys of a JSON, JSONC (2026.10.22), TOML, YAML, or INI (2026.10.23) file that an application also writes (Codex, Claude Code settings, VS Code `settings.json`, `pip.conf`). The format comes from the target's extension (`.json`, `.jsonc`, `.toml`, `.yaml`/`.yml`, `.ini`), or set `format = "jsonc"|"ini"|…` when it doesn't name the format:
 
 ```toml
 [dotfiles]
 "~/.codex/config.toml/shared" = { source = "codex/shared.toml", merge = true }    # enforce these keys
 "~/.codex/config.toml/defaults" = { source = "codex/defaults.toml", merge = "missing" }  # only fill absent keys
 "~/.claude/settings.json/shared" = { merge = true }   # source inferred: <dotfiles.root>/.claude/settings.json
+"~/.config/Code/User/settings.json/shared" = { source = "vscode/shared.json", merge = true, format = "jsonc" }
+"~/.config/pip/pip.conf/shared" = { source = "pip/shared.conf", merge = true, format = "ini" }
 ```
 
-Tables merge recursively; scalars and arrays are replaced; keys only the target has, and keys later removed from the source, are left alone. `merge = "missing"` never overrides a value the app chose. `status`/`diff` report drift only in owned keys; TOML/YAML keep comments and formatting; an unparseable target (including JSON with comments) is never overwritten; `unapply` leaves merged keys in place. If the target is a symlink to the entry's own source, `apply` replaces it with a copy first, so switching from `symlink` to `merge` keeps the app's state.
+Tables merge recursively; scalars and arrays are replaced; keys only the target has, and keys later removed from the source, are left alone. `merge = "missing"` never overrides a value the app chose. `status`/`diff` report drift only in owned keys; TOML/YAML/JSONC keep comments and formatting (JSONC: comments and trailing commas, no other JSON5); INI follows Python's `configparser` (only lines starting `#`/`;` are comments, values are strings, sections merge key by key); an unparseable target (including comments in a plain `.json` file) is never overwritten; `unapply` leaves merged keys in place. If the target is a symlink to the entry's own source, `apply` replaces it with a copy first, so switching from `symlink` to `merge` keeps the app's state.
+
+A merge entry takes `permissions` (2026.10.22), applied only when `apply` creates the file. A `merge = "missing"` entry with `template = "tera"` may call `{{ secret(name="…") }}` for declared `[bootstrap.secrets]`; mise reads or prompts for a secret only when the key it fills is missing (2026.10.24), so later applies with `--prompt-secrets` ask only for newly added keys. `status`/`diff` never read secrets; enforced `merge = true` entries cannot use `secret()`.
 
 ## Groups
 
@@ -108,6 +119,8 @@ exclude = ["README.md"]  # also: target, mode (symlink-each default, copy, symli
 [bootstrap]
 dotfile_groups = ["home"]   # unset: every group applies
 ```
+
+Since 2026.10.21 a selected name with no `[dotfile_groups]` table that matches a directory under `dotfiles.root` is a group with the defaults (deployed into `~` file by file), so a Stow package tree needs only `dotfile_groups = ["kitty", "nvim", "zsh"]`. Switching from Stow needs no unstow: `apply` replaces a folded directory link with a real directory of links. Since 2026.10.23 group `entries` may also be block, line, or merge edits (keyed `"<file>/<id>"`, source relative to the group root, file inside the group's target); they apply only while the group is selected, and deselecting leaves what they wrote — run `mise dot unapply <path>` first to remove it. Groups also take `depends`.
 
 Two selected groups writing the same path fail before anything is written. `mise dot status` lists files from deselected or shrunk groups as `orphaned`; `mise dot apply --prune` (or `mise bootstrap --prune-dotfiles`) removes them and `mise dot unapply --group <name>` removes one group's files. `mise dot add`/`edit` route a file under a group's target into its root (`--group` when ambiguous). Since 2026.10.12 a group entry with `mode = "template"` and no `source` falls back to the same path plus `.tera` (`"~/.config/git/config" = { mode = "template" }` renders `home/dot-config/git/config.tera`, not also deployed with the suffix). `mise dot add --changed` also captures files a copy-mode group discovers in its tree.
 
@@ -129,6 +142,7 @@ mise dot save --re-encrypt # after changing recipients: re-encrypt every saved f
 mise dot history [show latest|diff 11 12]
 mise dot history purge <path> [--dry-run|--yes|--backup|--keep-objects]   # erase a file from saved history (2026.10.18)
 mise dot paths
+mise dot files [-r] [--untracked] ~/.config   # each file's state: tracked/partial/excluded/untracked, and which entry (2026.11.5)
 mise dot notify            # send a test notification (sync-conflict alerts only)
 ```
 
@@ -163,7 +177,7 @@ then `mise bootstrap services apply`.
 
 Synchronization pushes checkpoints to a Git remote so another machine can restore them with `mise bootstrap --adopt <repo>`. Use a **private** repository: sync sends earlier checkpoints too, so temporary edits become part of the shared history. Configure encryption before first saving files that need it.
 
-The origin holds tracked-file history, not a checkout: `mise dot origin set` never pulls or pushes a `~/.config/mise` adopted with `mise bootstrap --adopt` (sync that with Git yourself). Give the origin its own repository, or a separate branch of the global-config repo adopted elsewhere with `--adopt '<url>?ref=<branch>'`; pointing it at the global-config repo's default branch makes later `--adopt` treat it as a setup repository instead of cloning it into `~/.config/mise`. To share the global config through the origin, `mise dot track ~/.config/mise/config.toml`.
+The origin holds tracked-file history, not a checkout: `mise dot origin set` never pulls or pushes a `~/.config/mise` adopted with `mise bootstrap --adopt` (sync that with Git yourself). Give the origin its own repository, or a separate branch of the global-config repo adopted elsewhere with `--adopt '<url>?ref=<branch>'`; pointing it at the global-config repo's default branch makes later `--adopt` treat it as a setup repository instead of cloning it into `~/.config/mise`. To share the global config through the origin, track the whole directory, `mise dot track ~/.config/mise`, so `config.<env>.toml`, `conf.d/`, and `miserc.toml` come along (files ending `.local.toml` stay per machine).
 
 Before a push, mise refuses to publish earlier plaintext versions of now-encrypted paths, and (since 2026.10.5) unpublished versions with a line that looks like a secret — provider tokens (`ghp_`, `sk-`, `AKIA…`), private key blocks, or `*_KEY`/`*_TOKEN`/`*_SECRET`/`*_PASSWORD` assignments. Removing the line from the file does not remove it from saved versions; encrypt the file instead, or erase it.
 

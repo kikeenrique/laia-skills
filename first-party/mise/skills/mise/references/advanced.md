@@ -31,7 +31,7 @@ When the registry moves a tool to another backend, mise keeps installing from th
 
 `mise lock --bump` re-resolves fuzzy selectors (`latest`, `lts`, `"22"`) against the newest matching versions and rewrites the lockfile without installing anything and without touching `mise.toml`. Exact pins are untouched — use `mise upgrade --bump` for those. `--global`/`--local` pick the lockfile; `--json` emits machine-readable changes for scheduled dependency-bump PRs.
 
-Since 2026.10.19 `lockfile_mode` defaults to `generate`: lockfile writes (including automatic locking during `mise install`/`mise use`) rebuild the whole lockfile from the current requests, reusing unchanged entries and locking the other recorded platforms. Set `lockfile_mode = "merge"` (`MISE_LOCKFILE_MODE`) to go back to updating entries one at a time as tools install. Neither mode creates a lockfile.
+Since 2026.10.19 `lockfile_mode` defaults to `generate`: lockfile writes (including automatic locking during `mise install`/`mise use`) rebuild the whole lockfile from the current requests, reusing unchanged entries and locking the other recorded platforms. Set `lockfile_mode = "merge"` (`MISE_LOCKFILE_MODE`) to go back to updating entries one at a time as tools install. Neither mode creates a lockfile. `merge` is deprecated since 2026.10.24 (warns from 2027.4.0, removed in 2027.10.0); migrate by deleting the setting.
 
 Full lock runs drop top-level tools the active config no longer declares. For a shared lockfile (e.g. `mise lock --global` used by profiles that configure different tools), set `lockfile_auto_prune = false` to keep unreferenced entries.
 
@@ -61,6 +61,8 @@ or:
 [settings]
 locked = true
 ```
+
+Since 2026.11.0 locked mode also **requires a lockfile checksum** for every artifact it downloads for the current platform (additional GitHub assets included) and fails before downloading when one is missing (`No lockfile checksum found for … (--locked mode)`). Backends that lock no download URL (`cargo`, `go`, `gem`, asdf, …) are unaffected. CI with URL-only entries (hand-written or from an older mise) fixes it with one `mise lock`, which hashes artifacts whose release publishes no checksum. `locked_require_checksum = false` (`MISE_LOCKED_REQUIRE_CHECKSUM=0`) allows URL-only entries; `merge` mode is exempt unless it is `true`. The setting is transitional (warns from 2027.10.0).
 
 Invocation-wide `locked` applies to project, user-global, and system config. Narrow it with the global-only `locked_scopes` setting (default `["project", "global", "system"]`), which project config cannot weaken:
 
@@ -211,7 +213,9 @@ Task settings now live under a `task.` table. The flat `task_output`, `task_time
 
 Settings that have no effect are now deprecated — remove them: `plugin_autoupdate_last_check_duration`, `sops.age_recipients` (use `mise set --age-encrypt --age-recipient <r> KEY=value`), `task.cache.stats_report`, and `idiomatic_version_file` / `legacy_version_file*` (use `idiomatic_version_file_enable_tools`). `mise settings set` now refuses to write a setting where mise would ignore it: early-init settings (`env`, `auto_env`, `env_conf_d`, `ceiling_paths`, `ignored_config_paths`, `override_*_filenames`) belong in `miserc.toml` or env vars, and global-only ones (`yes`, `paranoid`, `trusted_config_paths`, …) cannot take `--local`.
 
-Global-only hardening settings added in 2026.10.19: `github.enterprise_hosts = ["github.mycompany.com"]` lists GitHub Enterprise Server hosts that may receive your GitHub token on `/api/v3` URLs (otherwise only `api.github.com`, `api.*.ghe.com`, and a tool's own `api_url` origin get it), and `extract_max_ratio` (default `100`, `0` = unlimited) fails an install whose archive unpacks past 256 MiB and that many times its download size.
+Global-only hardening settings added in 2026.10.19: `github.enterprise_hosts = ["github.mycompany.com"]` lists GitHub Enterprise Server hosts that may receive your GitHub token on `/api/v3` URLs (otherwise only `api.github.com`, `api.*.ghe.com`, and a tool's own `api_url` origin get it), and `extract_max_ratio` (default `100`, `0` = unlimited) fails an install whose archive unpacks past 256 MiB and that many times its download size. Since 2026.10.20 `system_packages.elevate_with` is global-only too (a project value is ignored with a warning).
+
+Network settings: `extra_ca_certs` (2026.10.24; `MISE_EXTRA_CA_CERTS`) is a PEM bundle mise's HTTP clients trust in addition to the usual roots — e.g. a TLS-inspecting proxy's CA; `ipv4_only = true` (2026.10.22) connects over IPv4 only, for hosts that fail over IPv6.
 
 Useful env vars:
 

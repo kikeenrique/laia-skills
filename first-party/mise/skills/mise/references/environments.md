@@ -34,6 +34,13 @@ _.python.venv = { path = ".venv", create = true }
 
 Shell-style expansion is disabled by default inside structured JSON/YAML/TOML files so literal `$` survives; `expand = true` re-enables it. `_.file = { path = ".env", tools = true }` loads the file after tools define their env.
 
+`_.path` entries go ahead of tool paths by default. Since 2026.10.24 `position = "append"` puts an entry after the tools mise installs (but ahead of the inherited `PATH`), so a global `~/bin` or `~/.cargo/bin` no longer shadows them:
+
+```toml
+[env]
+_.path = ["bin", { path = ["~/bin", "~/.cargo/bin"], position = "append" }]
+```
+
 `_.file` resolves a relative path against the config root. `find_up = true` (2026.10.12) loads it from the **config's root** and every parent instead (root first, so a closer file wins) — e.g. a monorepo root `.env` for every package. Since 2026.10.16 a relative path starts at the config root, not the current directory; an absolute path searches its own directory and each parent. So a global entry covering every project needs `cwd`:
 
 ```toml
@@ -86,7 +93,9 @@ mise env --redacted
 mise env --paths         # PATH entries mise manages (tool bin dirs, _.path), in PATH order (2026.10.11)
 ```
 
-Use these to compare what mise would export with what the current shell actually contains.
+Use these to compare what mise would export with what the current shell actually contains. `mise vars --json` / `--json-extended` (2026.10.22) do the same for `[vars]`. `status.show_env_ignore` (2026.11.5; names or globs) hides variables from the `status.show_env` prompt message.
+
+With `env_cache = true`, a config containing a `redact = true` directive is never cached, so a slow `_.source` script reruns every prompt. `env_cache_redacted = true` (2026.10.25) caches it anyway — the secret values then sit on disk, encrypted with a key every process started from that shell inherits, so it is off by default (`age`/sops values are never cached).
 
 ## Templates And Expansion
 

@@ -62,15 +62,25 @@ mise tasks deps --compact
 mise tasks validate
 mise --jobs 1 run test
 mise run --timeout 5m build
+mise run --tag lint                  # every task tagged lint (2026.11.2); also `mise tasks ls --tag lint`
+mise run --report-file report.json test   # JSON result per task (2026.11.2)
+mise run --at main test              # run at another git revision (2026.11.2)
+mise tasks history --summary [--json]     # runs, failures, median duration per task (2026.11.3)
 ```
 
 `mise run` activates tools and env vars from mise config before executing.
+
+- **Tags**: `tags = "lint"` or `tags = ["test", "slow"]` on a task (`#MISE tags=[...]` in file tasks; templates add theirs). `--tag` with no task name picks from every task; with a name or pattern it keeps matching tagged tasks and fails when none match. Repeat `--tag` for OR. Put it before the task name; in a monorepo add a pattern such as `'//...:**'`. `mise tasks ls --json` includes `tags`.
+- **Run report**: `--report-file <path>` (or `MISE_TASK_REPORT_FILE`) writes JSON when the run ends — passed, failed, Ctrl-C, or `--timeout` — with each task's `status` (`passed`, `failed`, `cancelled`, `skipped`, `cached`, `not_run`), `exit_code`, and timings; top-level `status` is `passed`/`failed`/`cancelled`/`timed_out`. Not with `--dry-run`.
+- **`--at REV`** checks the revision out into a temporary detached git worktree, runs the tasks there with that revision's config and tools, and removes it afterwards. Ignored files (`node_modules/`, `.env`) are absent; prepare them with `--at-setup 'cp -R "$MISE_RUN_AT_SOURCE/node_modules" .'`. It needs the main checkout trusted and never trusts the config at REV itself (always refused in paranoid mode).
+- **History**: each task run's arguments (redacted), duration, and outcome are kept per project under `$MISE_STATE_DIR/task-history/` (`task.history = false` stops recording; `task.history_limit`, default 20 per task). The median helps pick which checks are cheap enough to run.
+- **Task CRUD**: `mise tasks add` (`--env local`, `--global`, `--path` pick the file), `mise tasks set` (change fields), and `mise tasks rm` (2026.10.25) all take `--json` and `--dry-run`. Replacing an existing task with `tasks add` should pass `--force`; without it, it warns from 2027.5.0 and is refused from 2028.5.0.
 
 ## Output Style vs Verbosity
 
 These are two independent axes:
 
-- **Style** — `task.output` setting, `--output`, `MISE_TASK_OUTPUT`, or a per-task `output`. Values: `prefix` (default), `interleave`, `keep-order`, `replacing`, `timed`.
+- **Style** — `task.output` setting, `--output`, `MISE_TASK_OUTPUT`, or a per-task `output`. Values: `prefix` (default), `interleave`, `keep-order`, `replacing`, `timed`, `summary`.
 - **Verbosity** — `task.quiet`/`task.silent` settings, `--quiet`/`--silent`, or per-task `quiet`/`silent`.
 
 They combine: `--output prefix --quiet` keeps task-name prefixes while hiding mise's own messages. `--quiet` no longer forces un-prefixed output — use `--output interleave --quiet` for that. `--jobs 1` already forces `interleave`.
@@ -80,6 +90,10 @@ They combine: `--output prefix --quiet` keeps task-name prefixes while hiding mi
 task.output = "interleave"
 task.quiet = true
 ```
+
+`summary` (2026.11.2) holds each task's output until it ends, then prints `[test] passed in 2.1s` for a pass or everything it printed for a failure (last 64 KiB per task). It suits CI logs and coding agents — set `MISE_TASK_OUTPUT=summary` in an agent's environment. Long-running tasks (dev servers, watchers) print nothing until they exit; give them `output = "interleave"`.
+
+`task.logs = true` (2026.11.3; `MISE_TASK_LOGS=1`, off by default) keeps each task's last combined output (up to 4 MiB, redacted) so output hidden by `replacing`, `timed`, `silent`, or `summary` can be read without rerunning: `mise tasks log test` (`--path` prints the location). `raw`/`interactive` tasks, and `interleave` tasks with nothing to redact, leave no log.
 
 The `quiet` *value* of `output` is deprecated (warns from mise 2026.9.3, removed 2027.9.3); combine `interleave` with a quiet option instead. All flat `task_*` settings are deprecated in favour of the `task.*` table.
 
@@ -131,6 +145,24 @@ The object form of `confirm` can relabel the answers (templated like the message
 [tasks.deploy]
 confirm = { message = "Deploy to production?", yes = "Deploy", no = "Cancel", default = "no" }
 ```
+
+`lock` (2026.11.0) makes runs that share a resource take turns — useful when several agents or terminals run tasks in separate worktrees:
+
+```toml
+[tasks.test]
+run = "pytest"
+lock = "shop-test-db"                  # a name is shared machine-wide, across projects: make it specific
+
+[tasks."e2e:ios"]
+lock = ["ios-simulator", "shop-test-db"]
+run = "./scripts/e2e-ios.sh"
+
+[tasks.migrate]
+lock = true                            # one run at a time across this repo's worktrees
+run = "./scripts/migrate.sh"
+```
+
+Locks are taken after dependencies finish and only when the task actually runs (not when skipped or cached), held until its last command ends, and released even if mise is killed. A waiting task gives up its `--jobs` slot and reports the holder. Limit the wait with `task.lock_timeout` or `mise run --lock-timeout 5m`; `timeout` starts once the locks are held. Commands see them in `MISE_TASK_LOCKS`. `false` or `[]` turns off a lock a template sets. A locked non-`interactive` task cannot prompt for secrets; prefer per-worktree daemons when each worktree can have its own copy of the resource.
 
 `confirm` guards only the task's own `run` command. Dependencies run before the confirmation prompt unless you model them as `run = [{ task = "..." }]` or put `confirm` on the dependency tasks too.
 
@@ -188,7 +220,21 @@ data_dir = ".data/postgres" # per-checkout data instead of $MISE_STATE_DIR (giti
 provider = "local-postgres" # defined in global config as [daemon_providers.local-postgres]
 ```
 
-Named preset ports are exported as `<DAEMON>_<PORT_NAME>` (e.g. `CRDB_HTTP_PORT`). Global providers support the postgres, cockroachdb, and nats presets and are managed with `mise daemons providers ls/start/stop/restart <name>`.
+Named preset ports are exported as `<DAEMON>_<PORT_NAME>` (e.g. `CRDB_HTTP_PORT`). Since 2026.10.24 a named port can be allocated per worktree with its own base, `ports.http_port = { auto = true, base = 27000 }` (omit `base` for the preset's default; `stride` defaults to 1); keep each daemon's and port's base at least 512 apart, since mise does not check collisions across worktrees.
+
+Container daemons (2026.10.24) run an image with Docker or Podman instead of a tool mise installs; `image` cannot be combined with `run`, `task`, or `preset`:
+
+```toml
+[daemons.postgres]
+image = "postgres:18"
+port = { auto = true, base = 5432 }    # host port follows the worktree; container keeps 5432
+env = { POSTGRES_PASSWORD = "dev" }
+data_mount = "/var/lib/postgresql"
+ready_cmd = "{{ runtime }} exec {{ container }} pg_isready -U postgres"
+proxy = false                          # not HTTP
+```
+
+Other keys: `command`, `container_port`, `ports`, `volumes`, `data_dir`, `runtime` (`auto`/`docker`/`podman`), `runtime_args`. Global providers support the postgres, cockroachdb, and nats presets and are managed with `mise daemons providers ls/start/stop/restart <name>`.
 
 `mise run dev` starts and waits for the daemon, which keeps running after the task exits. Manage them with `mise daemons ls/start/stop/logs/urls`. See the Daemons doc in [sources.md](sources.md) for presets, `[daemon_groups]`, `[daemons_settings]`, and per-worktree URLs.
 
@@ -218,6 +264,8 @@ For state no file records, `skip_if` (2026.10.10) runs a shell command before th
 skip_if = "examplectl workspace show"
 run = "examplectl workspace init"
 ```
+
+Outside a monorepo root, `mise run --affected 'test:*'` (2026.11.3) runs only the matching tasks whose `sources` include a file changed in Git (same `--affected-base`/`--affected-head` defaults, `HEAD~1`..`HEAD` plus uncommitted and untracked files); a change to the task's config file or `file` script also counts, and a task without `sources` always runs. `--affected-explain --dry-run` shows why each task was or was not picked; `--affected-json` prints the reasons. Under `monorepo_root = true` it still selects projects instead (see [workspaces-and-caching.md](workspaces-and-caching.md)).
 
 For content-addressed reuse of results across input switches and deleted outputs, see the experimental artifact cache in [workspaces-and-caching.md](workspaces-and-caching.md).
 
@@ -255,6 +303,8 @@ mise watch serve --watch src --exts ts --restart
 
 `mise watch` uses task `sources` by default and follows dependency sources for watched tasks. `--no-vcs-ignore`, `--no-project-ignore`, and `--no-global-ignore` widen what is watched. Extra flags are passed through to watchexec, so check `mise watch --help` for the installed version.
 
+For scripts and agents that must block until a file changes, `mise watch test --once` (2026.10.25) runs nothing at start, waits for a source change, runs the task once, and exits with its status (implies `--postpone`; exits 1 if watchexec stops first). To keep watching but stop at the first failure, use `--exit-on-error` without `--once`.
+
 ## OpenTelemetry
 
 Experimental. Export traces of `mise run` (a root span with setup such as tool installs, plus per-task and monorepo-root spans) to any OTLP collector:
@@ -266,6 +316,8 @@ otel.logs = true      # optional: also ship task stdout/stderr as OTLP logs (pri
 ```
 
 Configure the endpoint with standard variables such as `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`; without `otel.enabled`, mise ignores them. Since 2026.10.5 exporting requires `experimental = true`, as do `git::` remote task files (`file = "git::..."`) and `git::`/`oci::` entries in `task_config.includes`: `mise run` refuses them, while `mise tasks ls/info` show the task with a warning, and gated includes are skipped. Since 2026.10.11 a remote task file (`file = "https://..."` or `git::`) whose `#MISE` headers contain template syntax needs the naming config trusted before `mise tasks ls/info/validate` render it; untrusted, they fail with `Config files in … are not trusted`. Plain headers still list without trust.
+
+Since 2026.11.4 `task_config.includes` (and config `include`) also accept `zip::https://…/shared-tasks-1.0.0.zip`: the archive is unpacked and loaded like a local task directory (shebang files made executable). Use a versioned URL — a cached download is reused for the same URL unless `task.remote_no_cache` is set.
 
 ## Secrets
 

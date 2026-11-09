@@ -165,12 +165,13 @@ mise generate tool-stub ./bin/rg --lock
 
 - If the wrong tool version is active, run `mise config` and `mise ls --current` from the exact directory where the command fails.
 - If activation does not work, inspect shell setup and prefer `mise exec -- <command>` as a reliable temporary path.
-- If task output is confusing under parallel execution, remember style and verbosity are separate axes: `mise run --output interleave --quiet <task>`, or set `task.output` and `task.quiet`. `--jobs 1` already forces interleave.
+- If task output is confusing under parallel execution, remember style and verbosity are separate axes: `mise run --output interleave --quiet <task>`, or set `task.output` and `task.quiet`. `--jobs 1` already forces interleave. For agents and CI logs, `--output summary` (or `MISE_TASK_OUTPUT=summary`) prints only what failed; see [tasks.md](references/tasks.md).
 - If an install fails with ``option `x` is not used by the <backend> backend``, or config keys seem ignored, run `mise config explain` to spot unknown or deprecated keys; backends now reject options they do not read.
 - If mise warns about a deprecated setting, check for flat `task_*` names (move them under `task.*`) and `env.mise.*` directives (use `env._.*`).
 - If installs hit GitHub rate limits, configure GitHub authentication or use `mise.lock` so resolved URLs are reused.
 - If config is ignored or prompts for trust, run `mise trust --show` and `mise doctor`. Remember safe files load untrusted and `mise run/install/exec/watch` auto-trust; `mise trust --all` covers subdirectories too. Do not blanket-trust unknown config without reviewing it.
 - If env vars are missing, compare `mise env --json`, `mise env --dotenv`, and the shell's activation state.
+- If `npm:` installs fail provenance verification (on by default since 2026.11.1) or `mise install --locked` reports a missing lockfile checksum (required since 2026.11.0), see [dev-tools.md](references/dev-tools.md) and [advanced.md](references/advanced.md) before turning either check off.
 - If `npm:` installs fail because a package needs lifecycle scripts, identify the package that needs a build and add it to `allow_builds` before opting into all npm scripts.
 
 ## Validation

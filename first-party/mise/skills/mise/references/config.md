@@ -28,6 +28,7 @@ include = [
   "./config/tools.toml",   # local path (2026.10.6+), relative to the including file or absolute
   "git::https://github.com/myorg/platform.git//mise.toml?ref=v1.4.0",
   "oci::ghcr.io/myorg/platform-config@sha256:<digest>",
+  "zip::https://example.com/platform-config-1.4.0.zip",   # 2026.11.4: a zip with mise.toml at its root
 ]
 ```
 
@@ -158,7 +159,18 @@ env = ["development"]
 
 `MISE_ENV` cannot be set in `mise.toml` because it decides which config files are loaded. Multiple environments can be comma-separated, with later ones taking precedence.
 
-For a personal selection, use an untracked `.miserc.local.toml` in the project (add it to your global git ignore), or `miserc.local.toml` in `MISE_CONFIG_DIR` for the whole machine. Local files override only the fields they set (`env` replaces the list; `env = []` clears it). Lookup order: each directory upward (`.miserc.local.toml`, `.miserc.toml`, `.config/miserc.toml`), then `~/.config/mise/miserc.local.toml`, `~/.config/mise/miserc.toml`, `/etc/mise/miserc.toml`. `-E`/`MISE_ENV` still win, and `--no-config` skips miserc discovery.
+For a personal selection, use an untracked `.miserc.local.toml` in the project (add it to your global git ignore), or `miserc.local.toml` in `MISE_CONFIG_DIR` for the whole machine. Local files override only the fields they set (`env` replaces the list; `env = []` clears it). Lookup order: each directory upward (`.miserc.local.toml`, `.miserc.toml`, `.config/miserc.toml`), then `~/.config/mise/miserc.local.toml`, `~/.config/mise/miserc.toml`, `/etc/mise/miserc.toml`. `-E`/`MISE_ENV` still win, and `--no-config` skips miserc discovery. Since 2026.11.0 a project miserc file (which loads without trust) can add environments but can no longer drop or reorder ones the system or global miserc files select — so a security baseline loaded from a global environment cannot be switched off by a repository.
+
+A miserc file can name sets of environments (2026.11.1); `env`, `-E`, and `MISE_ENV` expand a set name one level (order kept, duplicates dropped; a name that is not a set is an ordinary environment). A project miserc cannot redefine a global set. `mise bootstrap -E workstation --save-env` writes the selection to `miserc.local.toml`:
+
+```toml
+# miserc.toml (shared)
+[env_sets]
+workstation = ["workstation", "ssh", "raycast"]
+
+# ~/.config/mise/miserc.local.toml (this machine)
+env = ["workstation"]
+```
 
 Precedence for env-specific local files:
 
