@@ -1,0 +1,16 @@
+Reason: audit 2026-11: move main-thread i/o off the main actor correctly
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index b00c744..1c8e23c 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -186,7 +186,7 @@ func loadData() async {
+ 
+ | Cause | Symptom | Fix |
+ |-------|---------|-----|
+-| Synchronous I/O on main thread | Network/file reads block UI | Move to `Task { }` or background actor |
++| Synchronous I/O on main thread | Network/file reads block UI | Move it into a `@concurrent` async function or a background actor (`Task { }` from main-actor code stays on the main actor) |
+ | Lock contention | Main thread waiting on a lock held by background work | Use actors or reduce lock scope |
+ | Layout thrashing | Repeated `layoutSubviews` calls | Batch layout changes, avoid forced layout |
+ | JSON parsing large payloads | UI freezes during data load | Parse on a background thread |
