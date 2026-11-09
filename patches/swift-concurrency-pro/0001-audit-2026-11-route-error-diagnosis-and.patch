@@ -1,0 +1,15 @@
+Reason: audit 2026-11: route error diagnosis and migration to swift-concurrency
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index 5549099..edd1d5e 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: swift-concurrency-pro
+-description: Reviews Swift code for concurrency correctness, modern API usage, and common async/await pitfalls. Use when reading, writing, or reviewing Swift concurrency code.
++description: Reviews Swift code for concurrency correctness, modern API usage, and common async/await pitfalls. Use when reading, writing, or reviewing Swift concurrency code. For diagnosing a specific concurrency compiler error or migrating a module to Swift 6, prefer swift-concurrency.
+ license: MIT
+ metadata:
+   author: Paul Hudson
