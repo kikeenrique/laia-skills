@@ -1,0 +1,16 @@
+Reason: audit 2026-11: read the references once instead of before every edit
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index cfd8a9d..d30bf9d 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -18,7 +18,7 @@ When helping with `-fbounds-safety` adoption or code changes, ask clarifying que
+ 
+ ### Required reading before adoption work
+ 
+-You MUST have fully read the following three documents (via the Read tool) at the start of an adoption task, and re-read them via the Read tool before any source-modifying step in the adoption workflow unless their content is verifiably fresh in your active context:
++Read these three documents at the start of an adoption task; their workflow and annotation rules apply to every source change you make:
+ 
+ - [adoption-strategies.md](references/adoption-strategies.md) — the workflow for adopting `-fbounds-safety` in an existing C project (full and header-only modes).
+ - [language-overview.md](references/language-overview.md) — the language reference for `-fbounds-safety`: pointer kinds, annotations, and the rules that govern them.
