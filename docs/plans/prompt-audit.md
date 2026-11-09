@@ -1,9 +1,66 @@
 # Prompt audit of the Claude Code configuration
 
-Status: **done 2026-10-08**. The audit looked for instructions that no longer fit the model, the
-repo, or each other, using the `/claude-api prompt-audit` method. Every finding with a proposed edit
-is fixed. The rest are flags, recorded below for the next audit. Re-run the audit at the next model
-release or after a large skill upgrade.
+Status: **second audit done 2026-11-10**; the first was 2026-10-08. Each looked for instructions that
+no longer fit the model, the repo, or each other, using the `/claude-api prompt-audit` method. Every
+high- and medium-confidence finding is fixed, except the three under *Open decisions*. The rest are
+flags for the next audit. Re-run the audit at the next model release or after a large skill upgrade.
+
+## Second audit (2026-11-10)
+
+**Target:** Claude Opus 5.5, as before. Since the model hadn't changed, the audit covered only what was
+new or changed since 2026-10-08:
+
+- the 13 Xcode 27.2 skills from `third-party/kikeenrique__xcode-skills`, security-reviewed on 2026-10-28 but never prompt-audited
+- third-party skills upgraded or patched since then (`swiftui-pro` 2.0, `swiftui-expert-skill` 5.3, `swift-concurrency`, `formatting-build-output`, `watchos`, `apple-appstore-reviewer`, `protocol-reverse-engineering`, `debugging-instruments`, the `xcode-build-*` skills, `ios-simulator`, `axe`)
+- the five first-party skills
+- `AGENTS.md`, `~/.claude/CLAUDE.md`, `RTK.md`, and the `visionos-engineer` subagent
+- the routing between all 72 installed skills, judged from their descriptions
+
+Five reviewers each read one batch; their reports (kept untracked in `tmp/prompt-audit-2026-11-09/`) held
+11 high, 35 medium, and about 25 low findings.
+
+**What it found:**
+
+1. **Skills that contradict each other on an API.** `swiftui-expert-skill` said `enumerated()` works in
+   `ForEach` from Swift 6.1 (SE-0459 is Swift 6.2, as our `swiftui-specialist` patch says) and told the
+   model to always use `alert(_:isPresented:presenting:)`, while three other skills prefer `alert(_:item:)`.
+   `debugging-instruments` moved main-thread I/O off the main thread with `Task { }`, which stays on the
+   main actor. `watchos` used WatchKit haptics where the SwiftUI skills use `sensoryFeedback`.
+2. **Dated prompt text in Apple's skills.** Five open with "unconditionally supersedes any prior
+   training", which our own patches show isn't safe to take literally. `app-resizability` tells the model
+   how much to think, repeats "an empty diff is a failure" about seven times, describes its grader, and
+   mandates a subagent per phase. Two skills script the work as a TODO-list choreography.
+3. **Routing.** The App Intents descriptions were over 2,000 characters, and Claude Code's skill listing
+   cut them, and about 20 other skills, before their routing sentence. Several families (Swift
+   concurrency, the simulator skills, `ui-ux-pro-max` against the SwiftUI skills, the contrast audit
+   against `ios-accessibility`) claimed the same requests with no boundary.
+4. **Small factual breaks**: a pointer to a section that doesn't exist, a task the skill never creates,
+   a worked test example missing `@Test`, `${SKILL_DIR}` (never set) in script paths, a trace saved to
+   `~/Desktop`, and an `AGENTS.md` line telling the agent to push.
+
+**Done:**
+
+| What | Where |
+|---|---|
+| First-party: replay and mise descriptions rewritten as intent categories (both near the 1024-character cap, and mise's grew with every re-check); version-relative and pre-1.0 history dropped; an upstream Xcode 27 beta note removed; `ios-simulator-ui-flow` names its boundary with `axe` and `ios-simulator`; `AGENTS.md` makes the mirror push the owner's step | `e032c43` (mise 0.4.7, replay 0.2.4, ios-simulator-ui-flow 0.3.4) |
+| Third-party: 19 patches, one per skill: `app-resizability`, `swiftui-expert-skill`, `swiftui-specialist`, `swiftui-whats-new-27`, `building-document-based-swiftui-applications`, `app-intents-specialist`, `app-intents-whats-new-27`, `accessibility-voiceover-specialist`, `accessibility-sufficient-contrast-specialist`, `audit-xcode-security-settings`, `modernize-tests`, `adopt-c-bounds-safety`, `xctrace`, `swiftui-pro`, `xcode-build-orchestrator`, `debugging-instruments`, `watchos`, `swift-concurrency-pro`, `ui-ux-pro-max` | `e53f014`..`5da7dee`, `patches/<skill>/` |
+
+**Open decisions** (owner):
+
+- **`~/.claude/agents/visionos-engineer.md`** (user-level, affects every project). It names `swiftui-liquid-glass`, removed on 2026-10-28; `swiftui-expert-skill` covers Liquid Glass now. It also tells the agent to describe the UI and drive it with AXe on the visionOS Simulator, but AXe refuses input on visionOS (`axe` skill), so only launch, screenshots, and video work there.
+- **`~/.claude/CLAUDE.md`** (user-level). It sends `find` to the Glob/Grep tools with no fallback; this audit's subagent sessions had neither tool. Proposed: "the Glob/Grep tools when the session has them; otherwise `ls` and `grep -rl` (both allowlisted)". Was a low flag in the first audit.
+- **Hidden interactive elements.** `accessibility-voiceover-specialist` exempts every `.accessibilityHidden(true)` element from its audit; `ios-accessibility` calls hiding an interactive one an anti-pattern. Both are upstream text. The suggested patch limits the exemption to non-interactive elements.
+- The `axe` fork is missing our `describe-ui`-as-data line; that is roadmap item *`axe` and the AXe fork*.
+
+**Flags (no edit):** `swift-concurrency`'s default `Task { @concurrent in … MainActor.run }` pattern is
+stated more strongly than in `swift-concurrency-pro` and `swiftui-pro` (pick one style); `xctrace` claims
+"any profiling or optimization work"; the `xcode-build-*` scripts are called relative to the user's
+project rather than the skill; the `watchos` patch's "ClockKit removed in watchOS 11" isn't confirmed by
+cupertino; capture and screenshot examples in `protocol-reverse-engineering`, `axe`, and `ios-simulator`
+write to the project root; `cupertino` lists `UITableView` among deprecated APIs; replay's corelibs note
+carries a date to re-check at the next Swift release. The rest are in the batch reports.
+
+## First audit (2026-10-08)
 
 ## Scope and assumptions
 
