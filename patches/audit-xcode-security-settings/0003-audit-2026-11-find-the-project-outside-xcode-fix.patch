@@ -1,0 +1,44 @@
+Reason: audit 2026-11: find the project outside xcode, fix the task name
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index 8ec11cc..719259e 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -21,7 +21,7 @@ When XcodeGlob, XcodeGrep, XcodeRead, XcodeLS, and XcodeUpdate tools are availab
+ - **AddEntitlement** for adding or updating a target's entitlements — pass `targetName`, `entitlementKey`, `entitlementValueType` (`bool` / `string` / `int` / `stringArray` / `dictionary`), and the value. Always prefer it for entitlement changes; it adds or updates only and cannot remove keys.
+ - **XcodeListTargets** for enumerating targets — do not parse `project.pbxproj` manually. Returns each target's `PRODUCT_TYPE_IDENTIFIER` and role flags (`IS_AGGREGATE`, `IS_TEST_TARGET`, `IS_APP_EXTENSION`, `SUPPORTS_HOSTING_TESTS`) directly.
+ 
+-**Project root and name are already in the system prompt context.** Do NOT run `ls` to "verify" the project layout before starting. The system prompt already tells you the working directory and the project structure.
++**Inside Xcode, the project root and name are in the system prompt context**; don't run `ls` to verify the layout. Outside Xcode, find the `.xcodeproj` or `.xcworkspace` under the working directory with a file search; its name is the project name.
+ 
+ **Empty XcodeGlob results are not a failure.** The `.xcodeproj` and `.xcworkspace` are not indexed as files inside the Xcode workspace — `XcodeGlob "**/*.xcodeproj"` correctly returns 0 matches. Use the project name from system-prompt context instead. Do not fall back to filesystem `ls`/`find`.
+ 
+@@ -41,6 +41,9 @@ When the Xcode tools above (`XcodeListTargets`, `GetTargetBuildSettings`, `Updat
+ - **Never hand-edit `project.pbxproj`**, and never rewrite it with a script. Reading it with `grep` stays allowed.
+ - **Audit read-only with `xcodebuild`:** `xcodebuild -project <ProjectName>.xcodeproj -target <TargetName> -configuration <Configuration> -showBuildSettings -json`. Save the output to a file and filter it with `scripts/filter_build_settings.py <saved-file>`, which reads this format as well as `GetTargetBuildSettings` output. It gives evaluated values only, so `--show-overrides` has no effect: find where a value is set by grepping the `.xcconfig` files and `project.pbxproj`.
+ - **Change settings** only in the project's `.xcconfig` files, or in the project generator's manifest when the project is generated (Tuist `Project.swift`, XcodeGen `project.yml`); a generated `project.pbxproj` is overwritten on the next generation. When neither applies, list the exact settings, values, and targets for the user to set in Xcode, or ask the user how to proceed.
++- **Files:** use your own file tools in place of `XcodeGlob`/`XcodeGrep`/`XcodeRead`/`XcodeWrite`/`XcodeRM`, with paths relative to the project root; write the plan file there.
++- **Targets:** read them from `xcodebuild -list -project <ProjectName>.xcodeproj`, or from the generator manifest.
++- **Entitlements:** edit the plist that the target's evaluated `CODE_SIGN_ENTITLEMENTS` names with your file-editing tool; when a target has none, list the keys for the user to add under Signing & Capabilities.
+ 
+ ## Bundled Reference Documents
+ 
+@@ -113,7 +116,7 @@ The pause exists so the briefing stays on screen long enough to read; Discovery
+ ## Phase 2: Discovery
+ 
+ Read the Environment block in the system prompt. Relevant fields:
+-- `Primary working directory` — the project root (the project name is the basename).
++- `Primary working directory` — the project root (the project name is the basename) (inside Xcode; outside it, use the project found above).
+ - `Is a git repository` — whether the project is git-tracked (used by the source-control check in Phase 1).
+ 
+ ## Track Progress
+@@ -382,7 +385,7 @@ For each task:
+ 
+ 3. **Apply** the change set per target: add or update entitlements with `AddEntitlement` (creating the `.entitlements` file and wiring `CODE_SIGN_ENTITLEMENTS` when the target has none); and apply build-setting changes.
+ 
+-After all targets are processed, report: "Enabled Enhanced Security on N target(s). Added a target-level `ENABLE_POINTER_AUTHENTICATION = NO` on T target(s) that link arm64e-less binary dependencies. Universal `arm64`/`arm64e` binary on U library/framework target(s)." If the project is pbxproj-only and `Verify Enhanced Security at project level` succeeded, append: "Enhanced Security is enabled at the project level (you set it in Xcode)." If the user skipped the guide step, append: "Project-level `ENABLE_ENHANCED_SECURITY` was not enabled this run — re-run the skill after enabling it in Xcode."
++After all targets are processed, report: "Enabled Enhanced Security on N target(s). Added a target-level `ENABLE_POINTER_AUTHENTICATION = NO` on T target(s) that link arm64e-less binary dependencies. Universal `arm64`/`arm64e` binary on U library/framework target(s)." If the project is pbxproj-only and the `Enable Enhanced Security at project level` task completed, append: "Enhanced Security is enabled at the project level (you set it in Xcode)." If that task didn't run (its sub-item was unchecked), append: "Project-level `ENABLE_ENHANCED_SECURITY` was not enabled this run — re-run the skill after enabling it in Xcode."
+ 
+ The user already approved this in "Phase 4" — no further prompt is needed.
+ 
