@@ -264,6 +264,8 @@ HAR files are better when the response is realistic or large; stubs are better w
 
 Only the names listed in `.headers([...])` are compared, so it's safe to set more in `matchingRequestHeaders(_:)` than you match on.
 
+**Download tasks on Linux:** stubs and HAR playback work with data tasks everywhere. On Linux, a `download(for:)` / `download(from:)` served by Replay crashes the test runner (a swift-corelibs-foundation bug, still present in Swift 6.4.2 and `main` as of November 2026). Disable such tests on `canImport(FoundationNetworking)` or use `data(for:)`; see [troubleshooting.md](references/troubleshooting.md#test-runner-crashes-on-linux-in-urlsessiondownloadfor).
+
 ---
 
 ## Parallel execution (`scope: .test`)
@@ -321,4 +323,5 @@ XCTest or manual control is supported via lower-level APIs — `Playback.session
 - **Don't** set `REPLAY_RECORD_MODE` in CI. Recording is a local dev action.
 - **Don't** use `URLSession.shared` with `scope: .test`. Use `Replay.session`.
 - **Don't** pass a bundle's resource directory to `.playbackIsolated(replaysRootURL:)`. It overrides recording too, so fixtures land in DerivedData and die with the next build. Use `replaysFrom:`.
+- **Don't** run Replay-served download tasks on Linux. They crash the test runner (corelibs #5465); gate them on `canImport(FoundationNetworking)`.
 - **Don't** reach for `.custom(...)` matchers before trying `.method + .path + .query`. Built-in matchers cover almost everything.

@@ -35,6 +35,13 @@
       "prompt": "I'm using inline stubs, no HAR file. I want to assert my client sends `X-API-Version: 2`, so I wrote `.replay(stubs: [.get(\"https://api.example.com/users/42\", 200, [\"Content-Type\": \"application/json\", \"X-API-Version\": \"2\"], { #\"{\\\"id\\\":42}\"# })], matching: [.method, .path, .headers([\"X-API-Version\"])])`. It always fails with `No Matching Entry in Archive`. Why?",
       "expected_output": "Should explain that a `Stub`'s `headers:` argument is the RESPONSE headers, while `Matcher.headers([...])` compares REQUEST headers — and that a stub has no expected request headers by default, so `.headers([\"X-API-Version\"])` only matches when that header is absent from the incoming request, i.e. never. Fix: chain `.matchingRequestHeaders([\"X-API-Version\": \"2\"])` onto the stub, keeping the response headers as-is. Should note that only the names listed in `.headers([...])` are compared, so extra entries in `matchingRequestHeaders(_:)` are harmless, and that HAR-based playback is unaffected. Should NOT suggest dropping the `.headers` matcher as the primary fix.",
       "files": []
+    },
+    {
+      "id": 6,
+      "name": "linux-download-crash",
+      "prompt": "My Swift package's tests pass on macOS, but on Linux CI (swift:6.4-noble) the test runner dies with 'exited with unexpected signal'. The crashing test uses `.replay(stubs: [...])` and calls `try await Replay.session.download(for: request)`. Frame 0 is `closure #1 in ... URLSession.download(for:delegate:)` in libFoundationNetworking.so. Is my stub wrong?",
+      "expected_output": "Should say the stub is fine: this is a swift-corelibs-foundation bug (issue #5465, fix proposed in #5658) where a download task served by a custom URLProtocol (Replay's playback) completes with a nil location and no error, and the async `download(for:)` force-unwraps it. Should note macOS is unaffected, data tasks work, and `withKnownIssue` cannot catch a crash. Fix: disable the test on Linux with `#if canImport(FoundationNetworking)` feeding `.enabled(if:)`, or switch the code under test to `data(for:)` and write the file itself. Should NOT suggest re-recording, changing matchers, or editing the stub as the fix.",
+      "files": []
     }
   ]
 }

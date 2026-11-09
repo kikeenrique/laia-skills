@@ -126,6 +126,42 @@ extension Trait where Self == ReplayTrait {
 
 Adjust the `.deletingLastPathComponent()` hops to match where the support file sits relative to `Replays/`. `#filePath` is baked in at compile time, so the path belongs to whichever machine compiled the binary — fine when CI compiles its own tests, wrong only if you copy a built test bundle to another machine.
 
+## Test runner crashes on Linux in `URLSession.download(for:)`
+
+**Symptom:** on Linux, a test whose code downloads through Replay (`download(for:)`, `download(from:)`, or a `URLSessionDownloadTask`) kills the whole test runner (`exited with unexpected signal`), with frame 0 in `URLSession.download(for:delegate:)` in `libFoundationNetworking.so`. The same test passes on macOS.
+
+**Cause:** a swift-corelibs-foundation bug, not Replay's. Replay serves responses through a custom `URLProtocol`, which hands the body over as data. For a download task, Darwin writes that data to a temporary file; corelibs does not, so the task completes with `location == nil` and `error == nil`:
+
+- the async `download(for:)` / `download(from:)` force-unwrap the location and trap;
+- `downloadTask(with:completionHandler:)` reports success with a `nil` location;
+- the `URLSessionDownloadDelegate` path traps as well.
+
+It affects every request Replay intercepts (HAR playback, stubs, and live or passthrough mode, which still deliver through its `URLProtocol`), on every toolchain through Swift 6.4.2 and `main` (6.5-dev) as of November 2026. Tracked upstream in [swift-corelibs-foundation#5465](https://github.com/swiftlang/swift-corelibs-foundation/issues/5465); fix proposed in [#5658](https://github.com/swiftlang/swift-corelibs-foundation/pull/5658). Data tasks are unaffected.
+
+Because the process dies, `withKnownIssue` cannot catch it, and every test after it in the run is lost.
+
+**Fix, until a toolchain ships the corelibs fix:**
+
+1. **Disable the test on Linux** (FoundationNetworking means corelibs):
+
+   ```swift
+   #if canImport(FoundationNetworking)
+   let stubbedDownloadsWork = false  // swift-corelibs-foundation#5465
+   #else
+   let stubbedDownloadsWork = true
+   #endif
+
+   @Test(
+       .replay(stubs: [.get("https://example.com/app.zip", 200, [:], { "PK" })]),
+       .enabled(if: stubbedDownloadsWork, "Stubbed downloads crash on Linux (corelibs #5465)")
+   )
+   func downloadsArchive() async throws { /* ... */ }
+   ```
+
+2. **Or, when you own the code under test,** fetch with `data(for:)` and write the file yourself. That path works through Replay on both platforms.
+
+Don't try to work around it inside a custom `URLProtocol`: the file URL comes from an internal corelibs property that third-party protocols cannot set.
+
 ## CI records fixtures, dev doesn't
 
 Someone set `REPLAY_RECORD_MODE` in the CI environment. Remove it — default (`none`) is correct for CI. Recording is a dev-only action.
