@@ -114,8 +114,7 @@ struct CheckCommand: ParsableCommand {
             }
             guard !patched.isEmpty, let latest = status.latest else { continue }
             let git = Git(context.repo.root.appendingPathComponent(status.path))
-            let commit = git.attempt("rev-parse", "--verify", "--quiet", "\(latest)^{commit}")
-                ?? git.attempt("rev-parse", "--verify", "--quiet", "origin/\(latest)^{commit}")
+            let commit = UpstreamChecker.latestCommit(of: status, git: git)
             for skill in patched {
                 let patches = Patches.list(for: skill.name, repo: context.repo.root)
                 guard let commit, let pin = try? Pins.pin(for: skill, repo: context.repo.root),

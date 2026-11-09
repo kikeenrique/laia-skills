@@ -118,6 +118,15 @@ public enum UpstreamChecker {
                             state: behind > 0 ? .outdated : .upToDate, note: note.isEmpty ? nil : note)
     }
 
+    /// The commit `status.latest` names, when it is available locally: the release tag, or the
+    /// remote-tracking branch for a branch pin. Never a local branch of the same name, which stays
+    /// wherever the checkout left it (often the clone date) and would describe an old version.
+    public static func latestCommit(of status: SourceStatus, git: Git) -> String? {
+        guard let latest = status.latest else { return nil }
+        let ref = status.mode == .tagged ? "refs/tags/\(latest)" : "refs/remotes/origin/\(latest)"
+        return git.attempt("rev-parse", "--verify", "--quiet", "\(ref)^{commit}")
+    }
+
     static func shallowStatus(of submodule: Submodule, kind: String, git: Git, pinned: String) -> SourceStatus {
         let pinnedRelease = (git.attempt("tag", "--points-at", "HEAD") ?? "")
             .split(separator: "\n").compactMap { ReleaseVersion(tag: String($0)) }.max()

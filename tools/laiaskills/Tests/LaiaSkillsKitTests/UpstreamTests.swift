@@ -45,6 +45,34 @@ import LaiaSkillsTestSupport
         #expect(status.state == .outdated)
     }
 
+    @Test func latestCommitOfBranchPinIgnoresStaleLocalBranch() throws {
+        let fixture = try Fixture()
+        try fixture.originRepo("origin", commits: [("a", nil), ("b", nil), ("c", nil)])
+        try fixture.git("clone", "--quiet", fixture.url("origin").path, "repo/source")
+        let head = try fixture.git("rev-parse", "HEAD", in: "repo/source")
+        // The pin sits one commit behind, and the local `main` was left two behind.
+        try fixture.git("checkout", "--quiet", "HEAD~1", in: "repo/source")
+        try fixture.git("branch", "--force", "main", "HEAD~1", in: "repo/source")
+
+        let submodule = Submodule(name: "s", path: "source", url: "", branch: nil, shallow: false)
+        let status = UpstreamChecker.status(of: submodule, repo: fixture.url("repo"), fetch: false)
+        let git = Git(fixture.url("repo/source"))
+        #expect(status.latest == "main")
+        #expect(UpstreamChecker.latestCommit(of: status, git: git) == head)
+    }
+
+    @Test func latestCommitOfTaggedPinIsTheTag() throws {
+        let fixture = try Fixture()
+        try fixture.originRepo("origin", commits: [("a", "v1.0.0"), ("b", "v1.1.0")])
+        try fixture.git("clone", "--quiet", fixture.url("origin").path, "repo/source")
+        let tagged = try fixture.git("rev-parse", "v1.1.0^{commit}", in: "repo/source")
+        try fixture.git("checkout", "--quiet", "v1.0.0", in: "repo/source")
+
+        let submodule = Submodule(name: "s", path: "source", url: "", branch: nil, shallow: false)
+        let status = UpstreamChecker.status(of: submodule, repo: fixture.url("repo"), fetch: false)
+        #expect(UpstreamChecker.latestCommit(of: status, git: Git(fixture.url("repo/source"))) == tagged)
+    }
+
     @Test func shallowBranchPinAtHeadHasNoNote() throws {
         let fixture = try Fixture()
         try fixture.originRepo("origin", commits: [("a", nil), ("b", nil)])
