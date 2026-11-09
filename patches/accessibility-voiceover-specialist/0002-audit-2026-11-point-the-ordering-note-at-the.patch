@@ -1,0 +1,16 @@
+Reason: audit 2026-11: point the ordering note at the reading order section
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index b282686..c85437c 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -285,7 +285,7 @@ Surface any of the following as recommendations. None affect the verdict.
+   exposed via `.accessibilityAction(named:)` /
+   `accessibilityCustomActions`.
+ - **Ordering**: cases where the visual layout order will not match the
+-  default reading order — see Ordering section below.
++  default reading order — see Reading order above.
+ - **Additional traits**: opportunities to use traits beyond the four
+   FAIL-eligible ones (UpdatesFrequently, SearchField, Selected, etc.).
+ 
