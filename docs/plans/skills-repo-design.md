@@ -5,7 +5,7 @@ skill (63) is managed by it, third-party skills can carry local patches (5.8), a
 replace Commander for looking at and discovering skills (5.9), reworked on 2026-10-07 after the
 owner's first interactive run. The skills' prompt text was audited and fixed on 2026-10-08
 ([prompt-audit.md](prompt-audit.md)), and all 25 sources were brought up to date on 2026-10-09. See the
-[roadmap](#7-roadmap). Last updated 2026-10-09.
+[roadmap](#7-roadmap). Last updated 2026-11-09.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -565,6 +565,7 @@ of third-party sources.
 | 2026-10-07 | **Tuist skills source confirmed**: `tuist/agent-skills` 0.3.0 stays. `tuist/agent-plugin` has the same 12 skills (two renamed) plus Tuist's MCP server in the vendor-neutral Agent Plugins format, and no releases. The MCP server can be added on its own if needed |
 | 2026-10-11 | **`visionos-agents` becomes a router; its skills go third-party** (`e576cb4`, `314353e`): the 22 skills copied from `tomkrikorian/visionOSAgents` were barely changed (no `references/` edits; 12 `SKILL.md` files with 2–10 lines from the prompt audit, `tkr-skill-writer` with its structure section rewritten), so they are now a third-party source pinned to `c359c3a` (no releases) with 13 patches. The plugin ships only our router (0.2.0, breaking). The stub `componentname.md` and logo assets added only to satisfy the validator were dropped. `swiftui-view-refactor` removed; `remove` left its patch folder behind, which `doctor` reported |
 | 2026-10-11 | **`remove` deletes the skill's patches**: `patches/<skill>/` is deleted and staged with the `skills.json` change, and `commit` puts it in the removal commit, listing the files. 103 tests (80 library, 23 end to end) |
+| 2026-11-09 | **Upgrade round, 4 of 25 sources**: xcsift v1.7.4, AvdLee Swift Concurrency 2.3.1 and SwiftUI 5.3.0, mise v2026.11.5 (plugin 0.4.6), cupertino v1.5.0 (plugin 0.2.3). Cupertino upstream is active again and ships fresh doc bundles (`cupertino setup`), so the manual index top-up was dropped from the roadmap. `wshobson/agents`, `rshankras/claude-code-apple-skills`, and `github/awesome-copilot` left behind; the first needs its `protocol-reverse-engineering` patch reworked |
 
 ### Pending
 
@@ -576,9 +577,8 @@ In priority order.
 | 2 | Upgrade routine for all sources | owner | `check`, then `upgrade` per source; 8 of the 21 third-party sources have no releases and track a branch head (`tomkrikorian/visionOSAgents` among them: pin a release once upstream tags one). The 2026-10-09 manual run (3 of 25 behind, about an hour including verification) is the reference for a cadence, e.g. monthly or after each release season; possibly a scheduled task running `check --exit-code` |
 | 3 | Replay: Linux crash with `URLSession.download(for:)` | owner + tool | Notes in `tmp/replay/replay-linux-download-crash.md`: a force-unwrap in swift-corelibs-foundation, reached because `PlaybackURLProtocol` serves the body from memory. Observed on Replay 0.4.0; re-test on the pinned 0.6.0, then report to `mattt/Replay` or document the limitation in the `replay` skill |
 | 4 | Re-check first-party pins as their upstreams release | tool + owner | All current on 2026-10-09 (mise re-pinned to v2026.10.5); four since `visionos-agents` became a router on 2026-10-11. When `check` shows one behind: `upgrade` without `--commit`, verify against upstream, `commit --bump` as fits |
-| 5 | Optional: top up the cupertino doc index | owner | The corpus is frozen at bundle v1.4.0 (crawled 2026-06-20, WWDC26 beta era) and upstream is dormant. When stale iOS 27 docs hurt: one batched overnight `cupertino fetch`, then a single `save` (about 40 minutes whatever the size) |
-| 6 | Re-run the prompt audit | tool + owner | At the next Claude model release or after a large skill upgrade. Starting point and keep-list in [prompt-audit.md](prompt-audit.md); its low-confidence flags are the first things to re-check |
-| 7 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
+| 5 | Re-run the prompt audit | tool + owner | At the next Claude model release or after a large skill upgrade. Starting point and keep-list in [prompt-audit.md](prompt-audit.md); its low-confidence flags are the first things to re-check |
+| 6 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
 
 ### Implementation notes
 
