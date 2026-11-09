@@ -19,9 +19,18 @@ description = "Run the laiaskills tests on this machine"
 run = "swift test --package-path tools/laiaskills"
 
 [tasks."laiaskills:test-linux"]
-description = "Run the laiaskills tests in the swift:6.4 Ubuntu 26.04 image, like CI (needs docker or podman)"
+description = "Run the laiaskills tests in the swift:6.4 Ubuntu 26.04 image, like CI (needs docker, podman, or Apple container)"
 run = '''
-runtime=$(command -v docker || command -v podman) || { echo "Install docker or podman first." >&2; exit 1; }
-"$runtime" run --rm --volume "$MISE_PROJECT_ROOT:/repo" --workdir /repo swift:6.4.0-resolute \
-  bash -c "git config --global --add safe.directory '*' && swift test --package-path tools/laiaskills --build-path tools/laiaskills/.build/linux"
+runtime=$(command -v docker || command -v podman || command -v container) \
+  || { echo "Install docker, podman, or Apple container first." >&2; exit 1; }
+# Apple container gives each container its own VM, 1 GiB by default: too little to build the package.
+case "$(basename "$runtime")" in
+  container) resources="--memory 8g --cpus 4" ;;
+  *) resources="" ;;
+esac
+# The CLI tests run .build/debug/laiaskills by default, which is the host's macOS build when there is one.
+"$runtime" run --rm $resources --volume "$MISE_PROJECT_ROOT:/repo" --workdir /repo \
+  --env LAIASKILLS_BINARY=/repo/tools/laiaskills/.build/linux/debug/laiaskills swift:6.4.0-resolute \
+  bash -c "apt-get update -qq && apt-get install -y -qq ruby curl >/dev/null \
+    && git config --global --add safe.directory '*' && swift test --package-path tools/laiaskills --build-path tools/laiaskills/.build/linux"
 '''
