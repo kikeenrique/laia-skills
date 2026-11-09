@@ -1,0 +1,21 @@
+Reason: audit 2026-11: use sensoryFeedback for haptics in swiftui
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index 475d260..78a982d 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -305,9 +305,10 @@ ScrollView {
+ ### Haptic Feedback
+ 
+ ```swift
+-WKInterfaceDevice.current().play(.click)
+-WKInterfaceDevice.current().play(.success)
+-WKInterfaceDevice.current().play(.failure)
++// SwiftUI (watchOS 10+): play haptics from state changes
++.sensoryFeedback(.success, trigger: didSave)
++.sensoryFeedback(.selection, trigger: selectedItem)
++// WatchKit fallback outside SwiftUI views: WKInterfaceDevice.current().play(.click)
+ ```
+ 
+ ### Now Playing
