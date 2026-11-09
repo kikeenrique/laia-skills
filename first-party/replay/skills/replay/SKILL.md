@@ -1,6 +1,6 @@
 ---
 name: replay
-description: "HTTP recording, playback, and stubbing for Swift tests using the Replay framework (HAR fixtures + Swift Testing traits). Use whenever the user mentions Replay, the .replay(...) trait, HAR fixtures, VCR-style testing in Swift, stubbing URLSession / AsyncHTTPClient, recording network traffic for tests, redacting secrets from fixtures, parallel test execution / scope .test / .playbackIsolated / Replay.session isolation, or troubleshooting 'No Matching Entry in Archive' / 'Replay Archive Missing' errors. Also use for questions about archive resolution — where HAR files are written or read from, recordings landing in DerivedData or vanishing after a rebuild, replaysFrom: vs replaysRootURL: — and about TLS trust / client-certificate / auth-challenge delegates during recording or live mode. Also use when writing or reviewing a Swift @Test that hits the network, when adding fixtures under Replays/, when parallelizing a Replay-using test suite, or when configuring REPLAY_RECORD_MODE / REPLAY_PLAYBACK_MODE for CI."
+description: "HTTP recording, playback, and stubbing for Swift tests with the Replay framework (HAR fixtures + Swift Testing traits). Use when the user mentions Replay, the .replay(...) trait, or HAR fixtures; writes or reviews a Swift @Test that hits the network, or wants VCR-style tests that stub URLSession or AsyncHTTPClient; records, redacts, or adds fixtures under Replays/; sets REPLAY_RECORD_MODE / REPLAY_PLAYBACK_MODE for CI; parallelizes a Replay suite (scope .test, .playbackIsolated, Replay.session); or troubleshoots Replay: 'No Matching Entry in Archive' / 'Replay Archive Missing', where HAR files are written or read (recordings in DerivedData, replaysFrom: vs replaysRootURL:), TLS trust / client-certificate / auth-challenge delegates during recording or live mode, or a Linux test-runner crash in URLSession download tasks."
 disable-model-invocation: false
 allowed-tools: Read, Grep, Glob, Bash(swift test *), Bash(swift package replay *), Bash(xcodebuild test *)
 ---
@@ -226,7 +226,7 @@ Prefer redacting at record time via `filters:` so secrets never touch disk:
 )
 ```
 
-Since 1.0.0 query filters redact the recorded URL too, and `.url` / `.query` matching applies them to both sides — so keep the same `filters:` for playback, or redacted entries won't match.
+Query filters redact the recorded URL as well as the request, and `.url` / `.query` matching applies them to both sides — so keep the same `filters:` for playback, or redacted entries won't match.
 
 For body-level redaction and after-the-fact scrubbing via the `swift package replay filter` plugin, see [references/redaction.md](references/redaction.md).
 
@@ -292,9 +292,7 @@ Why the session swap matters: per-test scope routes via a custom HTTP header, an
 
 ## Live / streaming traffic and auth challenges
 
-Whenever Replay actually hits the network — `REPLAY_PLAYBACK_MODE=live`, `passthrough` on a miss, recording, or streaming responses such as SSE — it proxies through an internal `URLSession`. Since 0.6.0 both session-level and task-level `URLAuthenticationChallenge`s from that proxy are forwarded to the `URLProtocol` client, so a custom `urlSession(_:didReceive challenge:…)` delegate on the caller's session (server-trust pinning, self-signed staging certs, client certificates) is consulted as it would be without Replay.
-
-Before 0.6.0 those challenges were silently answered with default handling — pinning delegates never fired and self-signed hosts failed. If a test relies on custom TLS trust, require 0.6.0.
+Whenever Replay actually hits the network — `REPLAY_PLAYBACK_MODE=live`, `passthrough` on a miss, recording, or streaming responses such as SSE — it proxies through an internal `URLSession`. Both session-level and task-level `URLAuthenticationChallenge`s from that proxy are forwarded to the `URLProtocol` client, so a custom `urlSession(_:didReceive challenge:…)` delegate on the caller's session (server-trust pinning, self-signed staging certs, client certificates) is consulted as it would be without Replay.
 
 ---
 

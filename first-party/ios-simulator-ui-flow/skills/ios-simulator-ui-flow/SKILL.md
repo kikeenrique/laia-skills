@@ -1,6 +1,6 @@
 ---
 name: ios-simulator-ui-flow
-description: "Autonomous iOS Simulator UI verification flow for iOS apps. Use when asked to test on simulator, verify UI, check a screen, run and screenshot, inspect the accessibility tree, interact with an app via AXe, or after UI changes that need visual verification. Orchestrates build, install, launch, log capture, AXe describe/tap/slider/swipe/drag/type/batch/screenshot/video, and postcondition checks without user intervention."
+description: "Autonomous iOS Simulator UI verification flow for iOS apps. Use when asked to test on simulator, verify UI, check a screen, run and screenshot, inspect the accessibility tree, interact with an app via AXe, or after UI changes that need visual verification. Orchestrates build, install, launch, log capture, AXe describe/tap/slider/swipe/drag/type/batch/screenshot/video, and postcondition checks without user intervention. Use for the whole build–launch–drive–verify loop; for one AXe command's syntax, use the axe skill; for simctl device management alone, ios-simulator."
 ---
 
 # iOS Simulator UI Verification Flow
@@ -27,7 +27,7 @@ Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified
 
 ### Xcode Compatibility
 
-AXe `v1.8.0` supports both Xcode 26 and Xcode 27. The HID transport is picked from the target simulator runtime — Indigo on Xcode 26, DTUHID on Xcode 27 — so the commands in this skill are identical on both. On Xcode 27 the Device Hub drives the simulator and `Simulator.app` no longer needs to be open; on Xcode 26 keep launching it. Upstream validated the release against Xcode 26.5 (17F42) / iOS 26.5 and Xcode 27 Beta 3 (27A5218g) / iOS 27.
+AXe `v1.8.0` supports both Xcode 26 and Xcode 27. The HID transport is picked from the target simulator runtime — Indigo on Xcode 26, DTUHID on Xcode 27 — so the commands in this skill are identical on both. On Xcode 27 the Device Hub drives the simulator and `Simulator.app` does not need to be open; on Xcode 26 keep launching it.
 
 On Xcode 27, disable Device Hub **Resize Mode** before automating. With it enabled, taps and drags report a successful send while the touches are silently dropped.
 

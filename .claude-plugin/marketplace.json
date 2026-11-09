@@ -13,7 +13,7 @@
         "repo": "kikeenrique/laia-skills",
         "ref": "main"
       },
-      "version": "0.4.6",
+      "version": "0.4.7",
       "description": "mise-en-place workflows for dev tools, project config, environments, tasks and task caching, machine bootstrap and dotfiles, plugins/backends, dependency providers, tool stubs, MCP, lockfiles, CI, and troubleshooting.",
       "author": { "name": "Enrique Garcia" },
       "homepage": "https://github.com/kikeenrique/laia-skills",
@@ -30,7 +30,7 @@
         "repo": "kikeenrique/laia-skills",
         "ref": "main"
       },
-      "version": "0.2.3",
+      "version": "0.2.4",
       "description": "HTTP recording, playback, and stubbing for Swift tests using the Replay framework.",
       "author": { "name": "Enrique Garcia" },
       "homepage": "https://github.com/kikeenrique/laia-skills",
@@ -47,7 +47,7 @@
         "repo": "kikeenrique/laia-skills",
         "ref": "main"
       },
-      "version": "0.3.3",
+      "version": "0.3.4",
       "description": "Autonomous iOS Simulator UI verification flow verified against AXe v1.8.0: build, install, launch, inspect, tap, slider, swipe, drag, batch, screenshot, video, and verify.",
       "author": { "name": "Enrique Garcia" },
       "homepage": "https://github.com/kikeenrique/laia-skills",
