@@ -1,0 +1,240 @@
+Reason: audit 2026-11: fix enumerated and alert rules, skill-dir paths, trace output
+Date: 2026-11-09
+
+diff --git a/SKILL.md b/SKILL.md
+index d0c8666..f71bb6e 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: swiftui-expert-skill
+-description: "Use when implementing SwiftUI features from worked patterns: iPhone Duo, foldable, or large-display layouts (`ArrangementView`, `ReservedRegion`, hinge effects, two-column reflow, `NavigationSplitView` on large displays, tab sidebar, vertical bars), resizable layouts and safe areas, sheets and navigation, scroll, focus, Swift Charts, Liquid Glass, macOS scenes and windows, WebKit, styled text editing, image downsampling, previews, and SwiftUI-specific Instruments trace recording and analysis (SwiftUI update lane, cause graph, view-linked hangs and hitches). For data flow, `@Observable`, `@Entry`, ForEach identity, localization, and soft-deprecated APIs prefer swiftui-specialist; for SDK 27 API changes (`@State` macro, `@ContentBuilder`, `reorderable`, swipe actions, `AsyncImage`, toolbar overflow, item-bound alerts) prefer swiftui-whats-new-27; for Document apps, building-document-based-swiftui-applications; for general xctrace, xctrace; for UIKit resizability, app-resizability."
++description: "Use when implementing SwiftUI features from worked patterns: iPhone Duo, foldable, or large-display layouts (`ArrangementView`, `ReservedRegion`, hinge effects, two-column reflow, `NavigationSplitView`, tab sidebar, vertical bars), resizable layouts and safe areas, sheets and navigation, scroll, focus, Swift Charts, Liquid Glass, macOS windows, WebKit, styled text editing, image downsampling, previews, and SwiftUI Instruments trace recording and analysis (update lane, cause graph, hangs, hitches). For data flow, `@Observable`, `@Entry`, ForEach identity, localization, and soft-deprecated APIs prefer swiftui-specialist; for SDK 27 API changes (`@State` macro, `@ContentBuilder`, `reorderable`, swipe actions, toolbar overflow, item alerts) prefer swiftui-whats-new-27; for Document apps, building-document-based-swiftui-applications; for general xctrace, xctrace; for app-wide resizability, multi-window, or replacing `UIScreen.main`, orientation, idiom, or app lifecycle in either framework, app-resizability."
+ ---
+ 
+ # SwiftUI Expert Skill
+@@ -45,16 +45,18 @@ description: "Use when implementing SwiftUI features from worked patterns: iPhon
+ ### Record a new Instruments trace
+ Trigger when the user asks to "record a trace", "profile the app", "capture a session", etc. Full reference: `references/trace-recording.md`.
+ 
++`<skill-dir>` is this skill's base directory.
++
+ 1. **Confirm target** — attach to a running app, launch an app, or record all processes? If the user didn't say, ask. List connected devices when useful:
+    ```bash
+-   python3 "${SKILL_DIR}/scripts/record_trace.py" --list-devices
++   python3 "<skill-dir>/scripts/record_trace.py" --list-devices
+    ```
+ 2. **Pick a template based on target kind** — the `SwiftUI` template populates the SwiftUI lane on any **real device**: a physical iOS/iPadOS device **or the host Mac**. The only exception is the **iOS Simulator**, where the SwiftUI lane comes back empty — switch to `--template "Time Profiler"` in that case (gives Time Profiler + Hangs, but no Animation Hitches). Always check `--list-devices`: `simulators` kind → `Time Profiler`; `devices` kind (real devices and the host Mac) → default `SwiftUI`. Full decision table in `references/trace-recording.md`.
+ 3. **Start the recording**. For agent-driven sessions where the user says "I'll tell you when I'm done", start in the background and use a stop-file:
+    ```bash
+-   python3 "${SKILL_DIR}/scripts/record_trace.py" \
++   python3 "<skill-dir>/scripts/record_trace.py" \
+        --device "<name|udid>" --attach "<AppName>" \
+-       --stop-file "$PWD/tmp/stop-trace" --output ~/Desktop/session.trace
++       --stop-file "$PWD/tmp/stop-trace" --output "$PWD/tmp/session.trace"
+    ```
+    For interactive sessions, just tell the user to press Ctrl+C when done.
+ 4. **Signal stop** — when the user says they've finished exercising the app, `touch "$PWD/tmp/stop-trace"` (the project's own `tmp/` folder). The script cleanly SIGINTs xctrace and waits up to 60s for finalisation.
+@@ -75,16 +77,16 @@ Summary of the parser's composition pattern:
+ 2. **Resolve a window (only if the user scoped).** The parser exposes two discovery modes:
+    ```bash
+    # Find a log that marks the start/end of the region of interest:
+-   python3 "${SKILL_DIR}/scripts/analyze_trace.py" --trace <path> \
++   python3 "<skill-dir>/scripts/analyze_trace.py" --trace <path> \
+        --list-logs --log-message-contains "loaded feed" --log-limit 5
+    # Or list os_signpost intervals (paired begin/end), filterable by name:
+-   python3 "${SKILL_DIR}/scripts/analyze_trace.py" --trace <path> \
++   python3 "<skill-dir>/scripts/analyze_trace.py" --trace <path> \
+        --list-signposts --signpost-name-contains "ImageDecode"
+    ```
+    Both modes accept `--window START_MS:END_MS` to scope discovery. Pick the `time_ms` (for logs) or `start_ms`/`end_ms` (for signposts) that match the user's description. Build a window like `--window 10400:11700`.
+ 3. **Run the main analysis** (with or without `--window`):
+    ```bash
+-   python3 "${SKILL_DIR}/scripts/analyze_trace.py" --trace <path> \
++   python3 "<skill-dir>/scripts/analyze_trace.py" --trace <path> \
+        --json-only --top 10 [--window START_MS:END_MS]
+    ```
+ 4. **Interpret with `references/trace-analysis.md`** — key diagnostics:
+diff --git a/references/latest-apis.md b/references/latest-apis.md
+index 693cf97..4d3edc2 100644
+--- a/references/latest-apis.md
++++ b/references/latest-apis.md
+@@ -79,7 +79,7 @@ Section(footer: Text("Changes apply immediately.")) {
+ 
+ - **Always use `.confirmationDialog(_:isPresented:actions:message:)`** instead of `actionSheet(...)`.
+ - **Always use `.alert(_:isPresented:actions:message:)`** instead of `alert(isPresented:content:)`.
+-- **Always use `.alert(_:isPresented:presenting:actions:message:)`** instead of `alert(item:content:)`. Pass the optional model as `presenting:`.
++- **Use `.alert(_:item:actions:message:)`** instead of `alert(item:content:)` when building with the SDK 27 toolchain (it back-deploys to iOS 15). With an older SDK, use `.alert(_:isPresented:presenting:actions:message:)`.
+ 
+ Both take a title `String`, `isPresented: Binding<Bool>`, an `actions` builder with `Button` items (supporting `role: .destructive` / `.cancel`), and an optional `message` builder:
+ 
+@@ -599,7 +599,7 @@ These APIs are from the iOS 27.1 SDK. Gate runtime use with `#available(iOS 27.1
+ | `frame()` (no arguments) | `frame(width:height:alignment:)` or the min/ideal/max overload | iOS 15+ |
+ | `actionSheet(...)` | `confirmationDialog(...)` | iOS 15+ |
+ | `alert(isPresented:content:)` | `alert(_:isPresented:actions:message:)` | iOS 15+ |
+-| `alert(item:content:)` | `alert(_:isPresented:presenting:actions:message:)` | iOS 15+ |
++| `alert(item:content:)` | `alert(_:item:actions:message:)` (SDK 27 toolchain); `alert(_:isPresented:presenting:actions:message:)` with older SDKs | iOS 15+ |
+ | `PreviewProvider` | `#Preview` | Back-deploys (Xcode 15+) |
+ | `previewLayout(_:)` | `#Preview` traits such as `.sizeThatFitsLayout` or `.fixedLayout(width:height:)` | iOS 17+ |
+ | `previewDevice(_:)` | Device picker in the Xcode preview canvas | Xcode 15+ |
+diff --git a/references/list-patterns.md b/references/list-patterns.md
+index e0fd289..7200267 100644
+--- a/references/list-patterns.md
++++ b/references/list-patterns.md
+@@ -177,7 +177,7 @@ ForEach(items.enumerated(), id: \.element.id) { index, item in
+ }
+ ```
+ 
+-**No `Array(...)` wrapper is needed on Swift 6.1+.** As of Swift 6.1, the sequence returned by `.enumerated()` conditionally conforms to `RandomAccessCollection` when the base collection does, so `ForEach` accepts it directly. On earlier toolchains, wrap it in `Array(...)`. Favor the direct form in new code — it avoids an eager copy on every body evaluation.
++**No `Array(...)` wrapper is needed with Swift 6.2 and an iOS 26 / macOS 26 / tvOS 26 / watchOS 26 / visionOS 26 deployment target.** SE-0459 makes the sequence returned by `.enumerated()` conditionally conform to `RandomAccessCollection` when the base collection does, so `ForEach` accepts it directly. For earlier toolchains or targets, wrap it in `Array(...)`. Favor the direct form in new code; it avoids an eager copy on every body evaluation.
+ 
+ ## Reorderable Collections (SDK 27)
+ 
+@@ -528,7 +528,7 @@ Table(people) { /* columns */ }
+ - [ ] Constant number of views per ForEach element; rows are unary (single top-level view)
+ - [ ] No inline filtering in ForEach (prefilter and cache instead)
+ - [ ] No `AnyView` in list rows
+-- [ ] `.enumerated()` uses the element's id (not `\.offset`); no `Array(...)` wrapper needed on Swift 6.1+
++- [ ] `.enumerated()` uses the element's id (not `\.offset`); no `Array(...)` wrapper needed with Swift 6.2 on OS 26+ targets
+ - [ ] Use `.refreshable` for pull-to-refresh
+ - [ ] Use `ContentUnavailableView` for empty states (iOS 17+)
+ - [ ] Use `.scrollContentBackground(.hidden)` for custom list backgrounds
+diff --git a/references/trace-analysis.md b/references/trace-analysis.md
+index 3434c44..bccf748 100644
+--- a/references/trace-analysis.md
++++ b/references/trace-analysis.md
+@@ -102,7 +102,7 @@ Python 3 stdlib + `xctrace` (ships with Xcode at `/usr/bin/xctrace`).
+ ### 1. Full analysis (default)
+ 
+ ```bash
+-python3 "${SKILL_DIR}/scripts/analyze_trace.py" \
++python3 "<skill-dir>/scripts/analyze_trace.py" \
+   --trace "/path/to/file.trace" \
+   --top 10 --top-hitches 5 \
+   [--window START_MS:END_MS] \
+@@ -123,7 +123,7 @@ python3 "${SKILL_DIR}/scripts/analyze_trace.py" \
+ ### 2. `--list-logs` — find os_log timestamps
+ 
+ ```bash
+-python3 "${SKILL_DIR}/scripts/analyze_trace.py" --trace <path> --list-logs \
++python3 "<skill-dir>/scripts/analyze_trace.py" --trace <path> --list-logs \
+   [--log-subsystem com.myapp.net] \
+   [--log-category "Network"] \
+   [--log-type Fault] \
+@@ -140,7 +140,7 @@ AND-combined; `--log-message-contains` is case-insensitive substring match.
+ ### 3. `--list-signposts` — find signpost intervals
+ 
+ ```bash
+-python3 "${SKILL_DIR}/scripts/analyze_trace.py" --trace <path> --list-signposts \
++python3 "<skill-dir>/scripts/analyze_trace.py" --trace <path> --list-signposts \
+   [--signpost-name-contains "ImageDecode"] \
+   [--signpost-subsystem com.myapp.feed] \
+   [--signpost-category "Rendering"] \
+@@ -157,7 +157,7 @@ match.
+ ### 4. `--fanin-for` — who keeps invalidating this view?
+ 
+ ```bash
+-python3 "${SKILL_DIR}/scripts/analyze_trace.py" --trace <path> \
++python3 "<skill-dir>/scripts/analyze_trace.py" --trace <path> \
+   --fanin-for "TextStyleModifier" \
+   [--window START_MS:END_MS] \
+   [--top 10]
+diff --git a/references/trace-recording.md b/references/trace-recording.md
+index 2912cd0..61137bf 100644
+--- a/references/trace-recording.md
++++ b/references/trace-recording.md
+@@ -33,10 +33,10 @@ local process-inspection tools may still expose process arguments.
+ ### A) Attach to a running app on a connected device
+ 
+ ```bash
+-python3 "${SKILL_DIR}/scripts/record_trace.py" \
++python3 "<skill-dir>/scripts/record_trace.py" \
+   --device "Pol's iPhone" \
+   --attach "Helm" \
+-  --output ~/Desktop/helm-session.trace
++  --output tmp/helm-session.trace
+ ```
+ 
+ Leave it running while the user exercises the app. Stop with **Ctrl+C**.
+@@ -44,10 +44,10 @@ Leave it running while the user exercises the app. Stop with **Ctrl+C**.
+ ### B) Launch an app and record from the first frame
+ 
+ ```bash
+-python3 "${SKILL_DIR}/scripts/record_trace.py" \
++python3 "<skill-dir>/scripts/record_trace.py" \
+   --device "<UDID>" \
+   --launch "/path/to/App.app" \
+-  --output ~/Desktop/launch.trace
++  --output tmp/launch.trace
+ ```
+ 
+ On a simulator, pass the bundle ID to `--launch` instead. A `.app` path from
+@@ -64,9 +64,9 @@ recording to end cleanly:
+ 
+ ```bash
+ # Start recording (background)
+-python3 "${SKILL_DIR}/scripts/record_trace.py" \
++python3 "<skill-dir>/scripts/record_trace.py" \
+   --attach Helm --stop-file "$PWD/tmp/stop-trace" \
+-  --output ~/Desktop/session.trace
++  --output tmp/session.trace
+ 
+ # ...user does their thing...
+ 
+@@ -84,8 +84,8 @@ when it appears, and waits up to 60s for the trace to finalise.
+ ### D) Time-boxed recording
+ 
+ ```bash
+-python3 "${SKILL_DIR}/scripts/record_trace.py" \
+-  --attach Helm --time-limit 30s --output ~/Desktop/30s.trace
++python3 "<skill-dir>/scripts/record_trace.py" \
++  --attach Helm --time-limit 30s --output tmp/30s.trace
+ ```
+ 
+ xctrace stops itself at the limit.
+@@ -94,10 +94,10 @@ xctrace stops itself at the limit.
+ 
+ ```bash
+ # List every connected device, simulator, and the host — JSON.
+-python3 "${SKILL_DIR}/scripts/record_trace.py" --list-devices
++python3 "<skill-dir>/scripts/record_trace.py" --list-devices
+ 
+ # List all Instruments templates — JSON with a flat list + by-section map.
+-python3 "${SKILL_DIR}/scripts/record_trace.py" --list-templates
++python3 "<skill-dir>/scripts/record_trace.py" --list-templates
+ ```
+ 
+ Device entries have `kind` (`devices`, `devices offline`, `simulators`),
+@@ -140,15 +140,15 @@ xcrun xctrace record --template "Time Profiler" --show-recording-options \
+   | sed 's/"hangsThreshold" : 250/"hangsThreshold" : 33/' > options.json
+ xcrun xctrace record --no-prompt --template "Time Profiler" \
+   --recording-options options.json --device "<UDID>" --time-limit 60s \
+-  --output ~/Desktop/hangs.trace --launch -- com.example.MyApp
++  --output tmp/hangs.trace --launch -- com.example.MyApp
+ ```
+ 
+ For an explicitly approved system-wide recording:
+ 
+ ```bash
+-python3 "${SKILL_DIR}/scripts/record_trace.py" \
++python3 "<skill-dir>/scripts/record_trace.py" \
+   --all-processes --allow-system-wide-recording \
+-  --time-limit 30s --output ~/Desktop/system-wide.trace
++  --time-limit 30s --output tmp/system-wide.trace
+ ```
+ 
+ ## Chaining into analysis
+@@ -157,10 +157,10 @@ The recording script prints `trace written: <path>` on exit. Feed that
+ path straight into `analyze_trace.py`:
+ 
+ ```bash
+-TRACE=$(python3 "${SKILL_DIR}/scripts/record_trace.py" \
+-    --attach Helm --stop-file "$PWD/tmp/stop-trace" --output ~/Desktop/session.trace \
++TRACE=$(python3 "<skill-dir>/scripts/record_trace.py" \
++    --attach Helm --stop-file "$PWD/tmp/stop-trace" --output tmp/session.trace \
+     2>&1 | awk '/trace written:/ {print $NF}')
+-python3 "${SKILL_DIR}/scripts/analyze_trace.py" --trace "$TRACE" --json-only
++python3 "<skill-dir>/scripts/analyze_trace.py" --trace "$TRACE" --json-only
+ ```
+ 
+ If the user wanted a specific scope, combine with `--list-logs` /
