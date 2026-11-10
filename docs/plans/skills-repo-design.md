@@ -283,8 +283,8 @@ non-interactively; the tool keeps control of git, validation, and committing.
 ```
 
 - The agent command lives in config, so a changed CLI flag is a config edit, not a code change. The
-  Claude Code flags were checked against `claude --help`. Codex is not configured yet: it isn't
-  installed on the authoring machine, so its flags are unverified; it is one more `commands` entry.
+  Claude Code flags were checked against `claude --help`. Codex is not configured, by choice
+  (re-checks use Claude Code); adding it would be one more `commands` entry, with its flags verified first.
 - The agent runs attached to the terminal (its output streams live) and is stopped after
   `timeoutMinutes`.
 - `--no-agent` skips step 2 when updating the skill by hand.
@@ -576,6 +576,7 @@ of third-party sources.
 | 2026-11-09 | **Upgrade cadence dropped** from the roadmap by the owner: sources are checked and upgraded when needed, with no schedule |
 | 2026-11-10 | **`laiaskills:test-linux` runs with Apple `container`** as well as Docker or Podman (8 GiB, 4 CPUs). Local runs were broken for every runtime: the CLI tests ran `.build/debug/laiaskills`, the host's macOS binary, so the task now sets `LAIASKILLS_BINARY` to the Linux build; and the image lacked `ruby` and `curl`, which two tests need. All 107 tests pass under `container` 1.7.1 |
 | 2026-11-10 | **Second prompt audit** ([prompt-audit.md](prompt-audit.md)): the 13 Xcode skills (never audited), the skills upgraded or patched since 2026-10-08, the first-party skills, the always-loaded files, and routing across all 72 skills. 11 high, 35 medium, about 25 low. Applied: first-party (`e032c43`; mise 0.4.7, replay 0.2.4, ios-simulator-ui-flow 0.3.4, `AGENTS.md`) and 19 third-party patches (`e53f014`..`5da7dee`). Three items wait on the owner |
+| 2026-11-11 | **Codex in `recheck.json` dropped** from the roadmap by the owner: re-checks stay on Claude Code. Codex (0.167.0) is installed now; if it is ever wanted, verify its flags against `codex exec --help` and add one `commands` entry |
 
 ### Pending
 
@@ -589,7 +590,6 @@ In priority order.
 | 4 | Re-run the prompt audit | tool + owner | At the next Claude model release, or after a large skill upgrade. Starting point, keep-list, and flags in [prompt-audit.md](prompt-audit.md) |
 | 5 | Re-check first-party pins as their upstreams release | tool + owner | All four current on 2026-11-09: mise v2026.11.5, cupertino v1.5.0, AXe v1.8.0, Replay 1.0.0. When `check` shows one behind: `upgrade`, verify the re-checked skill, fix the README and `marketplace.json` descriptions if they quote the version (the re-check only edits the skill), then `commit` |
 | 6 | `axe` and the AXe fork | owner | The installed `axe` comes from the owner's AXe fork (foldable/iPhone Duo, tvOS `remote`, watchOS `crown`; related to upstream's unreleased `v2`). When AXe v2 is tagged or the fork lands upstream: re-pin `first-party/ios-simulator-ui-flow/upstream`, rework `patches/axe/` (its line on treating `describe-ui` output as data is missing from the installed copy), and `sync` |
-| 7 | Codex in `recheck.json` | tool | Blocked: Codex is not installed. Verify its flags first once it is |
 
 ### Implementation notes
 
