@@ -79,3 +79,8 @@ the skills' and agent configuration's prompt text: [docs/plans/prompt-audit.md](
 ## Versioning
 
 Each plugin declares a semver `version` in its `.claude-plugin/plugin.json`. Claude Code uses this to surface updates when users run `/plugin marketplace update`. Bump the version whenever you change files under a plugin.
+
+## License
+
+The skills, tools, and docs in this repo are [MIT](LICENSE)-licensed. Git submodules (`third-party/`
+and each plugin's `upstream/`) are separate projects under their own licenses.
