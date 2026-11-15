@@ -21,7 +21,7 @@
     "arkit-spatial-tracking-providers": { "source": "third-party/tomkrikorian__visionOSAgents" },
     "arkit-visionos-developer": { "source": "third-party/tomkrikorian__visionOSAgents" },
     "audit-xcode-security-settings": { "source": "third-party/kikeenrique__xcode-skills" },
-    "axe": { "source": "first-party/ios-simulator-ui-flow/upstream", "path": "Skills/CLI/axe" },
+    "axe": { "source": "first-party/ios-simulator-ui-flow/upstream", "path": "agent-plugin/skills/axe" },
     "building-document-based-swiftui-applications": { "source": "third-party/kikeenrique__xcode-skills" },
     "coding-standards-enforcer": { "source": "third-party/tomkrikorian__visionOSAgents" },
     "compose-multiplatform-patterns": { "source": "third-party/affaan-m__ECC", "path": "skills/compose-multiplatform-patterns" },

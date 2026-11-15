@@ -5,7 +5,7 @@ description: "Autonomous iOS Simulator UI verification flow for iOS apps. Use wh
 
 # iOS Simulator UI Verification Flow
 
-Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified against AXe `v1.8.0` (released 2026-07-20) and keeps the workflow command-oriented: use project-native build commands, `xcrun simctl` for lifecycle, and AXe for accessibility-tree inspection, input, screenshots, and video.
+Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified against AXe `v2.0.4` (released 2026-11-12) and keeps the workflow command-oriented: use project-native build commands, `xcrun simctl` for lifecycle, and AXe for accessibility-tree inspection, input, screenshots, and video.
 
 ## Principles
 
@@ -20,14 +20,14 @@ Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified
 ## Prerequisites
 
 - Xcode with the target iOS Simulator runtime installed.
-- AXe `v1.8.0` or newer in `PATH`: `brew install cameroncooke/axe/axe`.
+- AXe `v2.0.0` or newer in `PATH`: `brew install cameroncooke/axe/axe` (`brew upgrade cameroncooke/axe/axe` if `axe describe-ui --help` lists no `--agent`, which means it is older than 2.0).
 - `xcsift` for Swift and Xcode build output.
 - A generated Xcode project or workspace. For Tuist projects, run `tuist generate --no-open` before building.
 - A project-local artifact directory such as `tmp/` for screenshots, UI dumps, logs, and video. Create it with `mkdir -p tmp` when needed.
 
 ### Xcode Compatibility
 
-AXe `v1.8.0` supports both Xcode 26 and Xcode 27. The HID transport is picked from the target simulator runtime — Indigo on Xcode 26, DTUHID on Xcode 27 — so the commands in this skill are identical on both. On Xcode 27 the Device Hub drives the simulator and `Simulator.app` does not need to be open; on Xcode 26 keep launching it.
+AXe `v2.0` supports both Xcode 26 and Xcode 27. The HID transport is picked from the target simulator runtime — Indigo on Xcode 26, DTUHID on Xcode 27 — so the commands in this skill are identical on both. On Xcode 27 the Device Hub drives the simulator and `Simulator.app` does not need to be open; on Xcode 26 keep launching it. `axe settings` needs Xcode 27.
 
 On Xcode 27, disable Device Hub **Resize Mode** before automating. With it enabled, taps and drags report a successful send while the touches are silently dropped.
 
@@ -190,7 +190,9 @@ Capture a screenshot for visual review:
 axe screenshot --udid "$UDID" --output tmp/simulator.png
 ```
 
-Coordinates in `describe-ui` are logical points. AXe `v1.8.0` maps logical points for rotated landscape simulators and letterboxed landscape-only apps automatically, so use `describe-ui` frames directly. If you measured a coordinate from a screenshot PNG, convert pixels to logical points first and confirm with `describe-ui --point`.
+For an agent driving the app step by step, `describe-ui --agent` returns compact rows with refs, and each `--agent` action checks its target and returns the new screen, so no separate read is needed after it. See [references/axe-2.md](references/axe-2.md) for agent mode, `--output json` with typed error codes, `axe settings`, and the iPhone Duo.
+
+Coordinates in `describe-ui` are logical points. AXe maps logical points for rotated landscape simulators and letterboxed landscape-only apps automatically, so use `describe-ui` frames directly. If you measured a coordinate from a screenshot PNG, convert pixels to logical points first and confirm with `describe-ui --point`.
 
 ## 6. Interact With AXe
 
@@ -224,6 +226,14 @@ axe tap --label "Notifications" --tap-style physical --udid "$UDID"
 axe tap --label "Submit" --tap-style simulator --udid "$UDID"
 ```
 
+Long press, double tap, and two-finger tap work on a point or a selector (not with `--agent`):
+
+```bash
+axe tap --label "Photo" --hold 1 --udid "$UDID"
+axe tap --id "map" --count 2 --udid "$UDID"
+axe tap --id "canvas" --touches 2 --udid "$UDID"
+```
+
 ### Sliders
 
 Use `slider` instead of approximating with swipes:
@@ -233,21 +243,32 @@ axe slider --id "volume_slider" --value 75 --udid "$UDID"
 axe slider --label "Volume" --value 40 --element-type Slider --udid "$UDID"
 ```
 
-`slider` sets a 0-100 percentage and verifies the resulting `AXValue` within tolerance. It is the main AXe input command that fails when the observed state remains outside tolerance.
+`slider` sets a 0-100 percentage and verifies the resulting `AXValue` within tolerance. It is the main AXe input command that fails when the observed state remains outside tolerance. `--endpoint minimum|maximum` drives it to either end instead of `--value`.
 
 ### Swipes, Drags, Gestures, And Touch
 
-Use the AXe `v1.8.0` coordinate syntax:
+Use the AXe coordinate syntax:
 
 ```bash
 axe swipe --start-x 200 --start-y 650 --end-x 200 --end-y 250 --duration 0.5 --udid "$UDID"
 axe drag --start-x 100 --start-y 400 --end-x 300 --end-y 400 --duration 0.4 --steps 40 --udid "$UDID"
+axe drag --start-x 200 --start-y 300 --end-x 200 --end-y 500 --hold 0.6 --udid "$UDID"  # reorder a row
 axe gesture scroll-down --udid "$UDID"
 axe gesture swipe-from-left-edge --udid "$UDID"
 axe touch -x 150 -y 250 --down --up --delay 1.0 --udid "$UDID"
 ```
 
-Always verify a `drag` result with `describe-ui`: a success exit code only means the touches were sent.
+Scroll to a virtualized row instead of guessing swipe counts:
+
+```bash
+axe gesture scroll-up --until-label "Privacy" --udid "$UDID"            # up to --max-swipes (default 10)
+axe gesture scroll-down --distance 0.6 --udid "$UDID"                   # 60% of the screen
+axe gesture scroll-left --inside-id "toolbar" --until-label "Share" --udid "$UDID"
+```
+
+It sends nothing when the element is already on screen and fails with `elementNotFound` at the limit or when a scroll moves nothing. Other gestures: `pinch`, `double-tap`, `rotate`, `two-finger-tap`, `two-finger-hold`, `two-finger-swipe` (e.g. `axe gesture pinch --scale 2 --udid "$UDID"`), the `swipe-from-top-right-corner` preset (Control Centre), and `axe draw 100,400 300,400 --udid "$UDID"` for a one-finger path through up to 1,000 points.
+
+Always verify a `drag` or gesture result with `describe-ui`: a success exit code only means the touches were sent.
 
 ### Text And Keyboard
 
@@ -259,7 +280,7 @@ axe key-combo --modifiers 227 --key 4 --udid "$UDID"  # Cmd+A
 axe button home --udid "$UDID"
 ```
 
-Use `--stdin` or `--file` for text with shell-sensitive characters.
+Use `--stdin` or `--file` for text with shell-sensitive characters. `type` uses the US keyboard layout: characters outside it (`é`, `£`) fail with `invalidArguments` before anything is typed. `printf '%s' 'text' | axe clipboard copy --stdin --udid "$UDID"` stages text on the simulator clipboard instead (it does not paste).
 
 Credentials: type only test-account credentials the user gave you for this purpose, never real ones. Don't put a password in a command line, where it lands in the process list, shell history, and the transcript: write it to an untracked file under `tmp/` and use `axe type --file`, then delete the file when the flow is done.
 
@@ -280,13 +301,15 @@ axe screenshot --udid "$UDID" --output tmp/after-login.png
 Rules:
 
 - Put `--udid` on `axe batch`, not inside step lines.
-- Steps are limited to `tap`, `swipe`, `gesture`, `touch`, `type`, `button`, `key`, `key-sequence`, `key-combo`, plus the pseudo-step `sleep`. `screenshot`, `describe-ui`, and `slider` are not batch steps: run them as separate commands before or after the batch.
+- Steps are limited to `tap`, `swipe`, `gesture`, `draw`, `touch`, `type`, `button`, `key`, `key-sequence`, `key-combo`, plus the pseudo-step `sleep`. `screenshot`, `describe-ui`, and `slider` are not batch steps: run them as separate commands before or after the batch.
 - Use one step source per run: `--step`, `--file`, or `--stdin`.
 - Use `--wait-timeout` for selector taps that cross screens.
 - Use `--ax-cache perStep` when the UI changes between selector taps and you are not using `--wait-timeout`.
 - Add `--continue-on-error` only for best-effort probing.
 - Use discrete `axe slider` calls for slider verification; batch does not provide the same slider post-check.
-- A failing step aborts the run and reports that failure; AXe never replays the failed step or the steps before it, so a batch cannot silently repeat an action.
+- A failing step aborts the run and reports that failure; AXe never replays the failed step or the steps before it, so a batch cannot silently repeat an action. Earlier steps are not undone.
+- A `gesture` step in a batch assumes a 390×844 screen (except on the iPhone Duo); pass `--screen-width` and `--screen-height` on other devices.
+- `batch --agent --steps-json` fills a form of 1–8 ref-based `tap`/`type` steps in one checked call; see [references/axe-2.md](references/axe-2.md).
 
 ## 8. Video
 
@@ -304,7 +327,7 @@ For streaming:
 axe stream-video --udid "$UDID" --fps 10 --format mjpeg > tmp/stream.mjpeg
 ```
 
-`--fps` applies to both the MJPEG and BGRA stream formats.
+Stream formats are `mjpeg`, `raw`, `ffmpeg`, and `bgra`; `--fps` is an upper limit for all of them. Keep stdout (frames) and stderr (diagnostics) separate. On a simulator whose screen can fold or rotate mid-flow, `record-video --follow-active-display` keeps one fixed-size movie.
 
 ## 9. Verification Loop
 
@@ -331,17 +354,18 @@ For existing apps, grow accessibility coverage as part of the verification work.
 - **Xcode 27: input reports success but nothing happens**: Check Device Hub **Resize Mode**. With it enabled, taps and drags are acknowledged and then silently dropped. Disable it for UI automation.
 - **Drag reported success but the view did not move**: Check Device Hub **Resize Mode** first, then fall back to `axe swipe` or `axe touch` sequences and verify again with `describe-ui`.
 - **"AXe could not deliver simulator input"**: The simulator may have restarted or disconnected. Confirm it is booted (`xcrun simctl bootstatus "$UDID" -b`) and retry. An unknown UDID reports separately and points at `axe list-simulators`.
+- **Scripting on failures**: Put `axe --output json` before the command and branch on `error.code` (`elementNotFound`, `ambiguousElement`, `notBooted`, `busy`, `inputUnavailable`, `cleanupUncertain`, …), never on message text. Text-mode input commands print nothing on success except `tap`, `slider`, and `batch`; `--verbose` adds the full receipt. `axe doctor --udid "$UDID"` checks readiness.
 - **Worried about a duplicated action after a failure**: Do not re-run an input step defensively. AXe only releases possibly-held touch state after an ambiguous physical-tap failure and never re-sends touch-down, so a failure cannot produce a double tap. Its per-simulator input broker also recovers stale state on its own.
 - **Accessibility query fails transiently**: AXe restarts `testmanagerd` and retries once, and `describe-ui --point` retries transient fallback results with backoff. Re-run once before treating it as an app bug.
 - **Slider or picker is flaky**: Prefer `axe slider` for sliders. For wheel-style controls, drive with gestures or drag and verify with `describe-ui`.
 - **Build output is noisy or missing errors**: Make sure stderr is captured with `2>&1` and the command is piped through `xcsift -f toon`.
-- **AXe breaks after an Xcode update**: AXe depends on Xcode-version-specific simulator internals. `v1.8.0` supports Xcode 26 (Indigo transport) and Xcode 27 (Device Hub / DTUHID transport); anything outside that contract is unsupported. Recheck the installed AXe release, the upstream release notes, and https://axe-cli.com/docs before assuming the app is broken.
+- **AXe breaks after an Xcode update**: AXe depends on Xcode-version-specific simulator internals. `v2.0` supports Xcode 26 (Indigo transport) and Xcode 27 (Device Hub / DTUHID transport); anything outside that contract is unsupported. Recheck the installed AXe release, the upstream release notes, and https://axe-cli.com/docs before assuming the app is broken.
 
 ## Exit Checklist
 
 Before reporting success:
 
-- The AXe upstream version used for guidance is known. Current target: `v1.8.0`.
+- The AXe upstream version used for guidance is known. Current target: `v2.0.4`.
 - Every AXe simulator-interaction command includes `--udid "$UDID"`.
 - Selector taps are preferred over coordinates where possible.
 - Sliders use `axe slider --value 0-100`.
