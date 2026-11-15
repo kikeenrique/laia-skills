@@ -56,7 +56,7 @@ Global config normally loses to project config. Since 2026.10.14, `config.overri
 AWS_PROFILE = "personal"
 ```
 
-It is never a default write target: pass `--override` (on `use`, `unuse`, `set`, `unset`, `settings set|add|unset`, `config get|set`; conflicts with `--global`/`--path`). `mise config ls` marks it in a `Tier` column. A tool declared there is resolved on its own and locked in the global `mise.lock`, not the project's. `MISE_GLOBAL_CONFIG_FILE` turns override files off. Unrelated to `MISE_OVERRIDE_CONFIG_FILENAMES`.
+It is never a default write target: pass `--override` (on `use`, `unuse`, `set`, `unset`, `settings set|add|unset`, `config get|set`; conflicts with `--global`/`--path`). `mise config ls` marks it in a `Tier` column. A tool declared there is resolved on its own and locked in the global `mise.lock`, not the project's. `MISE_GLOBAL_CONFIG_FILE` turns override files off. It replaces only the global config: a project under `~` still loads `~/.config/mise/config.toml` as a project config while walking up; add that path to `ignored_config_paths` to skip it. Unrelated to `MISE_OVERRIDE_CONFIG_FILENAMES`.
 
 ## Hierarchy And Merge Behavior
 

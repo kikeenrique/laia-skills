@@ -10,6 +10,7 @@ Use this reference when creating or reviewing mise plugins. For ordinary tool in
 | Tool plugin | One plugin manages one tool with custom lifecycle hooks | `hooks/available.lua`, `hooks/pre_install.lua`, install/env hooks |
 | Environment plugin | Provide env vars and PATH entries without tool versions | `hooks/mise_env.lua`, optional `hooks/mise_path.lua` |
 | Package plugin | A machine-global manager for `[bootstrap.packages]` | `hooks/package_installed.lua`, `hooks/package_install.lua`, optional `package_upgrade`/`package_uninstall` |
+| Bootstrap settings plugin | One program's or desktop's settings from `[bootstrap.settings.<name>]` (experimental) | `hooks/settings_read.lua`, `hooks/settings_write.lua` |
 | asdf plugin | An existing shell-based tool integration | asdf `bin/` scripts |
 
 Prefer vfox-style plugins for new plugin work. vfox is cross-platform, uses Lua through mise's built-in runtime, and provides modules for common operations.
@@ -89,6 +90,17 @@ mise-vscode-extensions/
 The `package_installed` + `package_install` pair is what identifies the repository as a package plugin; with only one it stays an ordinary vfox plugin, and adding `backend_install.lua` makes it a tool backend instead — package and tool-backend plugins must live in separate repositories.
 
 Contracts: `PackageInstalled` must report state without prompting or making changes, versions are opaque strings, and the plugin must not use `sudo`.
+
+## Bootstrap Settings Plugins
+
+Experimental (2026.11.8). A settings plugin applies `[bootstrap.settings.<name>]` (see [bootstrap.md](bootstrap.md)). `mise.plugin.toml` needs a `[bootstrap-settings]` table (same keys as `[package-manager]` except `supports_version_pins`, e.g. `requires = ["hyprctl"]`, `os = ["linux"]`), plus two hooks:
+
+- `hooks/settings_read.lua` — `PLUGIN:SettingsRead(ctx)` returns `{ values = { ["appearance.blur"] = false } }` for the dotted keys in `ctx.keys` it knows (omit unset keys). Called for status, dry runs, and around every write: no side effects or prompts.
+- `hooks/settings_write.lua` — `PLUGIN:SettingsWrite(ctx)` writes each of `ctx.changes` (`key`, `from`, `to`) and may return `{ follow_up = { "log out and back in" } }`. mise re-reads afterwards and fails if a key still differs.
+
+mise flattens the TOML section into dotted keys (lists stay one value); numbers compare by value, other types must match. Never run `sudo`, change only the keys in `ctx.changes`, and list every program the hooks run in `requires`.
+
+Package and settings plugins can also be shipped for every user in a system plugins directory such as `/usr/share/mise/plugins` (found by directory name; files must not be group/world-writable), so a distro package can provide one without `[bootstrap.plugins]`.
 
 ## Environment Plugins
 

@@ -50,6 +50,7 @@ Limitations:
 - Env vars from `[env]` are loaded when a shim is called, not into the shell by itself.
 - `cd`, `enter`, `leave`, and `watch_files` hooks require `mise activate`; `preinstall` and `postinstall` do not.
 - `which node` may show the shim; use `mise which node` to find the real executable.
+- A shim whose tool no config selects fails with a one-line `No version is set for shim` error naming the `mise use -g <tool>@<version>` and `mise x <tool>@<version> -- …` fixes (`--verbose` lists installed versions). `shims.fallback_to_installed = true` (2026.11.7, off by default, Unix shims only) runs the latest installed version instead; it never overrides a version a config does select, so a missing pinned version still fails.
 - An unresolvable shim silently falls back to the next same-named executable on PATH. Set `not_found_system_fallback = false` (alongside `not_found_auto_install = false`) when it should fail loudly instead.
 - To keep an OS-provided command (e.g. distro `python`) off the shim dir, set `[settings.shims] exclude = ["python", "python3"]` and run `mise reshim`. Version-qualified shims (`python3.12`) still work, and non-shim `mise activate` still exposes the whole `bin` dir.
 

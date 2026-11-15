@@ -50,6 +50,7 @@ Package plugins:
 
 - Provide a machine-global package manager for `[bootstrap.packages]`, not versioned tools.
 - Register in `[bootstrap.plugins]`, or install as `package:<name>`, before declaring packages.
+- Since 2026.11.8 they (and bootstrap settings plugins) can also come from system plugin directories such as `/usr/share/mise/plugins`. `mise plugins ls` lists those after your own, marked `(system)` (or overridden by a same-named plugin of yours); `plugins update`/`uninstall` and `ls --outdated` skip them — update them through whatever package or admin installed them.
 
 asdf plugins:
 

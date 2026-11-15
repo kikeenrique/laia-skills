@@ -140,6 +140,8 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
 - A `file://` URL is recorded in `mise.lock` as written, so it only works where that path exists.
 - `http:` `headers` (templated values, e.g. bearer or `X-Api-Key`) go to the artifact, `version_list_url`, and `checksum_url` requests on the `url` host only; they are dropped on a cross-host redirect unless listed per header in `headers_forward = { X-Api-Key = ["cdn.example.com", "*.assets.example.com"] }`. Changing a token does not reinstall the tool.
 - `npm:` git installs: `latest` is the repository's default branch; `mise.lock` does not pin it to a commit.
+- `npm:` also installs from an `https://` tarball URL (2026.11.6), such as a pkg.pr.new preview: `[tools."npm:https://pkg.pr.new/owner/repo/@scope/pkg@343"] version = "latest"` (the whole URL is the tool name, `@` included). The version is a prefix of the tarball's SHA-256, so `mise outdated`/`mise up` refetch the URL and update when the digest changes. No `http://` or `checksum`; `mise.lock` records the version but no dependency graph. Under aube, the tarball's own URL dependencies (per-platform `optionalDependencies`) need `allow_exotic_deps` naming them.
+- `github:` lookups go to the mise-versions host first, which reveals private repo names to a third party. `versions_host_exclude = ["my-org/*"]` (2026.11.8; `MISE_VERSIONS_HOST_EXCLUDE`, comma-separated; case-insensitive `owner/repo` globs) sends those repos straight to GitHub while other tools keep using the host — narrower than `use_versions_host = false`.
 - `cargo:` honors `rename_exe` (2026.10.14) to rename the installed executable.
 - `http:` tools can report release dates for `minimum_release_age` (2026.10.15): `version_date_expr` (expr-lang over `body`/`versions`, returning `[version, date]` pairs or a map), with optional `version_date_url` and paging via `version_date_next_expr`. Undated versions are never held back. Credentials in a URL's userinfo are stripped from `mise.lock`, and a credential query parameter (`?token=`, `?sig=`, …) makes locking fail — use `headers` or netrc.
 - `pypi:` private indexes behind a keyring (2026.10.16): set `[settings.pypi] keyring_provider = "subprocess"` and a `registry_url` with a username but no password; mise runs `keyring get` for version listing and `mise lock`, as uv does.
@@ -231,6 +233,16 @@ args = ["run", "python"]
 ```
 
 Run `mise reshim` after adding or removing a wrapper. Since 2026.10.13 `command`, `args`, and `env` values are templates (`command` sees only `vars`, `config_root`, `config_source`, and the process env); wrap a literal `{{` such as Docker's `{{.Names}}` in `{% raw %}…{% endraw %}`.
+
+Since 2026.11.8 `args` and `env` templates see `argv`, the arguments the user typed after the command (not the wrapper's own `command`/`args`; they are still forwarded unchanged, and `argv[0]` on an empty list just compares unequal):
+
+```toml
+[wrappers.rails]
+command = "fnox"
+args = ["--profile={{ 'test' if argv[0] == 'test' else 'development' }}", "exec", "--", "rails"]
+```
+
+The `cargo`, `npm`, and `pipx` backends install without command wrappers on PATH, so a `cargo` wrapper does not intercept `cargo install` for a `cargo:` tool.
 
 ## Upgrade And Prune
 

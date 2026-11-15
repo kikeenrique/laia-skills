@@ -41,7 +41,7 @@ which records in the global config:
 "~/.config/app.conf" = { source = "dotfiles/app.conf", mode = "copy" }
 ```
 
-`dotfiles.root` (default `~/.dotfiles`) is where `add` saves captured sources; since 2026.10.20 it renders templates, e.g. `root = "{{ mise_config_dir }}/home"` (a relative result resolves against the config root). `dotfiles.default_mode` (default `symlink`) is what `add` applies. In `copy` mode, `apply` overwrites edits made directly to the target — run `add` first to capture them. A `template` target edited by hand is still overwritten, but since 2026.10.21 `apply` warns first.
+`dotfiles.root` (default `~/.dotfiles`) is where `add` saves captured sources; since 2026.10.20 it renders templates, e.g. `root = "{{ mise_config_dir }}/home"` (a relative result resolves against the config root). `dotfiles.default_mode` (default `symlink`) is what `add` applies. In `copy` mode, `apply` overwrites edits made directly to the target — run `add` first to capture them. A `template` target edited by hand is still overwritten, but since 2026.10.21 `apply` warns first; since 2026.11.8 it also warns for a `copy` target edited since mise wrote it (marked in `--dry-run` and the confirmation list; files mise has no record of, and directory copies outside a group, are not checked). Without a terminal (scripts, agent shells, `ssh` without `-t`), `apply` refuses to replace an untracked `copy` target whose content differs and names `--yes` (2026.11.7) — `mise dot undo` could not bring that edit back.
 
 `mode = "fnox"` keeps a secret file such as `~/.npmrc` out of the dotfiles repository: store it with `fnox set --file ~/.npmrc` (fnox 1.44.0+), declare `"~/.npmrc" = { mode = "fnox" }`; `apply` runs `fnox get --file` (may prompt), `mise dot edit` runs `fnox edit --file`, and `mise dot add` never captures it.
 
@@ -174,6 +174,8 @@ builtin = "history-watch"
 ```
 
 then `mise bootstrap services apply`.
+
+History operations take a lock; a command that finds it held waits `history.lock_wait` (2026.11.6, default `30s`, max `1h`, `0` fails at once) and then fails with `another history operation is running`. Set it per run where needed, e.g. `MISE_HISTORY_LOCK_WAIT=5m mise dot save`; `mise dot watch` and `mise dot recover` never wait.
 
 Synchronization pushes checkpoints to a Git remote so another machine can restore them with `mise bootstrap --adopt <repo>`. Use a **private** repository: sync sends earlier checkpoints too, so temporary edits become part of the shared history. Configure encryption before first saving files that need it.
 

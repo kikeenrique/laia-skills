@@ -106,6 +106,8 @@ mise tasks graph --explain   # which provider inferred each project, edge, and t
 mise tasks graph --json
 ```
 
+Since 2026.11.8 a root `package.json` with a `name` is a project for every package manager (npm and Bun too, not only pnpm/Yarn), so its `scripts` run like any other package's.
+
 Override inferred values with `[monorepo.projects."node:@acme/web"]`; shared task defaults go in `[monorepo.task_defaults.<task>]`. `task.auto_infer` selects which ecosystems are inferred.
 
 Gradle projects come from literal `include` directives in the root `settings.gradle(.kts)` (Gradle is never run); IDs are Gradle paths, so `:app` is `gradle::app` and the root project `gradle::`. Edges come only from literal `project(":lib")` references in a top-level `dependencies {}` block — add ones from `subprojects {}`, `allprojects {}`, or convention plugins with `depends_add`. Non-literal or conditional `include`s are an error.

@@ -50,13 +50,14 @@ Machine-wide software goes in `[bootstrap.packages]`; per-project, version-switc
 
 | Config | Use for |
 | --- | --- |
-| `[bootstrap.packages]` | OS packages, keyed `"manager:package"` |
+| `[bootstrap.packages]` | OS packages, keyed `"manager:package"` (or unprefixed since 2026.11.6) |
 | `[bootstrap.apt.sources]` | Extra apt repositories and PPAs (2026.10.9) |
 | `[bootstrap.plugins]` | Package-manager plugins (register before their packages) |
 | `[bootstrap.repos]` | Git repos cloned before dotfiles apply |
 | `[dotfiles]` | Dotfiles — top level, not under `[bootstrap]`; see [dotfiles.md](dotfiles.md) |
 | `[bootstrap.mise_shell_activate]` | Activation snippets in shell startup files |
-| `[bootstrap.macos.defaults]`, `[bootstrap.macos.launchd.agents]`, `[bootstrap.macos.login_items]` | macOS preferences, LaunchAgents, and Open-at-Login apps |
+| `[bootstrap.settings.macos]` (`defaults`, `defaults_entries`, `dock`, `finder`, `keyboard`, `trackpad`, `login_items`), `[bootstrap.macos.launchd.agents]` | macOS preferences and Open-at-Login apps; LaunchAgents |
+| `[bootstrap.settings.<plugin>]` | Desktop/app settings applied by a bootstrap settings plugin (experimental, 2026.11.8) |
 | `[bootstrap.linux.systemd.units]`, `[bootstrap.linux.firewall]` | Linux user units and host firewall |
 | `[bootstrap.files]`, `[bootstrap.directories]` | Managed paths, content, ownership, permissions |
 | `[bootstrap.users]`, `[bootstrap.groups]` | Linux service accounts and groups |
@@ -84,6 +85,14 @@ Entries are `"manager:package" = "<version>"`; `"latest"` accepts an already-ins
 ```
 
 Managers: `apk`, `apt`, `aur`, `choco` (2026.10.20), `dnf`, `zypper`, `pacman`, `brew`, `brew-cask`, `macos-app`, `flatpak`, `flatpak-user`, `nix`, `mas`, `scoop`, `snap` (2026.10.10), `winget`, plus package plugins. Entries for a manager unavailable on the current platform are skipped, so one config works everywhere. `pacman`, `scoop`, `snap`, and `zypper` support `state = "absent"`.
+
+Since 2026.11.6 a key without a `manager:` prefix installs through exactly one manager, so one config serves machines with different package managers: the first available of the distro's own (`apt`, `dnf`, `pacman`, `zypper`, `apk`), then `brew`, `winget`, `scoop`, `choco`, minus any excluded by `system_packages.managers`. `system_packages.prefer = ["brew", "apt"]` changes the order and limits the candidates. `names` gives a per-manager package name; the choice depends only on which managers are available, and a failed install does not fall back to the next one. A prefixed key always keeps its manager (and wins, with a warning, over an unprefixed key resolving to the same package); with no candidate available the entry is skipped. Pin versions only when every candidate accepts the same string; `MISE_DEBUG=1` logs the selection.
+
+```toml
+[bootstrap.packages]
+git = "latest"
+openssl = { names = { apt = "libssl-dev", dnf = "openssl-devel" } }
+```
 
 `snap` needs snapd (mise does not install it) and uses sudo. snapd refreshes snaps itself, so version pins are skipped with a warning; set `channel` (`"<track>/<risk>"`, e.g. `"22/stable"`; drift is fixed with `snap refresh --channel`) and `classic = true` for classic-confinement snaps: `"snap:node" = { channel = "22/stable", classic = true }`. Commands land in `/snap/bin`, not mise shims.
 
@@ -148,9 +157,9 @@ fish = "activate"
 
 ## Phases
 
-Order (abbreviated): accounts → plugins → packages → files/directories → services → firewall → compose → repos → dotfiles → shell activation → macOS defaults → LaunchAgents → systemd units → user → `mise install` for `[tools]` → plugin packages → `mise run bootstrap` → `[bootstrap.hooks.final]`.
+Order (abbreviated): accounts → plugins → packages → files/directories → services → firewall → compose → repos → dotfiles → shell activation → macOS defaults → LaunchAgents → systemd units → user → `mise install` for `[tools]` → settings plugins → plugin packages → `mise run bootstrap` → `[bootstrap.hooks.final]`.
 
-Select or exclude phases with `--only` / `--skip` (repeatable or comma-separated, mutually exclusive). Part names: `accounts`, `plugins`, `packages`, `files`, `services`, `firewall`, `compose`, `repos`, `dotfiles`, `mise-shell-activate`, `macos-defaults`, `macos-launchd-agents`, `linux-systemd-units`, `user`, `tools`, `task`, `final-hook`.
+Select or exclude phases with `--only` / `--skip` (repeatable or comma-separated, mutually exclusive). Part names: `accounts`, `plugins`, `packages`, `files`, `services`, `firewall`, `compose`, `repos`, `dotfiles`, `mise-shell-activate`, `macos-defaults`, `settings` (2026.11.8), `macos-launchd-agents`, `linux-systemd-units`, `user`, `tools`, `task`, `final-hook`.
 
 ```bash
 mise bootstrap --only dotfiles,tools --dry-run
@@ -173,6 +182,17 @@ os = "linux"
 source = "./files/docker-daemon.json"
 ```
 
+To own one part of a file something else owns (`/etc/hosts`, `sshd_config`), set `block` and `id` instead of `source`/`content` (2026.11.8). mise keeps the block between `# >>> mise:<id> >>>` / `# <<< mise:<id> <<<` markers (comment style follows the extension, e.g. `//` for `.js`), replaces only that region, appends it when the markers are missing, and creates the file when absent; the rest of the file and its owner/mode are untouched, and `sudo` is used only when needed. One block per entry; it takes `template`, `os`, `notify`, `owner`, `group`, `mode`, but not `source`, `content`, `replace`, `remove_empty`, or `state = "absent"` — remove a block by deleting it and its markers by hand.
+
+```toml
+[bootstrap.files."/etc/hosts"]
+id = "dev"
+block = """
+127.0.0.1 dev.local
+127.0.0.1 api.local
+"""
+```
+
 ## Platform Units And Defaults
 
 - Compose project values render Tera, e.g. `project_dir = "{{ config_root }}/mempalace"`, so shared config needs no machine-specific paths (no `exec()`).
@@ -180,16 +200,38 @@ source = "./files/docker-daemon.json"
 - systemd units (`[bootstrap.linux.systemd.units.<name>]`) accept `before`, `binds_to`, `part_of`, and `conflicts` (lists of unit names) next to `after`/`wants`/`requires`, and service-only `exec_start_pre` / `exec_start_post` lists (one `ExecStartPre=`/`ExecStartPost=` line each).
 - LaunchAgents accept `process_type` = `Background`, `Standard`, `Adaptive`, or `Interactive` (exact launchd spelling; anything else is an error), and since 2026.10.20 `launch_events` (launchd `LaunchEvents`, tables keyed by quoted stream then event name, properties in launchd's case), e.g. `[bootstrap.macos.launchd.agents.usb-handler.launch_events."com.apple.iokit.matching".apple-usb]` with `IOProviderClass = "IOUSBHostDevice"`. The program must consume the stream (`xpc_set_event_stream_handler`).
 - To start and enable a systemd **user** unit a package already ships (e.g. `gnome-keyring-daemon`), declare `[bootstrap.services.<unit>]` with `scope = "user"`, `state = "running"`, `enabled = true` and no `command`/`builtin` (2026.10.20, Linux-only; no root needed; a bare name gets `.service`).
-- `[bootstrap.macos.login_items] apps = ["/Applications/Ghostty.app", "~/Applications/Example.app"]` (2026.10.9) declares Open-at-Login apps. It is additive by default; `exclusive = true` makes `apply` remove undeclared entries too. Applied with the macOS defaults.
+- LaunchAgents accept `soft_resource_limits` / `hard_resource_limits` (2026.11.6) — tables of `core`, `cpu`, `data`, `file_size`, `memory_lock`, `number_of_files`, `number_of_processes`, `resident_set_size`, `stack` (bytes; `cpu` in seconds; soft ≤ hard) — e.g. `soft_resource_limits = { number_of_files = 10240 }` for a server, since launchd starts agents with 256 open files.
+- **macOS preferences moved (2026.11.8):** `dock`, `finder`, `keyboard`, `trackpad`, `defaults`, `defaults_entries`, and `login_items` now live under `[bootstrap.settings.macos]` with the same keys. The old `[bootstrap.macos.*]` spelling still works (the new one wins when both set a key), warns from 2027.5.0, and stops being read in 2028.5.0. Older mise ignores `[bootstrap.settings.macos]`, so keep the old spelling until every machine reading the config runs 2026.11.8+. `[bootstrap.macos.launchd.agents]` does not move.
+- `[bootstrap.settings.macos.login_items] apps = ["/Applications/Ghostty.app", "~/Applications/Example.app"]` (2026.10.9) declares Open-at-Login apps. It is additive by default; `exclusive = true` makes `apply` remove undeclared entries too. Applied with the macOS defaults.
 - For `defaults -currentHost` preferences, use an explicit entry with `host = "current"` (default `"any"`):
 
 ```toml
-[[bootstrap.macos.defaults_entries]]
+[[bootstrap.settings.macos.defaults_entries]]
 domain = "NSGlobalDomain"
 key = "com.apple.mouse.tapBehavior"
 host = "current"
 value = 1
 ```
+
+## Settings Plugins
+
+Experimental (`experimental = true`), 2026.11.8. A bootstrap settings plugin applies one program's or desktop's settings from `[bootstrap.settings.<plugin>]`; mise compares the declared values with what the plugin reports and writes only the differences. Which keys exist is up to the plugin (`macos` is built in and cannot be a plugin name).
+
+```toml
+[bootstrap.settings.desk.appearance]
+blur = true
+blur_strength = 4
+```
+
+```bash
+mise bootstrap --only plugins,settings --dry-run   # prints "appearance.blur false -> true"
+mise bootstrap settings status [--missing] [--json] [PLUGIN]…   # --missing exits 1 on drift
+mise bootstrap settings apply [--dry-run] [PLUGIN]…
+```
+
+The settings commands do not install plugins — run `mise bootstrap plugins apply` first. `bootstrap status`/`plan` do not check settings yet; use `settings status`. A section for a plugin that is not installed or not for this OS is skipped, so one config can hold every platform's settings. Sections merge across config files key by key; independent config roots that set one key differently make apply refuse. Authoring: [plugin-development.md](plugin-development.md).
+
+Distros or admins can ship settings and package-manager plugins for every user in system plugin directories (`/usr/share/mise/plugins`, then `$MISE_SYSTEM_DATA_DIR/plugins`, default `/usr/local/share/mise/plugins`; `MISE_SYSTEM_PLUGINS_DIRS` replaces the list). They need no `[bootstrap.plugins]` entry, are used only when owned by root or the current user and not group/world-writable (ignored on Windows), and a same-named plugin of your own overrides them. `mise plugins ls` marks them `(system)`; `plugins update`/`uninstall` skip them.
 
 ## Hooks
 
@@ -218,6 +260,8 @@ mise bootstrap plan --json
 mise bootstrap plan --detailed-exitcode   # 0 no change, 2 changes, 1 failure/unknown
 mise bootstrap <part> status
 ```
+
+`plan` covers packages, accounts, files/directories, services, the firewall, Compose projects, and since 2026.11.8 Git repositories; hooks appear with the action `run` but do not count as changes for `--detailed-exitcode`. Dotfiles, activation, macOS defaults, LaunchAgents, systemd units, the login shell, tools, settings plugins, and the `bootstrap` task are not planned — use `--dry-run` for the whole run.
 
 Every mutating run records a pair of history checkpoints (tracked files before and after, plus a journal). Dry runs record nothing.
 
@@ -251,7 +295,7 @@ To drop an optional module, `mise bootstrap unapply <env>… [--dry-run]` remove
 
 ## Remote
 
-`mise bootstrap remote --host <host> --source .` applies a configuration to an SSH target; `--install-mise` installs mise there first.
+`mise bootstrap remote --host <host> --source .` applies a configuration to an SSH target; `--install-mise` installs mise there first. Since 2026.11.8 it refuses a `--source` that is your home directory or `/`, and stops when the source (after excludes) exceeds 512 MiB or 100,000 files, naming the largest entries; exclude them or narrow `--source` rather than passing `--yes`.
 
 ## Working Rules
 

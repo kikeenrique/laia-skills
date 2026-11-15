@@ -50,12 +50,15 @@ Since 2026.10.14 `#MISE` headers accept every `[tasks.<name>]` property (now inc
 
 Share usage flags across tasks with a `.usage.kdl` flagset: `#USAGE include file="../shared.usage.kdl"` then `#USAGE use "common"`. In file tasks, relative include paths resolve from the task file's directory, and `$NAME`/`${NAME}` env refs work (inherited env, `MISE_CONFIG_ROOT`, `MISE_PROJECT_ROOT`, `MISE_TASK_DIR`, `MISE_TASK_FILE` — not task `env`). TOML tasks use `include file="{{ config_root }}/shared.usage.kdl"`.
 
+Lua file tasks (`#!/usr/bin/env lua`) use `--MISE` and `--USAGE` comment headers (2026.11.8).
+
 ## Run Tasks
 
 ```bash
 mise run build
 mise r test
 mise run --all              # interactive selector across the whole monorepo
+mise run --multi            # checklist picker (2026.11.6): Space checks, / filters, Enter runs them as with :::
 mise tasks
 mise tasks -a               # --all (2026.10.15); `mise tasks list` is an alias for ls
 mise tasks deps --compact
@@ -73,7 +76,7 @@ mise tasks history --summary [--json]     # runs, failures, median duration per 
 - **Tags**: `tags = "lint"` or `tags = ["test", "slow"]` on a task (`#MISE tags=[...]` in file tasks; templates add theirs). `--tag` with no task name picks from every task; with a name or pattern it keeps matching tagged tasks and fails when none match. Repeat `--tag` for OR. Put it before the task name; in a monorepo add a pattern such as `'//...:**'`. `mise tasks ls --json` includes `tags`.
 - **Run report**: `--report-file <path>` (or `MISE_TASK_REPORT_FILE`) writes JSON when the run ends — passed, failed, Ctrl-C, or `--timeout` — with each task's `status` (`passed`, `failed`, `cancelled`, `skipped`, `cached`, `not_run`), `exit_code`, and timings; top-level `status` is `passed`/`failed`/`cancelled`/`timed_out`. Not with `--dry-run`.
 - **`--at REV`** checks the revision out into a temporary detached git worktree, runs the tasks there with that revision's config and tools, and removes it afterwards. Ignored files (`node_modules/`, `.env`) are absent; prepare them with `--at-setup 'cp -R "$MISE_RUN_AT_SOURCE/node_modules" .'`. It needs the main checkout trusted and never trusts the config at REV itself (always refused in paranoid mode).
-- **History**: each task run's arguments (redacted), duration, and outcome are kept per project under `$MISE_STATE_DIR/task-history/` (`task.history = false` stops recording; `task.history_limit`, default 20 per task). The median helps pick which checks are cheap enough to run.
+- **History**: each task run's arguments (redacted), duration, and outcome are kept per project under `$MISE_STATE_DIR/task-history/` (`task.history = false` stops recording; `task.history_limit`, default 20 per task). The median helps pick which checks are cheap enough to run. Since 2026.11.7 the same summary is the `history` field of `mise tasks info <task> --json` and of each task in `mise tasks ls --json` (`null` if never run), e.g. `.history | {median_ms, last_status}`.
 - **Task CRUD**: `mise tasks add` (`--env local`, `--global`, `--path` pick the file), `mise tasks set` (change fields), and `mise tasks rm` (2026.10.25) all take `--json` and `--dry-run`. Replacing an existing task with `tasks add` should pass `--force`; without it, it warns from 2027.5.0 and is refused from 2028.5.0.
 
 ## Output Style vs Verbosity
@@ -220,7 +223,21 @@ data_dir = ".data/postgres" # per-checkout data instead of $MISE_STATE_DIR (giti
 provider = "local-postgres" # defined in global config as [daemon_providers.local-postgres]
 ```
 
-Named preset ports are exported as `<DAEMON>_<PORT_NAME>` (e.g. `CRDB_HTTP_PORT`). Since 2026.10.24 a named port can be allocated per worktree with its own base, `ports.http_port = { auto = true, base = 27000 }` (omit `base` for the preset's default; `stride` defaults to 1); keep each daemon's and port's base at least 512 apart, since mise does not check collisions across worktrees.
+Named preset ports are exported as `<DAEMON>_<PORT_NAME>` (e.g. `CRDB_HTTP_PORT`). Since 2026.10.24 a named port can be allocated per worktree with its own base, `ports.http_port = { auto = true, base = 27000 }` (omit `base` for the preset's default; `stride` defaults to 1); keep each daemon's and port's base at least 512 apart, since overlapping ranges can still collide across checkouts (starting a daemon does check its ports, named ones included, against daemons other checkouts are running, and the error names the checkout holding the port).
+
+Since 2026.11.6 custom `run`/`task` daemons can declare named ports too (each allocated one needs a `base`); they are exported as `<DAEMON>_<NAME>_PORT` before the daemon starts, so `mise env`/`mise exec` see them:
+
+```toml
+[daemons.stack]
+run = "docker compose up"
+ports.app = { auto = true, base = 8080 }   # STACK_APP_PORT
+ports.db = { auto = true, base = 5432 }    # STACK_DB_PORT
+
+[env]
+DB_PORT = "{{ env.STACK_DB_PORT }}"
+```
+
+`--quiet`/`--silent` on `mise daemons start` or `mise run` hide a daemon's startup log lines (2026.11.7).
 
 Container daemons (2026.10.24) run an image with Docker or Podman instead of a tool mise installs; `image` cannot be combined with `run`, `task`, or `preset`:
 

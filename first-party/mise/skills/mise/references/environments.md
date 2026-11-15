@@ -88,7 +88,7 @@ mise env vars are available with:
 mise env
 mise env --json
 mise env --json-extended
-mise env --dotenv
+mise env --dotenv        # values quoted/escaped since 2026.11.6; Docker --env-file reads quotes literally
 mise env --redacted
 mise env --paths         # PATH entries mise manages (tool bin dirs, _.path), in PATH order (2026.10.11)
 ```
