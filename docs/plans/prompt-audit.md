@@ -53,7 +53,7 @@ Five reviewers each read one batch; their reports (kept untracked in `tmp/prompt
 **Open decisions** (owner):
 
 - **Hidden interactive elements.** `accessibility-voiceover-specialist` exempts every `.accessibilityHidden(true)` element from its audit; `ios-accessibility` calls hiding an interactive one an anti-pattern. Both are upstream text. The suggested patch limits the exemption to non-interactive elements.
-- The `axe` fork is missing our `describe-ui`-as-data line; that is roadmap item *`axe` and the AXe fork*.
+- ~~The `axe` fork is missing our `describe-ui`-as-data line.~~ Resolved 2026-11-15: `axe` now installs from AXe v2.0.4, and the rewritten `patches/axe/` carries the line.
 
 **Flags (no edit):** `swift-concurrency`'s default `Task { @concurrent in … MainActor.run }` pattern is
 stated more strongly than in `swift-concurrency-pro` and `swiftui-pro` (pick one style); `xctrace` claims
