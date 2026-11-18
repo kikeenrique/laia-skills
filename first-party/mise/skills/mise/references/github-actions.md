@@ -121,6 +121,6 @@ For runners where a third-party action is unwanted, prefer committing a wrapper 
 
 - `HTTP 403` / rate limit during install: ensure `github_token` is passed (default works unless overridden or the job's `permissions` strip it), or commit `mise.lock` so resolved URLs are reused.
 - Fresh mise release not picked up: expected under the 24h `minimum_release_age`; pin `version` or set `0s`.
-- `--locked` failure: the lockfile lacks the runner platform or a tool; run `mise lock --platform ...` locally and commit.
+- `--locked` failure: the lockfile lacks the runner platform or a tool; run `mise lock --platform ...` locally and commit. A `mise lock --check` step (2026.11.10) catches this earlier, e.g. in PRs where a bot bumped `mise.toml` without relocking.
 - Stale tools after config change: the config hash is in the key, so this usually means a custom `cache_key` omitted `{{file_hash}}`; bump `cache_key_prefix`.
 - Env vars missing in later steps: check `env: true` and that the variable is set in `[env]` for the active `MISE_ENV`.

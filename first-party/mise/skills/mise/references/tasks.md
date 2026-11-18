@@ -76,7 +76,7 @@ mise tasks history --summary [--json]     # runs, failures, median duration per 
 - **Tags**: `tags = "lint"` or `tags = ["test", "slow"]` on a task (`#MISE tags=[...]` in file tasks; templates add theirs). `--tag` with no task name picks from every task; with a name or pattern it keeps matching tagged tasks and fails when none match. Repeat `--tag` for OR. Put it before the task name; in a monorepo add a pattern such as `'//...:**'`. `mise tasks ls --json` includes `tags`.
 - **Run report**: `--report-file <path>` (or `MISE_TASK_REPORT_FILE`) writes JSON when the run ends — passed, failed, Ctrl-C, or `--timeout` — with each task's `status` (`passed`, `failed`, `cancelled`, `skipped`, `cached`, `not_run`), `exit_code`, and timings; top-level `status` is `passed`/`failed`/`cancelled`/`timed_out`. Not with `--dry-run`.
 - **`--at REV`** checks the revision out into a temporary detached git worktree, runs the tasks there with that revision's config and tools, and removes it afterwards. Ignored files (`node_modules/`, `.env`) are absent; prepare them with `--at-setup 'cp -R "$MISE_RUN_AT_SOURCE/node_modules" .'`. It needs the main checkout trusted and never trusts the config at REV itself (always refused in paranoid mode).
-- **History**: each task run's arguments (redacted), duration, and outcome are kept per project under `$MISE_STATE_DIR/task-history/` (`task.history = false` stops recording; `task.history_limit`, default 20 per task). The median helps pick which checks are cheap enough to run. Since 2026.11.7 the same summary is the `history` field of `mise tasks info <task> --json` and of each task in `mise tasks ls --json` (`null` if never run), e.g. `.history | {median_ms, last_status}`.
+- **History**: each task run's arguments (redacted), duration, and outcome are kept per project under `$MISE_STATE_DIR/task-history/` (`task.history = false` stops recording; `task.history_limit`, default 20 per task). The median helps pick which checks are cheap enough to run. Since 2026.11.7 the same summary is the `history` field of `mise tasks info <task> --json` and of each task in `mise tasks ls --json` (`null` if never run), e.g. `.history | {median_ms, last_status}`. Since 2026.11.10 `mise tasks ls --json` also includes each task's `cache`, `lock`, and `skip_if`.
 - **Task CRUD**: `mise tasks add` (`--env local`, `--global`, `--path` pick the file), `mise tasks set` (change fields), and `mise tasks rm` (2026.10.25) all take `--json` and `--dry-run`. Replacing an existing task with `tasks add` should pass `--force`; without it, it warns from 2027.5.0 and is refused from 2028.5.0.
 
 ## Output Style vs Verbosity
@@ -133,6 +133,15 @@ depends = [
 run = "npm test"
 ```
 
+A shared dependency runs once only when name, arguments, and `env` all match: `build` and `build --release` are separate runs, even when `mise run build --release` meets another task's plain `build`. Forward the arguments to get one run: `depends = ['build {% if usage.release %}--release{% endif %}']`.
+
+Depend on every loaded task with a tag (2026.11.10; also in `depends_post` and `wait_for`). A list matches any of the tags; with `task` as well, only matching tasks that have the tag. It fails when nothing matches unless `optional = true`, does not load other monorepo projects, and a task never depends on itself:
+
+```toml
+[tasks.ci]
+depends = [{ tag = "lint" }, { tag = ["test", "slow"] }]
+```
+
 Use `depends_post` for follow-up tasks and `wait_for` for optional coordination with tasks that may already be running.
 
 Set `optional = true` on a structured dependency so a name or pattern that matches nothing is not an error (an invalid pattern still is):
@@ -165,7 +174,21 @@ lock = true                            # one run at a time across this repo's wo
 run = "./scripts/migrate.sh"
 ```
 
-Locks are taken after dependencies finish and only when the task actually runs (not when skipped or cached), held until its last command ends, and released even if mise is killed. A waiting task gives up its `--jobs` slot and reports the holder. Limit the wait with `task.lock_timeout` or `mise run --lock-timeout 5m`; `timeout` starts once the locks are held. Commands see them in `MISE_TASK_LOCKS`. `false` or `[]` turns off a lock a template sets. A locked non-`interactive` task cannot prompt for secrets; prefer per-worktree daemons when each worktree can have its own copy of the resource.
+Locks are taken after dependencies finish and only when the task actually runs (not when skipped or cached), held until its last command ends, and released even if mise is killed. A waiting task gives up its `--jobs` slot and reports the holder. Limit the wait with `task.lock_timeout` or `mise run --lock-timeout 5m`; `timeout` starts once the locks are held. Commands see them in `MISE_TASK_LOCKS`. `false` or `[]` turns off a lock a template sets. Since 2026.11.10 lock names render templates, so `lock = "{{config_root}}/package-lock.json"` is shared only within that project.
+
+Locks with several slots (2026.11.10) model a limited resource such as CPU: size the pool once per machine in the global config (runs that disagree on the size can exceed the smaller one), and let each task take `count` slots, all or none:
+
+```toml
+# ~/.config/mise/config.toml   (or: mise settings set task.lock_pools.cpu 8; MISE_TASK_LOCK_POOLS=cpu=8,gpu=1)
+[settings.task.lock_pools]
+cpu = "8"                              # whole numbers as strings
+
+# mise.toml
+[tasks.test]
+lock = [{ name = "cpu", count = 4 }, "test-db"]
+```
+
+`MISE_TASK_LOCKS` then lists each held slot (`cpu,cpu:2,cpu:5,cpu:6`), so a task can pick a per-slot database or port. A `count` above the pool takes all of it; waiters are not queued, so a stream of small tasks can starve a large one. A nested task needing more slots than its parent holds fails. A locked non-`interactive` task cannot prompt for secrets; prefer per-worktree daemons when each worktree can have its own copy of the resource.
 
 `confirm` guards only the task's own `run` command. Dependencies run before the confirmation prompt unless you model them as `run = [{ task = "..." }]` or put `confirm` on the dependency tasks too.
 
@@ -271,6 +294,8 @@ If a dependency with `sources` reruns because its inputs changed, dependent task
 `sources` and `outputs` can use parsed usage values, resolved per invocation: with `usage = 'arg "<target>"'`, write `sources = ["src/{{usage.target}}/**"]` and `outputs = ["dist/{{usage.target}}"]`.
 
 Source exclusions use the same `!` convention as gitignore and watchexec. Entries are evaluated in order, so later positive entries can re-include a path. Escape a literal leading bang as `"\\!important.txt"` in TOML.
+
+The entry `!@gitignore` (2026.11.10) drops what git ignores from the entries before it; later entries can re-include, e.g. `sources = ["pkg/**", "!@gitignore", "pkg/dist/**"]`. It reads the repo's `.gitignore` files and `.git/info/exclude`, not the global `core.excludesFile`; tracked files stay sources, and outside a git work tree it excludes nothing. mise still walks ignored directories, so add `!**/node_modules/**` for large ones.
 
 `{{ task_source_files(only_changed=true) }}` narrows a run to sources written since mise last considered the task up to date — useful for linters. A failing run does not advance the baseline, and the filter never narrows to nothing.
 

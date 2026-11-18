@@ -16,6 +16,8 @@ mise lock
 mise lock --platform linux-x64,macos-arm64
 mise lock --upgrade                     # migrate a legacy (version 0) lockfile
 mise lock --bump [tool] [--dry-run --json]
+mise lock --dry-run                     # per platform entry: new entry/platform, version change, fields filled, unchanged
+mise lock --check [--json]              # CI gate: fail if a locked install would reject the lockfile; offline, writes nothing
 mise install --locked
 mise lock --sidecars [--json]           # list native dependency sidecar dirs; writes nothing
 mise backends switch [tool] [--dry-run] # move lock entries to the registry's new backend
@@ -32,6 +34,8 @@ When the registry moves a tool to another backend, mise keeps installing from th
 `mise lock --bump` re-resolves fuzzy selectors (`latest`, `lts`, `"22"`) against the newest matching versions and rewrites the lockfile without installing anything and without touching `mise.toml`. Exact pins are untouched — use `mise upgrade --bump` for those. `--global`/`--local` pick the lockfile; `--json` emits machine-readable changes for scheduled dependency-bump PRs.
 
 Since 2026.10.19 `lockfile_mode` defaults to `generate`: lockfile writes (including automatic locking during `mise install`/`mise use`) rebuild the whole lockfile from the current requests, reusing unchanged entries and locking the other recorded platforms. Set `lockfile_mode = "merge"` (`MISE_LOCKFILE_MODE`) to go back to updating entries one at a time as tools install. Neither mode creates a lockfile. `merge` is deprecated since 2026.10.24 (warns from 2027.4.0, removed in 2027.10.0); migrate by deleting the setting.
+
+`mise lock --check` (2026.11.10) catches a `mise.toml` change committed without relocking (e.g. a bot bumped `node = "26"` while `mise.lock` holds 24.x): it reports requests with no matching locked version, platform entries missing a URL or required checksum, and missing or edited dependency-graph sidecars, for the platforms `mise lock` would lock (`--platform` to choose) and the scopes `locked_scopes` enforces. It runs offline, so a remote config include that was never fetched fails. Each entry also shows the provenance recorded at lock time (`github-attestations`, `slsa`, `cosign`, `minisign`), `checksum only`, or `none` — informational only. Before 2026.11.10, `mise lock --dry-run` did not report per-entry changes.
 
 Full lock runs drop top-level tools the active config no longer declares. For a shared lockfile (e.g. `mise lock --global` used by profiles that configure different tools), set `lockfile_auto_prune = false` to keep unreferenced entries.
 
@@ -82,6 +86,8 @@ locked = true
 [tools]
 node = "24"
 ```
+
+Since 2026.11.10 installs no longer rewrite that root's lockfiles: run `mise lock` (or `mise upgrade`) to record new versions or platforms. A lockfile shared by several roots is left alone only when every root writing it sets `tool_config.locked`.
 
 ## Trust
 
@@ -134,6 +140,8 @@ deny_all = true
 ```
 
 `--deny-all` keeps implicit access to system libraries and tool dirs; it is not an empty container. Enforcement uses the host OS and differs between Linux and macOS; **Windows does not enforce filesystem or network restrictions**. Per-host `--allow-net=<host>` (task `allow_net`) is unsupported on both Linux and macOS and fails with an error; use `--deny-net` to block all network. Since 2026.10.19: on Linux, write restrictions (`--deny-write`, `--allow-write`, `--deny-all`) need kernel 6.2+ and fail on older kernels instead of running weaker; `--deny-net` also blocks io_uring (programs that need it won't run); an allowed path that goes through a symlink in the project leading out of it is an error (name the target directly); an empty allowed path allows nothing but still restricts. Configuration evaluation and tool installation happen outside the child's sandbox — use safe mode for untrusted config.
+
+`--deny-net` and read/write restrictions do not stop connections to Unix sockets (SSH agent, password manager, Docker socket). `--deny-unix` / `--allow-unix=<socket-or-dir>` (task `deny_unix`/`allow_unix`, 2026.11.10) block them except the allowed ones. They need Linux 7.1+ (older kernels and macOS fail; Windows warns and runs unrestricted), `--deny-all` does not include them, abstract sockets created inside the sandbox stay reachable, and an allowed socket must exist at start (allow its directory for sockets the command creates). Local daemons reached by socket (`nscd`, `systemd-resolved`, `/dev/log`) stop working unless allowed.
 
 ## CI Pattern
 

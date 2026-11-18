@@ -119,6 +119,7 @@ Then run:
 mise lock
 mise install --locked
 mise lock --bump --dry-run    # re-resolve fuzzy selectors without touching mise.toml
+mise lock --check             # CI: fail when mise.lock is behind mise.toml (offline, writes nothing)
 ```
 
 Set npm backend install policy:

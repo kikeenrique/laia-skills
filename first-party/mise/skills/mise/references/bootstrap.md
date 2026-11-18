@@ -193,6 +193,8 @@ block = """
 """
 ```
 
+Since 2026.11.10 file and directory entries accept `permissions` as another name for `mode` (set only one), matching `[dotfiles]`. Other spellings still differ: `[bootstrap.files]` uses `template = true` and `state = "absent"` where `[dotfiles]` uses `mode = "template"` / `mode = "absent"`; only `[bootstrap.files]` sets `owner`/`group`, and only `[dotfiles]` symlinks.
+
 ## Platform Units And Defaults
 
 - Compose project values render Tera, e.g. `project_dir = "{{ config_root }}/mempalace"`, so shared config needs no machine-specific paths (no `exec()`).
@@ -200,6 +202,7 @@ block = """
 - systemd units (`[bootstrap.linux.systemd.units.<name>]`) accept `before`, `binds_to`, `part_of`, and `conflicts` (lists of unit names) next to `after`/`wants`/`requires`, and service-only `exec_start_pre` / `exec_start_post` lists (one `ExecStartPre=`/`ExecStartPost=` line each).
 - LaunchAgents accept `process_type` = `Background`, `Standard`, `Adaptive`, or `Interactive` (exact launchd spelling; anything else is an error), and since 2026.10.20 `launch_events` (launchd `LaunchEvents`, tables keyed by quoted stream then event name, properties in launchd's case), e.g. `[bootstrap.macos.launchd.agents.usb-handler.launch_events."com.apple.iokit.matching".apple-usb]` with `IOProviderClass = "IOUSBHostDevice"`. The program must consume the stream (`xpc_set_event_stream_handler`).
 - To start and enable a systemd **user** unit a package already ships (e.g. `gnome-keyring-daemon`), declare `[bootstrap.services.<unit>]` with `scope = "user"`, `state = "running"`, `enabled = true` and no `command`/`builtin` (2026.10.20, Linux-only; no root needed; a bare name gets `.service`).
+- `state = "unchanged"` (2026.11.10) on a systemd service (system or existing user unit) only enables it for boot and never starts, stops, or restarts it (a `notify`ing file does not either) — e.g. a login manager that would replace the console you provision from: `[bootstrap.services.greetd]` with `state = "unchanged"`, `enabled = true`. Not with `masked = true`, nor for services mise defines with `command`/`builtin`.
 - LaunchAgents accept `soft_resource_limits` / `hard_resource_limits` (2026.11.6) — tables of `core`, `cpu`, `data`, `file_size`, `memory_lock`, `number_of_files`, `number_of_processes`, `resident_set_size`, `stack` (bytes; `cpu` in seconds; soft ≤ hard) — e.g. `soft_resource_limits = { number_of_files = 10240 }` for a server, since launchd starts agents with 256 open files.
 - **macOS preferences moved (2026.11.8):** `dock`, `finder`, `keyboard`, `trackpad`, `defaults`, `defaults_entries`, and `login_items` now live under `[bootstrap.settings.macos]` with the same keys. The old `[bootstrap.macos.*]` spelling still works (the new one wins when both set a key), warns from 2027.5.0, and stops being read in 2028.5.0. Older mise ignores `[bootstrap.settings.macos]`, so keep the old spelling until every machine reading the config runs 2026.11.8+. `[bootstrap.macos.launchd.agents]` does not move.
 - `[bootstrap.settings.macos.login_items] apps = ["/Applications/Ghostty.app", "~/Applications/Example.app"]` (2026.10.9) declares Open-at-Login apps. It is additive by default; `exclusive = true` makes `apply` remove undeclared entries too. Applied with the macOS defaults.
