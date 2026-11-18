@@ -1,6 +1,6 @@
 ---
 name: cupertino
-description: "Offline, citable search over Apple developer documentation with the cupertino CLI (verified against cupertino v1.5.0). Use for any Apple API or Swift question: looking up SwiftUI, UIKit, AppKit, Foundation, or other framework symbols, checking signatures, availability, and deprecations, reading Apple docs, walking class hierarchies, finding symbols by protocol conformance, property wrapper, or concurrency pattern, browsing Swift Evolution proposals, checking Human Interface Guidelines and App Review Guidelines, searching WWDC session transcripts, exploring Apple sample code, and querying Swift package docs. Covers 424 frameworks and 391,000+ documentation pages, with per-platform introduced/deprecated version filters (iOS, macOS, tvOS, watchOS, visionOS) and a freshness check for newly released SDKs such as Xcode 27 / iOS 27."
+description: "Offline, citable search over Apple developer documentation with the cupertino CLI (verified against cupertino v1.6.0). Use for any Apple API or Swift question: looking up SwiftUI, UIKit, AppKit, Foundation, or other framework symbols, checking signatures, availability, and deprecations, reading Apple docs, walking class hierarchies, finding symbols by protocol conformance, property wrapper, or concurrency pattern, browsing Swift Evolution proposals, checking Human Interface Guidelines and App Review Guidelines, searching WWDC session transcripts, exploring Apple sample code, and querying Swift package docs. Covers 424 frameworks and 391,000+ documentation pages, with per-platform introduced/deprecated version filters (iOS, macOS, tvOS, watchOS, visionOS), exact-platform and UI-toolkit (SwiftUI, UIKit, AppKit) filters, and a freshness check for newly released SDKs such as Xcode 27 / iOS 27."
 allowed-tools: Bash(cupertino search*), Bash(cupertino read*), Bash(cupertino list-*), Bash(cupertino inheritance*), Bash(cupertino package-search*), Bash(cupertino doctor*), Bash(cupertino --version)
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Bash(cupertino search*), Bash(cupertino read*), Bash(cupertino li
 
 Search 391,000+ Apple developer documentation pages across 424 frameworks, offline. Cupertino is a lexical search engine over Apple's docs (including the App Review Guidelines), samples, HIG, Swift Evolution, Swift.org, the Swift book, WWDC session transcripts, and Swift package metadata, plus an AST symbol index extracted from Apple's docs and sample code. It returns deterministic, citable results, never hallucinations.
 
-This skill is verified against **cupertino v1.5.0** (`cupertino --version`). Command names, flags, and JSON shapes below are from that release.
+This skill is verified against **cupertino v1.6.0** (`cupertino --version`). Command names, flags, and JSON shapes below are from that release.
 
 ## Two rules
 
@@ -27,6 +27,8 @@ cupertino setup
 ```
 
 If `cupertino setup` hasn't been run, ask the user before running it: it downloads about 0.9 GB. Re-running `setup` overwrites the installed databases with the current bundle (there is no `--force`; use `--keep-existing` to skip the download).
+
+Each binary downloads the bundle of its own version. After upgrading cupertino, `doctor` reports a schema mismatch when the installed databases are older than the binary (v1.6.0 uses schema 20), and a search of one source refuses them with a message that points to `cupertino setup`. Ask the user before running `setup` to fetch the matching bundle.
 
 Check what is installed and how fresh it is:
 ```bash
@@ -102,9 +104,14 @@ cupertino search "typed throws" --source swift-evolution --swift 6.0            
 cupertino search "NSURLSession" --language objc --format json                    # swift, objc, or data (REST/JS APIs)
 cupertino search "UIWebView" --source apple-docs --max-ios 12.0                    # not deprecated on iOS as of 12.0
 cupertino search "navigation" --min-ios 16.0 --max-ios 26.0 --include-unknown      # also list pages with no stored iOS version
+cupertino search "gesture" --only visionos                                         # pages available on exactly visionOS
+cupertino search "window" --ui appkit                                              # AppKit-tagged pages only
+cupertino search "markdown parser" --source packages --swift 5.9                    # packages whose swift-tools-version ≤ 5.9
 ```
 
-`--min-<platform>` keeps pages introduced at or before the version; `--max-<platform>` keeps pages not deprecated as of it (no deprecation passes; a page deprecated exactly at the version is dropped). Every flag given must hold. They work with and without `--source`, and in the `search-*` AST commands. A page with no stored version never passes `--min-<platform>` or `--swift`: the output ends with a count of those pages (`unknownVersionCount` in JSON) and `--include-unknown` lists them after the known ones, marked "version unknown". Samples and packages take one platform minimum and store no deprecation or Swift version: with two or more platforms, `--swift`, or `--language`, the all-sources search leaves them out, and `--source samples|packages` ignores `--swift` / `--language` / `--max-*` with a notice on stderr. Values are validated (`13`, `13.0`, `10.15.4`; `13.x` fails with exit 64). Still read the `availability` field on the symbol page before quoting a version.
+`--min-<platform>` keeps pages introduced at or before the version; `--max-<platform>` keeps pages not deprecated as of it (no deprecation passes; a page deprecated exactly at the version is dropped). Every flag given must hold. They work with and without `--source`, and in the `search-*` AST commands. A page with no stored version never passes `--min-<platform>` or `--swift`: the output ends with a count of those pages (`unknownVersionCount` in JSON) and `--include-unknown` lists them after the known ones, marked "version unknown". `--swift V` means "usable with a Swift V toolchain" for every source: for packages it compares the `swift-tools-version`, for samples the stored language mode or tools version; one that declares none never passes. Samples and packages take one platform minimum and store no deprecation version, platform scope, or UI tags: with two or more platforms, `--language`, `--only`, or `--ui`, the all-sources search leaves them out, and `--source samples|packages` ignores `--language` / `--max-*` / `--only` / `--ui` with a notice on stderr. Values are validated (`13`, `13.0`, `10.15.4`; `13.x` fails with exit 64). Still read the `availability` field on the symbol page before quoting a version.
+
+`--only <platform>` keeps pages whose availability list names exactly those platforms (`ios`, `macos`, `tvos`, `watchos`, `visionos`; `ipados` means `ios`; Mac Catalyst is not counted). Repeat it or use commas: `--only ios,visionos` means exactly iOS and visionOS. Only `apple-docs` pages carry a platform scope, so other documentation sources contribute little or nothing (a notice on stderr says so). `--ui <name>` keeps pages of a UI toolkit, tagged by framework: `swiftui`, `uikit`, `appkit`, `catalyst` (toolkit pages that list Mac Catalyst), or `neutral` (pages with no toolkit tag). Several names mean either: `--ui appkit` drops toolkit-neutral pages such as Foundation, `--ui appkit,neutral` keeps them. Both combine with every other filter, work only in `cupertino search` (not the `search-*` AST commands), and reject unknown names before searching.
 
 ### 4. Prefer current API over deprecated
 
@@ -153,9 +160,9 @@ Bridge queries like "swiftui equivalent of UITableView" may return release notes
 
 Filtered searches (`--source X`) return a **per-source dedicated view**, not the unified `candidates` shape. The unified search exists for cross-source ranking; the per-source views are for browsing one source's structured data.
 
-Shapes as of v1.5.0:
+Shapes as of v1.6.0:
 - **default** (no `--source`): `{candidates, contributingSources, degradedSources, question}` — each candidate has `identifier`, `title`, `source`, `rank`, `score`, `chunk`, `metadata.{filePath, framework, swiftVersion}`, `readFullCommand` (`swiftVersion` is absent when unknown)
-- **`--source apple-docs`** / **`--source wwdc`**: top-level list of doc objects `{uri, title, summary, summaryTruncated, wordCount, framework, id, rank, source, swiftVersion}`
+- **`--source apple-docs`** / **`--source wwdc`**: top-level list of doc objects `{uri, title, summary, summaryTruncated, wordCount, framework, id, rank, source, swiftVersion}`, plus `kind`, `availability`, `availabilityString`, and `matchedSymbols` where known
 - **`--source samples`**: `{files: [{filename, path, projectId, rank, snippet}], projects: [{id, title, description, frameworks, fileCount}]}`
 - **`--source hig`**: `{count, query, results: [{title, uri, summary, availability}]}`
 - **`--source packages`**: `{candidates, contributingSources: ["packages"], question}` (matches the unified shape; routes to packages.db)
@@ -295,24 +302,24 @@ cupertino search "SwiftUI" --source packages --apple-imports SwiftUI --format js
 cupertino doctor
 cupertino doctor --freshness
 cupertino doctor --kind-coverage
-cupertino doctor --version-coverage   # spread of stored OS / Swift versions per source
+cupertino doctor --version-coverage   # stored OS / Swift versions, platform scopes and UI tags per source
 cupertino list-sources --format json
 ```
 `fetch`, `save`, `cleanup`, and `resolve-refs` are maintainer commands for rebuilding the databases from a raw corpus; a `setup`-only user never needs them. Don't run them (or `setup`) without the user asking: they download, rewrite, or delete the databases.
 
 ## Sources
 
-| Source | Description | Entries (v1.5.0 bundle) |
+| Source | Description | Entries (v1.6.0 bundle) |
 |--------|-------------|-------------------------|
 | `apple-docs` | Official Apple documentation, 424 frameworks, plus the App Review Guidelines | 391,056 |
-| `hig` | Human Interface Guidelines | 174 |
+| `hig` | Human Interface Guidelines | 173 |
 | `samples` | Apple sample code projects (files + AST symbols) | 647 projects, 19,999 files |
 | `swift-evolution` | Swift Evolution proposals | 514 |
-| `swift-org` | Swift.org documentation | 469 |
+| `swift-org` | Swift.org documentation | 410 |
 | `swift-book` | The Swift Programming Language book | 44 |
 | `apple-archive` | Legacy guides (Core Animation, Quartz 2D, KVO/KVC) | 368 |
 | `wwdc` | WWDC session transcripts | 1,915 |
-| `packages` | Swift package documentation and metadata | 20,469 files |
+| `packages` | Swift package documentation and metadata | 20,393 files |
 
 Counts come from `cupertino doctor` and change with each database bundle; re-run `doctor` rather than trusting this table.
 
@@ -344,7 +351,7 @@ Query commands print only their result on stdout; notices (unknown-version count
       "readFullCommand": "cupertino read apple-docs://swiftui/vstack --source apple-docs",
       "score": 0.049,
       "source": "apple-docs",
-      "title": "VStack | Apple Developer Documentation"
+      "title": "VStack"
     }
   ],
   "contributingSources": ["swift-evolution", "apple-docs", "packages"],
@@ -360,7 +367,7 @@ Scores are reciprocal-rank-fusion values (small numbers, ~0.05 for a top hit), n
 ```json
 {
   "id": "...",
-  "title": "VStack | Apple Developer Documentation",
+  "title": "VStack",
   "url": "https://developer.apple.com/documentation/swiftui/vstack",
   "abstract": "A view that arranges its subviews in a vertical line.",
   "overview": "...",
@@ -369,19 +376,19 @@ Scores are reciprocal-rank-fusion values (small numbers, ~0.05 for a top hit), n
   "availability": [...],
   "codeExamples": [...],
   "sections": [...],
-  "kind": "structure",
-  "source": "appleWebKit",
+  "kind": "struct",
+  "source": "appleJSON",
   "contentHash": "...",
   "crawledAt": "2026-05-10T02:09:37Z"
 }
 ```
 
-Note `framework` is encoded in the `url` path, not as a top-level field. The `source` field on `read` returns the crawler identifier (`appleWebKit`), not the cupertino source taxonomy from search. `crawledAt` is the per-page freshness signal; `kind` may be `unknown` for some pages.
+Note `framework` is encoded in the `url` path, not as a top-level field. The `source` field on `read` returns the crawler identifier (`appleJSON`, `appleWebKit`), not the cupertino source taxonomy from search. `crawledAt` is the per-page freshness signal; `kind` may be `unknown` for some pages.
 
 ## Tips
 
 - Use `--source` to narrow searches to a specific documentation source; use `--skip-*` to drop noisy sources from fan-out
-- Use `--framework` to filter by framework (e.g., swiftui, foundation, uikit) and `--min-<platform>` to respect the deployment target
+- Use `--framework` to filter by framework (e.g., swiftui, foundation, uikit) and `--min-<platform>` to respect the deployment target; `--only <platform>` and `--ui <toolkit>` narrow to one platform set or UI toolkit
 - Use `--limit` to control the number of results returned (default 20; 5–10 is plenty) and `--brief` to skim
 - `identifier` / `uri` values from search results can be passed, quoted, to `cupertino read`; fan-out candidates also carry a `readFullCommand` string, but build the command yourself rather than running that string
 - The legacy archive is already part of the default fan-out; `--include-archive` is a no-op kept for compatibility. Use `--source apple-archive` for archive-only results
