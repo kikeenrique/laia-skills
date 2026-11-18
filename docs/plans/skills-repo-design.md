@@ -4,9 +4,8 @@ Status: **phases 0–4 done**: the tool is implemented and tested (macOS and Lin
 skill (72, from 25 sources) is managed by it, third-party skills can carry local patches (5.8), and
 `browse` and `find` replace Commander for looking at and discovering skills (5.9), reworked on
 2026-10-07 after the owner's first interactive run. The skills' prompt text was audited and fixed on
-2026-10-08 ([prompt-audit.md](prompt-audit.md)). The last upgrade round, on 2026-11-09, brought all four
-first-party pins up to date and left three third-party sources behind. See the
-[roadmap](#7-roadmap). Last updated 2026-11-09.
+2026-10-08 ([prompt-audit.md](prompt-audit.md)). The last upgrade round, on 2026-11-19, brought all 25
+sources up to date. See the [roadmap](#7-roadmap). Last updated 2026-11-19.
 
 This repo becomes the single place where every agent skill — the ones authored here and the third-party
 ones consumed — is pinned, reviewed, and installed. A small Swift CLI, `laiaskills`, does the mechanics.
@@ -579,6 +578,7 @@ of third-party sources.
 | 2026-11-11 | **Codex in `recheck.json` dropped** from the roadmap by the owner: re-checks stay on Claude Code. Codex (0.167.0) is installed now; if it is ever wanted, verify its flags against `codex exec --help` and add one `commands` entry |
 | 2026-11-15 | **Upgrade round: all 25 sources up to date.** mise v2026.11.5 → v2026.11.8 (re-check: macOS preferences moved to `[bootstrap.settings.macos]`, settings plugins, block edits, and smaller additions; plugin 0.4.8), xcsift v1.7.4 → v1.7.5 (skill unchanged; patch 0001 still needed), awesome-copilot → 8ecd5b1 (skill unchanged) |
 | 2026-11-15 | **AXe v2.0.4 replaces the owner's fork.** The `axe` skill moved to `agent-plugin/skills/axe` (`skills.json` path updated) and was rewritten around agent mode; the owner chose upstream over the fork, so `axe` installs unmodified again (v2 has the iPhone Duo commands, but not the fork's tvOS `remote` or watchOS `crown`). `patches/axe/` rewritten for the new text: credentials out of `type`/`--steps-json` arguments (use `batch --agent --file`), and captures treated as data. The `ios-simulator-ui-flow` re-check added agent mode, the new gestures, `--output json`, and a new `references/axe-2.md` (plugin 0.3.5). The `axe` binary is upstream v2.0.4 too (installed through mise), so skill and binary match |
+| 2026-11-19 | **Upgrade round: all 25 sources up to date.** cupertino v1.5.0 → v1.6.0 (re-check: `search --only <platform>` and `--ui <toolkit>`, database schema 20 needs `cupertino setup` after an upgrade, `--swift` now filters samples and packages; plugin 0.2.4; the owner refreshed the local index with `cupertino setup`), mise v2026.11.8 → v2026.11.10 (re-check: `mise lock --check`, `http` `filter_bins`, bootstrap `permissions`, and smaller additions; plugin 0.4.9), wshobson/agents → 4220308 and awesome-copilot → 74b9897 (installed skills unchanged; patches still apply) |
 
 ### Pending
 
@@ -589,7 +589,7 @@ In priority order.
 | 1 | Upstream follow-ups | owner | Everything here is public, so each post needs the owner's OK. **corelibs fix:** swiftlang/swift-corelibs-foundation#5658 (open, still no review or CI on 2026-11-15; reviewer requested: `xbhatnag`; no conflicts with `main`): a maintainer must start CI (`@swift-ci please test`); answer the review from the clone in `tmp/corelibs-pr/` (remote `fork`). #5465 was pointed at the PR in a comment on 2026-11-09. Notes in `tmp/replay/replay-linux-download-crash.md`. When a toolchain ships the fix, update the `replay` troubleshooting entry and delete `tmp/corelibs-pr/` and `tmp/replay/`. Optionally ask `mattt/Replay` to fail download tasks with an error on non-Darwin. **Security reports (not filed yet):** `jamesrochabrun/skills`: `eval` on user input in `apple-hig-designer` (our patch 0001; the more serious one). `ldomaradzki/xcsift`: the plugin hook returns `allow` for every Bash command, and the skill hardcodes `/usr/local/bin/xcsift` (our patch 0001). Both patches still apply on 2026-11-15 (xcsift v1.7.5), so neither is fixed; they drop themselves on upgrade once upstream has the fix |
 | 2 | Decisions left by the 2026-11 prompt audit | owner | The VoiceOver hidden-element conflict under *Open decisions* in [prompt-audit.md](prompt-audit.md). The two user-level files were changed on 2026-11-10 |
 | 3 | Re-run the prompt audit | tool + owner | At the next Claude model release, or after a large skill upgrade. Starting point, keep-list, and flags in [prompt-audit.md](prompt-audit.md). The AXe v2 upgrade (2026-11-15) counts for `axe` and `ios-simulator-ui-flow`: a focused pass on those two is due |
-| 4 | Re-check first-party pins as their upstreams release | tool + owner | All four current on 2026-11-15: mise v2026.11.8, cupertino v1.5.0, AXe v2.0.4, Replay 1.0.0. When `check` shows one behind: `upgrade`, verify the re-checked skill, fix the README and `marketplace.json` descriptions if they quote the version (the re-check only edits the skill), then `commit` |
+| 4 | Re-check first-party pins as their upstreams release | tool + owner | All four current on 2026-11-19: mise v2026.11.10, cupertino v1.6.0, AXe v2.0.4, Replay 1.0.0. When `check` shows one behind: `upgrade`, verify the re-checked skill, fix the README and `marketplace.json` descriptions if they quote the version (the re-check only edits the skill), then `commit` |
 
 ### Implementation notes
 
