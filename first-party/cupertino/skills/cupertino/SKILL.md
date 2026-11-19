@@ -1,14 +1,14 @@
 ---
 name: cupertino
-description: "Offline, citable search over Apple developer documentation with the cupertino CLI (verified against cupertino v1.6.0). Use for any Apple API or Swift question: looking up SwiftUI, UIKit, AppKit, Foundation, or other framework symbols, checking signatures, availability, and deprecations, reading Apple docs, walking class hierarchies, finding symbols by protocol conformance, property wrapper, or concurrency pattern, browsing Swift Evolution proposals, checking Human Interface Guidelines and App Review Guidelines, searching WWDC session transcripts, exploring Apple sample code, and querying Swift package docs. Covers 424 frameworks and 391,000+ documentation pages, with per-platform introduced/deprecated version filters (iOS, macOS, tvOS, watchOS, visionOS), exact-platform and UI-toolkit (SwiftUI, UIKit, AppKit) filters, and a freshness check for newly released SDKs such as Xcode 27 / iOS 27."
+description: "Offline, citable search over Apple developer documentation with the cupertino CLI (verified against cupertino v1.6.5). Use for any Apple API or Swift question: looking up SwiftUI, UIKit, AppKit, Foundation, or other framework symbols, checking signatures, availability, and deprecations, reading Apple docs and Apple's tutorials, walking class hierarchies, finding symbols by protocol conformance, property wrapper, or concurrency pattern, browsing Swift Evolution proposals, checking Human Interface Guidelines and App Review Guidelines, searching WWDC session transcripts, exploring Apple sample code, and querying Swift package docs. Covers 424 frameworks and 391,000+ documentation pages, with per-platform introduced/deprecated version filters (iOS, macOS, tvOS, watchOS, visionOS), exact-platform and UI-toolkit (SwiftUI, UIKit, AppKit) filters, and a freshness check for newly released SDKs such as Xcode 27 / iOS 27."
 allowed-tools: Bash(cupertino search*), Bash(cupertino read*), Bash(cupertino list-*), Bash(cupertino inheritance*), Bash(cupertino package-search*), Bash(cupertino doctor*), Bash(cupertino --version)
 ---
 
 # Cupertino: Apple Documentation Search
 
-Search 391,000+ Apple developer documentation pages across 424 frameworks, offline. Cupertino is a lexical search engine over Apple's docs (including the App Review Guidelines), samples, HIG, Swift Evolution, Swift.org, the Swift book, WWDC session transcripts, and Swift package metadata, plus an AST symbol index extracted from Apple's docs and sample code. It returns deterministic, citable results, never hallucinations.
+Search 391,000+ Apple developer documentation pages across 424 frameworks, offline. Cupertino is a lexical search engine over Apple's docs (including the App Review Guidelines and Apple's tutorials), samples, HIG, Swift Evolution, Swift.org, the Swift book, WWDC session transcripts, and Swift package metadata, plus an AST symbol index extracted from Apple's docs and sample code. It returns deterministic, citable results, never hallucinations.
 
-This skill is verified against **cupertino v1.6.0** (`cupertino --version`). Command names, flags, and JSON shapes below are from that release.
+This skill is verified against **cupertino v1.6.5** (`cupertino --version`). Command names, flags, and JSON shapes below are from that release.
 
 ## Two rules
 
@@ -26,9 +26,9 @@ First-time setup downloads the pre-built per-source database bundle (~0.9 GB com
 cupertino setup
 ```
 
-If `cupertino setup` hasn't been run, ask the user before running it: it downloads about 0.9 GB. Re-running `setup` overwrites the installed databases with the current bundle (there is no `--force`; use `--keep-existing` to skip the download).
+If `cupertino setup` hasn't been run, ask the user before running it: it downloads about 0.9 GB. Re-running `setup` replaces the installed databases with the current bundle (there is no `--force`; use `--keep-existing` to skip the download). It keeps each old database as `<name>.db.backup-…` in `~/.cupertino`, with its `-wal`, `-shm`, and `-journal` files, so a re-run needs room for a second copy (~4.5 GB) until the backups are deleted.
 
-Each binary downloads the bundle of its own version. After upgrading cupertino, `doctor` reports a schema mismatch when the installed databases are older than the binary (v1.6.0 uses schema 20), and a search of one source refuses them with a message that points to `cupertino setup`. Ask the user before running `setup` to fetch the matching bundle.
+Each binary downloads the bundle of its own version. After upgrading cupertino, `doctor` reports a schema mismatch when the installed databases are older than the binary (v1.6.5 uses schema 20), and a search of one source refuses them with a message that points to `cupertino setup`. A search of all sources instead migrates an older-schema database in place when it opens it (only a newer schema, or a file with no schema, is refused), so the installed file no longer matches the download. Ask the user before running `setup` to fetch the matching bundle. A bundle with the same schema raises no mismatch: the v1.6.0 bundle still works with v1.6.5, but only the v1.6.5 bundle has Apple's tutorials and the newest WWDC sessions.
 
 Check what is installed and how fresh it is:
 ```bash
@@ -128,6 +128,7 @@ When you mention a deprecated symbol in your answer, flag it.
 Bare-name queries can collide with namespaced symbols elsewhere in the index. Common collisions:
 
 - `searchable` → returns CoreSpotlight `CSSearchableIndex`, not the SwiftUI modifier. Use `searchable(text:` to find the modifier directly.
+- `Publisher` alone → hits in several frameworks. Put the framework name first: `Combine Publisher` ranks the `combine` page `Publisher` above its sub-symbols such as `Publishers.CombineLatest`, because a query word naming the page's own framework counts as part of its title. A framework name alone (`swiftui`) returns the framework's top pages as before.
 - `View` → returns hits across many frameworks; prefer `View` with `--framework swiftui` and check the `metadata.framework` field on each candidate.
 - `NavigationStack` → the struct ranks first, but `ToolbarRole.navigationStack` follows closely; check `identifier` (`apple-docs://swiftui/navigationstack` vs `apple-docs://swiftui/toolbarrole/navigationstack`).
 - Common protocol names (`Identifiable`, `Codable`) hit the protocol page only when paired with a more specific term. To find *conformers*, use `search-conformances --protocol Codable` instead.
@@ -160,7 +161,7 @@ Bridge queries like "swiftui equivalent of UITableView" may return release notes
 
 Filtered searches (`--source X`) return a **per-source dedicated view**, not the unified `candidates` shape. The unified search exists for cross-source ranking; the per-source views are for browsing one source's structured data.
 
-Shapes as of v1.6.0:
+Shapes as of v1.6.5:
 - **default** (no `--source`): `{candidates, contributingSources, degradedSources, question}` — each candidate has `identifier`, `title`, `source`, `rank`, `score`, `chunk`, `metadata.{filePath, framework, swiftVersion}`, `readFullCommand` (`swiftVersion` is absent when unknown)
 - **`--source apple-docs`** / **`--source wwdc`**: top-level list of doc objects `{uri, title, summary, summaryTruncated, wordCount, framework, id, rank, source, swiftVersion}`, plus `kind`, `availability`, `availabilityString`, and `matchedSymbols` where known
 - **`--source samples`**: `{files: [{filename, path, projectId, rank, snippet}], projects: [{id, title, description, frameworks, fileCount}]}`
@@ -247,7 +248,7 @@ cupertino search "Observable macro" --source wwdc --format json          # WWDC 
 cupertino search "in-app purchase" --source apple-docs --framework app-store-review-guidelines --format json
 ```
 
-`wwdc` works with `--source` even though `search --help` doesn't list it yet. The App Review Guidelines are `apple-docs` pages, one per numbered guideline (`apple-docs://app-store-review-guidelines/guideline-3-1-1`, titled `App Review Guidelines: 3.1.1 In-App Purchase`).
+`wwdc` works with `--source` even though `search --help` doesn't list it yet. The App Review Guidelines are `apple-docs` pages, one per numbered guideline (`apple-docs://app-store-review-guidelines/guideline-3-1-1`, titled `App Review Guidelines: 3.1.1 In-App Purchase`). Apple's tutorials (the SwiftUI, SwiftUI Concepts, App Dev Training, Develop in Swift, and Sample Apps series, 193 pages since the v1.6.5 bundle) are `apple-docs` pages too, addressed `apple-docs://tutorials/<series>/<page>`, with their steps, code, and quizzes as markdown; a phrase from a step finds its tutorial.
 
 Filter by framework, language, or platform floor (see [§3](#3-infer-the-framework-and-platform-floor-from-context)):
 ```bash
@@ -305,20 +306,22 @@ cupertino doctor --kind-coverage
 cupertino doctor --version-coverage   # stored OS / Swift versions, platform scopes and UI tags per source
 cupertino list-sources --format json
 ```
+If `doctor` (or `doctor --version-coverage`) reports `N of N rows not embellished (no metadata stamp)` and exits with status 1, a local `save` ran over a database migrated to schema 20 without rewriting its rows, so the platform scopes and UI tags that `--only` and `--ui` need are missing. A `setup` bundle never shows this. Don't run the `cupertino save --clear --source <id>` it prints: tell the user, and suggest `cupertino setup` (ask first) unless they maintain their own corpus.
+
 `fetch`, `save`, `cleanup`, and `resolve-refs` are maintainer commands for rebuilding the databases from a raw corpus; a `setup`-only user never needs them. Don't run them (or `setup`) without the user asking: they download, rewrite, or delete the databases.
 
 ## Sources
 
-| Source | Description | Entries (v1.6.0 bundle) |
+| Source | Description | Entries (v1.6.5 bundle) |
 |--------|-------------|-------------------------|
-| `apple-docs` | Official Apple documentation, 424 frameworks, plus the App Review Guidelines | 391,056 |
+| `apple-docs` | Official Apple documentation, 424 frameworks, plus the App Review Guidelines and Apple's tutorials | 391,249 |
 | `hig` | Human Interface Guidelines | 173 |
 | `samples` | Apple sample code projects (files + AST symbols) | 647 projects, 19,999 files |
 | `swift-evolution` | Swift Evolution proposals | 514 |
 | `swift-org` | Swift.org documentation | 410 |
 | `swift-book` | The Swift Programming Language book | 44 |
 | `apple-archive` | Legacy guides (Core Animation, Quartz 2D, KVO/KVC) | 368 |
-| `wwdc` | WWDC session transcripts | 1,915 |
+| `wwdc` | WWDC session transcripts | 1,931 |
 | `packages` | Swift package documentation and metadata | 20,393 files |
 
 Counts come from `cupertino doctor` and change with each database bundle; re-run `doctor` rather than trusting this table.
@@ -360,7 +363,7 @@ Query commands print only their result on stdout; notices (unknown-version count
 }
 ```
 
-Scores are reciprocal-rank-fusion values (small numbers, ~0.05 for a top hit), not probabilities; compare them relative to each other. `degradedSources` lists sources that failed or timed out for this query.
+Scores are reciprocal-rank-fusion values (small numbers, ~0.05 for a top hit), not probabilities; compare them relative to each other. Equal scores are ordered by source, then identifier, so the same query gives the same list on every run. `degradedSources` lists sources that failed or timed out for this query.
 
 `cupertino read "apple-docs://swiftui/vstack"` returns:
 

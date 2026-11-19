@@ -1,8 +1,8 @@
 {
   "$schema": "https://code.claude.com/schemas/plugin.json",
   "name": "cupertino",
-  "version": "0.2.4",
-  "description": "Offline, citable Apple developer documentation search with the cupertino CLI (verified against cupertino v1.6.0): docs, App Review Guidelines, HIG, sample code, Swift Evolution, WWDC transcripts, Swift packages, symbol and inheritance queries, per-platform version filters, and SDK freshness checks.",
+  "version": "0.2.5",
+  "description": "Offline, citable Apple developer documentation search with the cupertino CLI (verified against cupertino v1.6.5): docs, tutorials, App Review Guidelines, HIG, sample code, Swift Evolution, WWDC transcripts, Swift packages, symbol and inheritance queries, per-platform version filters, and SDK freshness checks.",
   "author": { "name": "Enrique Garcia" },
   "homepage": "https://github.com/kikeenrique/laia-skills",
   "repository": "https://github.com/kikeenrique/laia-skills",
