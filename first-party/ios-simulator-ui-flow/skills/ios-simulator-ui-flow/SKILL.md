@@ -5,7 +5,7 @@ description: "Autonomous iOS Simulator UI verification flow for iOS apps. Use wh
 
 # iOS Simulator UI Verification Flow
 
-Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified against AXe `v2.0.4` (released 2026-11-12) and keeps the workflow command-oriented: use project-native build commands, `xcrun simctl` for lifecycle, and AXe for accessibility-tree inspection, input, screenshots, and video.
+Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified against AXe `v2.1.1` (released 2026-11-19) and keeps the workflow command-oriented: use project-native build commands, `xcrun simctl` for lifecycle, and AXe for accessibility-tree inspection, input, screenshots, and video.
 
 ## Principles
 
@@ -176,6 +176,7 @@ Inspect the full accessibility tree:
 ```bash
 axe describe-ui --udid "$UDID" > tmp/ui.json
 axe describe-ui --udid "$UDID"
+axe describe-ui --minimal-keys --udid "$UDID"   # label, id, value, frame, role, type, enabled only; faster
 ```
 
 Inspect one logical point:
@@ -190,7 +191,7 @@ Capture a screenshot for visual review:
 axe screenshot --udid "$UDID" --output tmp/simulator.png
 ```
 
-For an agent driving the app step by step, `describe-ui --agent` returns compact rows with refs, and each `--agent` action checks its target and returns the new screen, so no separate read is needed after it. See [references/axe-2.md](references/axe-2.md) for agent mode, `--output json` with typed error codes, `axe settings`, and the iPhone Duo.
+For an agent driving the app step by step, `describe-ui --agent` returns compact rows with refs, and each `--agent` action checks its target and returns the new screen, so no separate read is needed after it. See [references/axe-2.md](references/axe-2.md) for agent mode (including web pages with `--web`), `--output json` with typed error codes, `axe serve` for many commands in one process, `axe settings`, and the iPhone Duo.
 
 Coordinates in `describe-ui` are logical points. AXe maps logical points for rotated landscape simulators and letterboxed landscape-only apps automatically, so use `describe-ui` frames directly. If you measured a coordinate from a screenshot PNG, convert pixels to logical points first and confirm with `describe-ui --point`.
 
@@ -280,7 +281,7 @@ axe key-combo --modifiers 227 --key 4 --udid "$UDID"  # Cmd+A
 axe button home --udid "$UDID"
 ```
 
-Use `--stdin` or `--file` for text with shell-sensitive characters. `type` uses the US keyboard layout: characters outside it (`é`, `£`) fail with `invalidArguments` before anything is typed. `printf '%s' 'text' | axe clipboard copy --stdin --udid "$UDID"` stages text on the simulator clipboard instead (it does not paste).
+Use `--stdin` or `--file` for text with shell-sensitive characters. Since AXe `v2.1`, `type` (including batch steps and agent mode) types on the simulator's own hardware keyboard layout (German, French, British, …), so pass the text as it should read; a character that layout has no key for fails with `invalidArguments` before anything is typed. `--layout <name>` names a layout and `--layout us` sends US key positions as before (AXe `v2.0` always used US positions). If text arrives as other characters, the app was already running when the keyboard layout changed: relaunch it. `printf '%s' 'text' | axe clipboard copy --stdin --udid "$UDID"` stages text on the simulator clipboard instead (it does not paste).
 
 Credentials: type only test-account credentials the user gave you for this purpose, never real ones. Don't put a password in a command line, where it lands in the process list, shell history, and the transcript: write it to an untracked file under `tmp/` and use `axe type --file`, then delete the file when the flow is done.
 
@@ -365,7 +366,7 @@ For existing apps, grow accessibility coverage as part of the verification work.
 
 Before reporting success:
 
-- The AXe upstream version used for guidance is known. Current target: `v2.0.4`.
+- The AXe upstream version used for guidance is known. Current target: `v2.1.1`.
 - Every AXe simulator-interaction command includes `--udid "$UDID"`.
 - Selector taps are preferred over coordinates where possible.
 - Sliders use `axe slider --value 0-100`.

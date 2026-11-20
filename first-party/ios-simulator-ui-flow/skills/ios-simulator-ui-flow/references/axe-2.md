@@ -1,6 +1,6 @@
-# AXe 2.0 Features
+# AXe 2.x Features
 
-Features added in AXe `v2.0` that the main flow routes here. For full option lists, run `axe <command> --help` or use the `axe` skill.
+Features added in AXe `v2.0` and `v2.1` that the main flow routes here. For full option lists, run `axe <command> --help` or use the `axe` skill.
 
 ## Agent Mode
 
@@ -21,6 +21,20 @@ axe batch --agent --udid "$UDID" --steps-json '{"snapshotID":"<SNAPSHOT_ID>","st
 - `batch --agent` takes 1–8 `tap`/`type` steps from one snapshot; only the last step may leave the screen.
 - Results are JSON by default; `--output text` prints them compactly. `AXE_TIMING=1` prints a phase table to stderr.
 
+### Web Pages (v2.1)
+
+A WKWebView (in any app, inspectable or not), Safari, SFSafariViewController, or an ASWebAuthenticationSession sign-in sheet shows up as one area. Add `--web` to list the page's controls as `w` refs:
+
+```bash
+axe describe-ui --agent --web --view navigation --udid "$UDID"
+axe tap --agent --udid "$UDID" --snapshot-id "$SNAPSHOT_ID" --ref w3
+axe type 'ada@example.com' --agent --focus --udid "$UDID" --snapshot-id "$SNAPSHOT_ID" --ref w2
+```
+
+- Lists links, buttons, pop-up buttons (their options come back as `w` rows to tap), text fields, checkboxes and switches, sliders, and search suggestions; Safari sheets add Back, Forward, Reload, Share, Open in Safari and the keyboard's Previous/Next/Done. Only controls a tap would reach now are listed: read page text from a screenshot, and tap click-only text and a Safari sheet's Close button by coordinates.
+- `w` refs take `tap`, `type --focus` (plain `type --ref wN` refuses with `unsupportedReference`), `key`, `key-combo`, and `key-sequence`; keys tap the field first. Batches do not take `w` refs. Scroll with the web view's own `swipe` row (an `e` ref).
+- Actions on a `--web` snapshot keep returning `w` rows. A `--web` capture costs roughly twice a plain one, and works in portrait only.
+
 `axe agent "<goal>"` is a separate, experimental command that pursues a plain-language goal with a hosted model and needs `TYPESAFE_API_KEY`. Don't use it unless the user asks.
 
 ## Structured Output And Errors
@@ -30,9 +44,21 @@ axe --output json tap --id "login_submit" --udid "$UDID"
 ```
 
 - `--output json` goes before the command and prints one `axe.output.command-result` object: `command`, `data.result`, `didError`, and `error.code` when it failed.
-- Branch on `error.code`, never on the message or `nextSteps`. Common codes: `invalidArguments`, `targetNotFound`, `notBooted`, `busy`, `timeout`, `elementNotFound`, `ambiguousElement`, `elementNotHittable`, `rejectedBeforeInput`, `inputFailed`, `inputUnavailable`, `cleanupUncertain`, `quarantined` (a touch or key may still be held; check the device before more input), `screenChanged`, `captureFailed`.
+- Branch on `error.code`, never on the message or `nextSteps`. Common codes: `invalidArguments`, `targetNotFound`, `notBooted`, `busy`, `timeout`, `elementNotFound`, `ambiguousElement`, `elementNotHittable`, `rejectedBeforeInput`, `inputFailed`, `inputUnavailable`, `cleanupUncertain`, `quarantined` (a touch or key may still be held; check the device before more input), `screenChanged`, `captureFailed`, `unsupportedDevice` (v2.1: an Apple TV simulator; AXe supports iPhone and iPad simulators only).
 - After `screenshot` and `record-video`, the command's own `--output` is still the file path.
 - A failure never repeats input. `--verbose` adds detail without changing the exit status or code.
+
+## Serve: Many Commands In One Process (v2.1)
+
+For a harness that sends many commands, `axe serve` keeps one process open and skips per-command setup (reading the screen and tapping took about 176 ms instead of 290 ms):
+
+```bash
+printf '%s\n' 'describe-ui --minimal-keys' 'tap --label General' 'ping' | axe serve --udid "$UDID"
+```
+
+- One command per standard-input line, written as after `axe` but without `--udid`. Each line gets one stdout line: the JSON `axe --output json <command>` prints. A ready line comes first; logs go to stderr; serve exits when stdin closes.
+- Commands: `describe-ui`, `displays`, `screenshot`, `tap`, `swipe`, `drag`, `draw`, `type`, `button`, `key`, `key-sequence`, `key-combo`, `touch`, `gesture`, `slider`, `rotate`, `hinge`, and `ping` (answers without touching the simulator). A failed line gets its error reply and serve carries on.
+- Each command takes the same route and checks as the one-off command; other `axe` commands can still use the simulator meanwhile.
 
 ## Settings (Xcode 27)
 
@@ -54,7 +80,9 @@ axe settings status-bar clear --udid "$UDID"
 
 - `axe displays --udid "$UDID"` shows each screen's role, size in points, orientation, the active screen, and the hinge angle. Coordinates are in those units.
 - `axe hinge set tabletop --udid "$UDID"` (`0...180`, `closed`, `tabletop`, `open`) and `axe rotate left|right --udid "$UDID"` change the Duo's fold and orientation; read the UI again after either.
+- Since `v2.1`, plain `describe-ui`, `tap --id`, and `tap --label` on the Duo read only the active screen, as agent mode does. On one of the two screens the Home-screen icons drawn there are missing from the tree; tap them by coordinates from a screenshot.
 - `--input-mode selected` with `--screen-id` and `--screen-uuid` (from `displays`) refuses to act if another screen becomes active.
 - `axe shutdown --udid "$UDID"` shuts down exactly one simulator.
 - `axe doctor --udid "$UDID"` checks that the target is ready.
+- `axe mirror --udid "$UDID"` (v2.1, Apple silicon, macOS 14.5+) streams a simulator live to the AXe Mirror app on an iPhone or iPad, which sends touches back; pair the device first with `axe mirror pair`. It runs until Ctrl+C and is for a person watching, not for this flow; use the `axe` skill for details.
 - AXe also drives paired physical iPhones and iPads by hardware UDID (`axe list-devices`); this flow targets simulators, so use the `axe` skill for devices.
