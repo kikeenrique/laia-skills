@@ -23,6 +23,7 @@ Point either at a build product and your fixtures land in DerivedData and vanish
 
 - Since 1.0.0, successful responses with an **empty body** (e.g. `204 No Content`) are recorded like any other.
 - If the response stream fails or is cancelled mid-transfer, the error reaches the caller and **no partial entry** is saved; re-run once the network is stable. (Before 1.0.0 the error was swallowed and the truncated body recorded.)
+- Since 1.1.0, request bodies that `URLSession` passes as a stream (`httpBodyStream`, the usual case on Darwin) are read and recorded in the entry's `postData`. Older recordings of POST/PUT requests may lack it — re-record if you match on `.body`. Bodies over 10 MiB fail the request with `URLError(.dataLengthExceedsMaximum)`; raise the limit with `maximumRequestBodySize:` on `PlaybackConfiguration` or `CaptureConfiguration` (not available on the `.replay(...)` trait) — see [matchers.md](matchers.md#streamed-request-bodies-body-custom).
 
 ## Typical dev loop
 

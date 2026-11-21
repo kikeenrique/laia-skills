@@ -22,6 +22,22 @@ Matchers decide whether an incoming request is served by a HAR entry. They compo
 
 Since 1.0.0, `.url` and `.query` compare URLs after applying the trait's built-in query filters (`.queryParameters(removing:)` / `keeping:`) to both the incoming request and the recorded entry, so a redacted `token=[FILTERED]` still matches the live `token=abc`. That only works when the same filters are passed at playback — see [redaction.md](redaction.md#query-filters-and-matching). No other filter affects matching.
 
+### Streamed request bodies (`.body`, `.custom`)
+
+On Darwin, `URLSession` hands Replay's `URLProtocol` the request body as `httpBodyStream`, with `httpBody` nil. Since 1.1.0 Replay reads that stream into `httpBody` whenever it needs the body — a `.body` or `.custom` matcher in a non-`live` playback mode, or recording — so `.body` matching and custom matchers see the real payload (before 1.1.0 they could see an empty body). Otherwise the request keeps its stream and goes to the network untouched.
+
+Replay reads at most **10 MiB** (`Replay.defaultMaximumRequestBodySize`); a larger body fails the request with `URLError(.dataLengthExceedsMaximum)`. The `.replay(...)` trait always uses the default. To raise it, build the configuration yourself (`Playback.session(configuration:)`) and pass `maximumRequestBodySize:` (`Int.max` for no limit):
+
+```swift
+PlaybackConfiguration(
+    source: .file(archiveURL),
+    matchers: [.method, .path, .body],
+    maximumRequestBodySize: 50 * 1024 * 1024
+)
+```
+
+Or drop `.body` / `.custom` from the matchers so the body is never read during playback.
+
 ## Choosing a matcher set
 
 - **Start** with `[.method, .path]` for most APIs. It handles pagination cursors, timestamps, and cache-busters gracefully.

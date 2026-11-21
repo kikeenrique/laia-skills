@@ -17,7 +17,7 @@ allowed-tools: Read, Grep, Glob, Bash(swift test *), Bash(swift package replay *
 
 Replay ships as a Swift Package. It is a **test-only** dependency — never add it to an app target. Minimums: Swift 6.1+, macOS 10.15+ / iOS 15+.
 
-Current version: **1.0.0**.
+Current version: **1.1.0**.
 
 ---
 
@@ -46,7 +46,7 @@ Add to `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/mattt/Replay.git", from: "1.0.0")
+    .package(url: "https://github.com/mattt/Replay.git", from: "1.1.0")
 ],
 targets: [
     .testTarget(

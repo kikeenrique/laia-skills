@@ -29,6 +29,12 @@ The archive exists but no entry matched the incoming request. Almost always a ma
    - If the archive was recorded with query filters (`.queryParameters(removing:)` / `keeping:`), the trait must pass the same `filters:` at playback — `.url` / `.query` only match redacted URLs when those filters are present (1.0.0+). See [redaction.md](redaction.md#query-filters-and-matching).
 5. If the API genuinely changed: `REPLAY_RECORD_MODE=rewrite swift test --filter …`.
 
+With `.body`, also check the archive's `postData`: recordings made before 1.1.0 often have no request body (`URLSession` streamed it and Replay didn't read the stream), so `.body` never matches them. Re-record with 1.1.0+.
+
+## `URLError(.dataLengthExceedsMaximum)` on a POST/PUT
+
+Since 1.1.0 Replay reads a streamed request body into memory when matching (`.body` / `.custom`) or recording needs it, up to 10 MiB. A larger upload fails with this error. Drop `.body` / `.custom` from the matchers, or pass `maximumRequestBodySize:` to `PlaybackConfiguration` / `CaptureConfiguration` via the lower-level APIs — see [matchers.md](matchers.md#streamed-request-bodies-body-custom).
+
 ## "I added `scope: .test` and my tests hang / fail"
 
 You're still using `URLSession.shared`. Per-test scope routes via a custom HTTP header that only `Replay.session` adds. Swap:
