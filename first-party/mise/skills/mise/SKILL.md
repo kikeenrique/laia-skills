@@ -30,7 +30,7 @@ If a command option matters, verify with `mise <subcommand> --help` because mise
 | Install mise, activate shells, or get a project started | [getting-started.md](references/getting-started.md) |
 | Choose between `mise activate`, shims, `mise exec`, `mise env`, and `mise run` | [activation.md](references/activation.md) |
 | Edit `mise.toml`, config precedence, local files, global `config.override.toml`, config environments, `mise config explain`, or the `mise lsp` editor server | [config.md](references/config.md) |
-| Manage tool versions, backends, registry tools, tool auto-updates, Java vendors, or `.tool-versions` migration | [dev-tools.md](references/dev-tools.md) |
+| Manage tool versions, backends, registry tools, upgrades and pruning, vulnerability checks (`mise audit`), tool auto-updates, Java vendors, or `.tool-versions` migration | [dev-tools.md](references/dev-tools.md) |
 | Add env vars, dotenv loading, templates, prompted `[vars]`, or exported env output | [environments.md](references/environments.md) |
 | Define, run, debug, or optimize `mise run` tasks, including monorepo targets, `[daemons]`, and fnox task secrets | [tasks.md](references/tasks.md) |
 | Cache task artifacts, infer a workspace graph, or run only affected projects | [workspaces-and-caching.md](references/workspaces-and-caching.md) |

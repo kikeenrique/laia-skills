@@ -188,7 +188,7 @@ cpu = "8"                              # whole numbers as strings
 lock = [{ name = "cpu", count = 4 }, "test-db"]
 ```
 
-`MISE_TASK_LOCKS` then lists each held slot (`cpu,cpu:2,cpu:5,cpu:6`), so a task can pick a per-slot database or port. A `count` above the pool takes all of it; waiters are not queued, so a stream of small tasks can starve a large one. A nested task needing more slots than its parent holds fails. A locked non-`interactive` task cannot prompt for secrets; prefer per-worktree daemons when each worktree can have its own copy of the resource.
+`MISE_TASK_LOCKS` then lists each held slot (`cpu,cpu:2,cpu:5,cpu:6`), so a task can pick a per-slot database or port. A `count` above the pool takes all of it; waiters are not queued, so a stream of small tasks can starve a large one. A nested task needing more slots than its parent holds fails. `{ name = "xcode", if_pool = true }` (2026.11.11; combines with `count`) takes the lock only on machines whose `task.lock_pools` declares that name and runs without it elsewhere, so other machines don't serialize on an exclusive lock. A locked non-`interactive` task cannot prompt for secrets; prefer per-worktree daemons when each worktree can have its own copy of the resource.
 
 `confirm` guards only the task's own `run` command. Dependencies run before the confirmation prompt unless you model them as `run = [{ task = "..." }]` or put `confirm` on the dependency tasks too.
 
@@ -343,7 +343,7 @@ mise watch build --glob 'src/**/*.ts'
 mise watch serve --watch src --exts ts --restart
 ```
 
-`mise watch` uses task `sources` by default and follows dependency sources for watched tasks. `--no-vcs-ignore`, `--no-project-ignore`, and `--no-global-ignore` widen what is watched. Extra flags are passed through to watchexec, so check `mise watch --help` for the installed version.
+`mise watch` uses task `sources` by default and follows dependency sources for watched tasks. `--no-vcs-ignore`, `--no-project-ignore`, and `--no-global-ignore` widen what is watched. Extra flags are passed through to watchexec, so check `mise watch --help` for the installed version. Tasks joined with `:::` share one watcher: a change to any of their sources reruns all of them (each still up-to-date checked); run a separate `mise watch` per task to watch them independently.
 
 For scripts and agents that must block until a file changes, `mise watch test --once` (2026.10.25) runs nothing at start, waits for a source change, runs the task once, and exits with its status (implies `--postpone`; exits 1 if watchexec stops first). To keep watching but stop at the first failure, use `--exit-on-error` without `--once`.
 
@@ -385,7 +385,7 @@ mise run --secrets-all deploy
 mise x --secrets GH_TOKEN -- gh release list # nothing is injected without the flag
 ```
 
-Tasks that list secrets need trusted config, ignore `raw` (unless `raw`/`interactive` is set on the task, which disables redaction), are not artifact-cached, cannot be global or remote tasks, and are refused from hooks, daemons, `mise bootstrap`, and safe mode. `secrets` needs `min_version = "2026.10.4"`; older mise rejects the field. A user task named `secrets` now needs `mise run secrets`.
+Tasks that list secrets need trusted config, ignore `raw` (unless `raw`/`interactive` is set on the task, which disables redaction), are not artifact-cached, cannot be remote tasks, and are refused from hooks, daemons, `mise bootstrap`, and safe mode. Since 2026.11.12 tasks in global config may list secrets too, and a task that names a key from your own fnox config (`~/.config/fnox/config.toml`, a `fnox.toml` in or above home) receives it; `--secrets-all` still leaves such personal keys out. `[secrets.fnox]` itself is still read from project config only. `secrets` needs `min_version = "2026.10.4"`; older mise rejects the field. A user task named `secrets` now needs `mise run secrets`.
 
 ## Windows
 

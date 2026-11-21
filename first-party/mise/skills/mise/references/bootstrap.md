@@ -84,7 +84,9 @@ Entries are `"manager:package" = "<version>"`; `"latest"` accepts an already-ins
 "winget:BurntSushi.ripgrep.MSVC" = { os = "windows" }
 ```
 
-Managers: `apk`, `apt`, `aur`, `choco` (2026.10.20), `dnf`, `zypper`, `pacman`, `brew`, `brew-cask`, `macos-app`, `flatpak`, `flatpak-user`, `nix`, `mas`, `scoop`, `snap` (2026.10.10), `winget`, plus package plugins. Entries for a manager unavailable on the current platform are skipped, so one config works everywhere. `pacman`, `scoop`, `snap`, and `zypper` support `state = "absent"`.
+Managers: `apk`, `apt`, `aur`, `choco` (2026.10.20), `dnf`, `zypper`, `pacman`, `brew`, `brew-cask`, `macos-app`, `flatpak`, `flatpak-user`, `nix`, `macports` (2026.11.11), `mas`, `scoop`, `snap` (2026.10.10), `winget`, plus package plugins. Entries for a manager unavailable on the current platform are skipped, so one config works everywhere. `macports`, `pacman`, `scoop`, `snap`, and `zypper` support `state = "absent"`.
+
+`macports:` needs MacPorts already installed (`port` on `PATH` or in `/opt/local/bin`; install it from a `pre-packages` hook) and runs `port` through sudo. Use plain port names: variants (`+name`) and `@version` selectors are rejected, and a pin is only checked against the installed port (a mismatch shows in `status`, `apply` skips it). It is not in the unprefixed-key order unless listed in `system_packages.prefer`.
 
 Since 2026.11.6 a key without a `manager:` prefix installs through exactly one manager, so one config serves machines with different package managers: the first available of the distro's own (`apt`, `dnf`, `pacman`, `zypper`, `apk`), then `brew`, `winget`, `scoop`, `choco`, minus any excluded by `system_packages.managers`. `system_packages.prefer = ["brew", "apt"]` changes the order and limits the candidates. `names` gives a per-manager package name; the choice depends only on which managers are available, and a failed install does not fall back to the next one. A prefixed key always keeps its manager (and wins, with a warning, over an unprefixed key resolving to the same package); with no candidate available the entry is skipped. Pin versions only when every candidate accepts the same string; `MISE_DEBUG=1` logs the selection.
 
@@ -123,7 +125,7 @@ key = "https://download.docker.com/linux/ubuntu/gpg"
 fingerprint = "9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
 ```
 
-`brew`/`brew-cask` do **not** require Homebrew to be installed: mise pours bottles into the canonical prefix itself. Third-party taps use the fully qualified name; add non-inferable tap URLs under `[bootstrap.brew.taps]`. A cask entry can set its own install directory: `"brew-cask:1password" = { appdir = "/Applications" }`. Casks mise installs are invisible to Homebrew unless `[bootstrap.brew] homebrew_metadata = true` (2026.10.20), after which Homebrew owns their upgrades. `mise bootstrap packages prune --manager brew-cask` removes only casks it can prove unchanged; it names the rest, and `--force` (2026.10.21) removes them anyway.
+`brew`/`brew-cask` do **not** require Homebrew to be installed: mise pours bottles into the canonical prefix itself. Third-party taps use the fully qualified name; add non-inferable tap URLs under `[bootstrap.brew.taps]`. Since 2026.11.11 bottles a third-party tap declares are poured, and a tap formula whose custom download strategy fetches a private GitHub release asset installs with mise's GitHub credentials (other custom strategies are still rejected). A cask entry can set its own install directory: `"brew-cask:1password" = { appdir = "/Applications" }`. Casks mise installs are invisible to Homebrew unless `[bootstrap.brew] homebrew_metadata = true` (2026.10.20), after which Homebrew owns their upgrades. `mise bootstrap packages prune --manager brew-cask` removes only casks it can prove unchanged; it names the rest, and `--force` (2026.10.21) removes them anyway.
 
 `macos-app` installs a `.app` with no cask from a pinned download (all four fields required; no `latest`, no pruning):
 
@@ -166,9 +168,10 @@ mise bootstrap --only dotfiles,tools --dry-run
 mise bootstrap --skip tools,task
 mise bootstrap --update          # fast-forward the global config checkout (2026.11.0), refresh package metadata and declared repos first
 mise bootstrap --upgrade         # also upgrade installed packages and tools (2026.10.11)
+mise bootstrap --self-update --upgrade   # update mise first, then rerun with the new version (2026.11.11)
 ```
 
-`--upgrade` runs the equivalent of `mise bootstrap packages upgrade` in the packages phase and `mise upgrade` (no `--bump`) in the tools phase, respecting pins and version ranges. It does not update mise, repositories, or container images; `--dry-run` previews upgrades only for things already installed.
+`--upgrade` runs the equivalent of `mise bootstrap packages upgrade` in the packages phase and `mise upgrade` (no `--bump`) in the tools phase, respecting pins and version ranges. It does not update mise, repositories, or container images; `--dry-run` previews upgrades only for things already installed. `--self-update` runs `mise self-update` and then the bootstrap again in a new process; if the update fails nothing is applied. It is skipped by `--dry-run` and for subcommands.
 
 `--only` does not pull in prerequisites: `--only services` will not install the packages that provide them.
 

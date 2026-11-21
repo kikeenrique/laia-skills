@@ -108,7 +108,7 @@ A merge entry takes `permissions` (2026.10.22), applied only when `apply` create
 
 ```toml
 [dotfile_groups.home]
-root = "home"            # relative to dotfiles.root; target defaults to ~
+root = "home"            # relative to dotfiles.root (defaults to the group name since 2026.11.12); target defaults to ~
 dot_prefix = true        # dot-config/ deploys as .config/
 exclude = ["README.md"]  # also: target, mode (symlink-each default, copy, symlink), manifest, relative
 
@@ -120,7 +120,18 @@ exclude = ["README.md"]  # also: target, mode (symlink-each default, copy, symli
 dotfile_groups = ["home"]   # unset: every group applies
 ```
 
-Since 2026.10.21 a selected name with no `[dotfile_groups]` table that matches a directory under `dotfiles.root` is a group with the defaults (deployed into `~` file by file), so a Stow package tree needs only `dotfile_groups = ["kitty", "nvim", "zsh"]`. Switching from Stow needs no unstow: `apply` replaces a folded directory link with a real directory of links. Since 2026.10.23 group `entries` may also be block, line, or merge edits (keyed `"<file>/<id>"`, source relative to the group root, file inside the group's target); they apply only while the group is selected, and deselecting leaves what they wrote — run `mise dot unapply <path>` first to remove it. Groups also take `depends`.
+Since 2026.10.21 a selected name with no `[dotfile_groups]` table that matches a directory under `dotfiles.root` is a group with the defaults (deployed into `~` file by file), so a Stow package tree needs only `dotfile_groups = ["kitty", "nvim", "zsh"]`; to adjust one, a table with just the differences (`[dotfile_groups.kitty] exclude = ["README.md"]`) keeps the default root, and a declared group also applies when no list is set. Switching from Stow needs no unstow: `apply` replaces a folded directory link with a real directory of links. Since 2026.10.23 group `entries` may also be block, line, or merge edits (keyed `"<file>/<id>"`, source relative to the group root); they apply only while the group is selected, and deselecting leaves what they wrote — run `mise dot unapply <path>` first to remove it. Groups also take `depends`.
+
+Since 2026.11.12 an entry may deploy outside the group's target (it just cannot be the target or a directory containing it), so a package whose files land in several places stays one group; such an entry needs a `source` (unless its mode takes none, like `absent`; a `merge` there needs one too) and is applied, unapplied, and pruned with the group. `exclude = ["/*"]` deploys only the entries:
+
+```toml
+[dotfile_groups.vscode]
+root = "vscode/.config"
+target = "~/AppData/Roaming"
+
+[dotfile_groups.vscode.entries]
+"~/.crossnote" = { source = "crossnote", mode = "symlink" }   # walk skips vscode/.config/crossnote
+```
 
 Two selected groups writing the same path fail before anything is written. `mise dot status` lists files from deselected or shrunk groups as `orphaned`; `mise dot apply --prune` (or `mise bootstrap --prune-dotfiles`) removes them and `mise dot unapply --group <name>` removes one group's files. `mise dot add`/`edit` route a file under a group's target into its root (`--group` when ambiguous). Since 2026.10.12 a group entry with `mode = "template"` and no `source` falls back to the same path plus `.tera` (`"~/.config/git/config" = { mode = "template" }` renders `home/dot-config/git/config.tera`, not also deployed with the suffix). `mise dot add --changed` also captures files a copy-mode group discovers in its tree.
 
@@ -181,7 +192,7 @@ Synchronization pushes checkpoints to a Git remote so another machine can restor
 
 The origin holds tracked-file history, not a checkout: `mise dot origin set` never pulls or pushes a `~/.config/mise` adopted with `mise bootstrap --adopt` (sync that with Git yourself). Give the origin its own repository, or a separate branch of the global-config repo adopted elsewhere with `--adopt '<url>?ref=<branch>'`; pointing it at the global-config repo's default branch makes later `--adopt` treat it as a setup repository instead of cloning it into `~/.config/mise`. To share the global config through the origin, track the whole directory, `mise dot track ~/.config/mise`, so `config.<env>.toml`, `conf.d/`, and `miserc.toml` come along (files ending `.local.toml` stay per machine).
 
-Before a push, mise refuses to publish earlier plaintext versions of now-encrypted paths, and (since 2026.10.5) unpublished versions with a line that looks like a secret — provider tokens (`ghp_`, `sk-`, `AKIA…`), private key blocks, or `*_KEY`/`*_TOKEN`/`*_SECRET`/`*_PASSWORD` assignments. Removing the line from the file does not remove it from saved versions; encrypt the file instead, or erase it.
+Before a push, mise refuses to publish earlier plaintext versions of now-encrypted paths, and (since 2026.10.5) unpublished versions with a line that looks like a secret — provider tokens (`ghp_`, `sk-`, `AKIA…`), private key blocks, or `*_KEY`/`*_TOKEN`/`*_SECRET`/`*_PASSWORD` assignments. Removing the line from the file does not remove it from saved versions; encrypt the file instead, or erase it. When the scan flags a harmless placeholder, list it in global `[settings.history] allow_secret_values = ["ctx7_api_key"]` (2026.11.11; ignored in project config) rather than skipping the check: each entry must match a whole value after `=`/`:` literally, and the rest of the file is still scanned.
 
 To erase an accidentally tracked secret: rotate it, stop the history watcher, `mise dot untrack <path>`, then `mise dot history purge <path>` (`untrack`/`rollback`/`undo` never delete old checkpoints). Purge rewrites only local history, keeps other checkpoints' numbers, and refuses if any version of the path was already synced — remove it from the origin with Git instead. `--backup` keeps the old history (secret included) under `refs/mise/purge-backup/`; a `track-local` file uses `mise dot --local history purge`. Override both checks once with `mise dot sync --allow-plaintext-history`, or always with `[settings.history] allow_plaintext_history = true` (global config only) — both publish the old content.
 

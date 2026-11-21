@@ -116,7 +116,7 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
 
 - `matching` narrows candidates by case-sensitive substring while keeping platform autodetection; `matching_regex` does the same with a regex. Both are ignored (silently) when `asset_pattern` is set, because that replaces autodetection entirely.
 - `additional_asset_patterns` overlays supplemental archives onto the primary asset's install directory.
-- `github_attestations = false` disables attestation verification, which removes the check that the asset was built by the expected workflow. Use it only for a tool whose releases have no attestations, and never to silence a failing verification without finding out why. `version_order = "semver"` changes tag ordering.
+- `github_attestations = false` disables attestation verification, which removes the check that the asset was built by the expected workflow. Use it only for a tool whose releases have no attestations, and never to silence a failing verification without finding out why. `version_order = "semver"` changes tag ordering; since 2026.11.11 `version_order = "published_at"` (github, gitlab, forgejo) sorts by release date, so `latest` is the most recently published release even when its version number is lower.
 - `version_regex` (2026.10.20) lists only release tags matching the pattern (unanchored, so use `^…$`), e.g. to skip data-only releases: `"github:owner/tool" = { version = "latest", prerelease = true, version_regex = '^(v\d+\.\d+\.\d+|nightly)$' }`. It only filters (`v1.2.3` is still listed as `1.2.3`); with `version_prefix`, a tag must satisfy both.
 
 ### Other Backend Options
@@ -147,10 +147,13 @@ The experimental `pkgx:` backend was removed in mise 2026.9.13; move those tools
   sources = { my-zensical-theme = { index = "private" } }
   ```
 
+  Since 2026.11.11 an index can set `exclude-newer = false` to exempt it from `minimum_release_age` (as uv's per-index `exclude-newer`); use it for an index that serves no upload times, such as a PEP 503 HTML index like GitLab's, which otherwise cannot resolve. Only `false` is accepted.
+
 - `http:` `filter_bins` (2026.11.10; string or list, also per platform) puts only the named executables on `PATH` (linked into `.mise-bins` from `bin_path`, `bin/`, or the install dir) — for archives that bundle helpers or a private runtime such as `node` that would shadow yours.
 - aqua packages that ship a single `.jar` (2026.11.10) get a launcher that runs `java -jar`; add `java` to `[tools]` yourself (not on Windows).
 - A `file://` URL is recorded in `mise.lock` as written, so it only works where that path exists.
 - `http:` `headers` (templated values, e.g. bearer or `X-Api-Key`) go to the artifact, `version_list_url`, and `checksum_url` requests on the `url` host only; they are dropped on a cross-host redirect unless listed per header in `headers_forward = { X-Api-Key = ["cdn.example.com", "*.assets.example.com"] }`. Changing a token does not reinstall the tool.
+- `http:` `checksum_url` is verified at install since 2026.11.11 (not only recorded by `mise lock`) when neither `checksum` nor a lockfile entry pins the artifact: install fails on a mismatch or when the published checksum cannot be resolved.
 - `npm:` git installs: `latest` is the repository's default branch; `mise.lock` does not pin it to a commit.
 - `npm:` also installs from an `https://` tarball URL (2026.11.6), such as a pkg.pr.new preview: `[tools."npm:https://pkg.pr.new/owner/repo/@scope/pkg@343"] version = "latest"` (the whole URL is the tool name, `@` included). The version is a prefix of the tarball's SHA-256, so `mise outdated`/`mise up` refetch the URL and update when the digest changes. No `http://` or `checksum`; `mise.lock` records the version but no dependency graph. Under aube, the tarball's own URL dependencies (per-platform `optionalDependencies`) need `allow_exotic_deps` naming them.
 - `github:` lookups go to the mise-versions host first, which reveals private repo names to a third party. `versions_host_exclude = ["my-org/*"]` (2026.11.8; `MISE_VERSIONS_HOST_EXCLUDE`, comma-separated; case-insensitive `owner/repo` globs) sends those repos straight to GitHub while other tools keep using the host — narrower than `use_versions_host = false`.
@@ -272,6 +275,12 @@ mise install --include-task-tools
 
 `mise upgrade --bump` keeps the config's precision (`"20"` → `"22"`). Since 2026.10.18 `--bump --pin` (or the `pin` setting, `MISE_PIN=1`) writes the resolved version instead, replacing `latest` or `"20"` with e.g. `"24.14.0"`.
 
+A per-tool `bump = false` (2026.11.12; not in `.tool-versions`) keeps a tool out of `mise upgrade --bump` and `mise outdated --bump`: it upgrades within its request and `mise.toml` is not rewritten. Naming it (`mise upgrade node --bump`) still bumps it: `node = { version = "22", bump = false }`.
+
+`mise audit [tool@version…] [--json]` (2026.11.12) looks up the configured tool versions in OSV.dev and lists advisories (exit 1 when any are found). It covers npm, pipx, cargo, gem, go, and dotnet packages, github/aqua/packslip tools by repository and tag, and the core go, node, python, deno, bun, and erlang; other tools are reported as not checked. `mise upgrade --vulnerable` upgrades only the affected tools, within their range (or to the newest with `--bump`), and warns when no fixed version exists.
+
+`mise prune` leaves the system installs directory (`mise install --system`) alone; `mise prune --system [--dry-run]` (2026.11.12) prunes it instead, using `sudo` when needed. It only knows the configs your user loads, so preview first: another user may still need a version. A system install replaced by `mise upgrade` is pruned after `upgrade.prune_after` unless that needs `sudo`; then it is kept until `mise upgrade --prune` or `mise prune --system`.
+
 `mise unuse <tool>` without a version prunes all of that tool's unused versions; a version still needed by a tracked config or tool stub is kept and mise names the file.
 
 `-l` on `mise upgrade` (and `mise outdated`) is a deprecated shorthand for `--bump`; use `-b`/`--bump`.
@@ -291,7 +300,7 @@ node = { version = "22", auto_update = "6h" }         # stays within 22.x; minim
 
 When a shim or `mise x` is about to run the tool and the interval has passed, mise upgrades it first (warning and running the installed version on failure). Since 2026.10.7, in a shell with `mise activate`, a prompt whose checks are due starts the updates of every opted-in tool in the background without waiting; the new version is used after the next prompt refresh, and failures show in `mise doctor`. Exact pins, offline, CI, and `locked = true` never update; tasks never update. Only installed tools are updated (an un-run lazy tool is left alone), and a global lockfile entry moves with the update. A project that sets its own version of the tool is not updated.
 
-To opt in every global tool at once, set `tool_update.global_auto = true` (or an interval such as `"12h"`; `MISE_TOOL_UPDATE_GLOBAL_AUTO`) in global `[settings]`; a tool's own `auto_update`, including `auto_update = false`, still wins. Updates respect `minimum_release_age` (default `24h`), so a release can take 24–48h to land. For background updates instead, declare `[bootstrap.services.mise-tool-update] builtin = "tool-update"` and run `mise bootstrap services apply`. Failures show in `mise doctor`. `mise use -g --tool-option auto_update=true node@22` writes the option.
+To opt in every global tool at once, set `tool_update.global_auto = true` (or an interval such as `"12h"`; `MISE_TOOL_UPDATE_GLOBAL_AUTO`) in global `[settings]`; a tool's own `auto_update`, including `auto_update = false`, still wins. Updates respect `minimum_release_age` (default `24h`), so a release can take 24–48h to land. For background updates instead, declare `[bootstrap.services.mise-tool-update] builtin = "tool-update"` and run `mise bootstrap services apply`. Failures show in `mise doctor`. `mise use -g --tool-option auto_update=true node@22` writes the option. To update mise itself before each automatic update pass, set `tool_update.self_update_first = true` (2026.11.11; global only, needs `self_update.auto = true`); if the mise update fails, the tools are skipped until the next interval and `mise doctor` shows the error.
 
 For IDEs and programs that cannot run mise, each tool's install directory has runtime symlinks (`latest`, `3`, …) and, since 2026.10.8, a `global` link to the version global/system config selects (e.g. point a JDK or Maven home at `~/.local/share/mise/installs/maven/global`); it follows `mise use -g` and ignores project config.
 
