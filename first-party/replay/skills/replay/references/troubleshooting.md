@@ -103,6 +103,12 @@ Fixed in **0.6.0**: both session-level and task-level `URLAuthenticationChalleng
 
 Note this only applies to traffic that actually reaches the network. Pure playback from a HAR never establishes a TLS connection, so no challenge is raised — that's expected, not a bug.
 
+## Request hangs forever during record / live / passthrough
+
+**Symptom:** a test that reaches the network through Replay (recording, `REPLAY_PLAYBACK_MODE=live`, or `passthrough` on a miss) sometimes never completes, most often with fast or local servers. HAR playback and stubs are unaffected.
+
+**Cause:** before **1.1.1**, Replay's internal proxy lost the response when it arrived before Replay started to wait for it, and also waited forever when the transfer ended without any HTTP response. Its proxy session has no timeout, so the request hung instead of failing. **Fix:** upgrade to 1.1.1, which delivers early responses and fails a response-less transfer with `URLError(.badServerResponse)`.
+
 ## Last resort: pinning the archive root to `#filePath`
 
 Only needed when source-file resolution (step 3) can't work **and** you need recording — e.g. the test source tree isn't present on the machine that runs the tests. Rare; try the plain setup first, because 0.6.0 already does source-relative resolution internally.
