@@ -40,7 +40,7 @@ aws-cli = { version = "latest", symlink_bins = true }
 
 `install_env` applies during download, install, and that tool's `postinstall`. `mise use --tool-option k=v <tool>` sets an option from the CLI.
 
-Since 2026.10.14 an option the backend does not read is an **install error** (`cargo:eza: option 'asset_pattern' is not used by the cargo backend`), including keys under `platforms`, for cargo, conda, gem, github/gitlab/forgejo, go, http, npm, packslip, pipx, s3, spinel, spm, and ubi. aqua, plugin, and core-tool backends are not checked. Fix the spelling or remove the key; `mise config explain` helps.
+Since 2026.10.14 an option the backend does not read is an **install error** (`cargo:eza: option 'asset_pattern' is not used by the cargo backend`), including keys under `platforms`, for cargo, conda, gem, github/gitlab/forgejo, go, http, npm, packslip, pipx, s3, spinel, spm, and ubi. Since 2026.11.14 core tools (`node`, `python`, …) and `dotnet:` warn about an unread option instead (the tool still installs; the option has no effect), and the message suggests a close name (`hint: Did you mean 'asset_pattern'?`). aqua (other keys are recipe vars), asdf, vfox, and plugin backends are not checked; commands that do not install (`mise ls`, the shell hook) never report it. Fix the spelling or remove the key; `mise config explain` helps.
 
 Per-tool release-age policy overrides the global setting:
 
@@ -311,6 +311,8 @@ Experimental and opt-in: `install_layout = "identity"` (plus `experimental = tru
 ## Version Files
 
 mise reads `.tool-versions` and can use asdf plugins when needed. When migrating, prefer a `mise.toml` with `[tools]` because it also supports env vars, settings, tasks, options, and lockfiles.
+
+`MISE_USE_TOML=0` (which makes `~/.tool-versions` a global config and the `mise use -g` target) is deprecated: mise warns once per run and the variable will be removed in 2027.11.0. Use `mise use --path .tool-versions` to write one (in a directory whose only config is `.tool-versions`, plain `mise use` writes there), and `MISE_GLOBAL_CONFIG_FILE=~/.tool-versions` to keep it as the global config.
 
 Idiomatic version files (`.python-version`, `.nvmrc`, `package.json`, …) are disabled by default:
 

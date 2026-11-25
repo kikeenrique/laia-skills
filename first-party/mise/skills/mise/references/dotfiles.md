@@ -54,6 +54,9 @@ dotfiles.relative_symlinks = true   # Stow-style relative links; per-entry `rela
 [dotfiles]
 # dot-bashrc -> ~/.bashrc (Stow --dotfiles); needs a directory source with symlink-each or copy
 "~" = { source = "home", mode = "symlink-each", dot_prefix = true, exclude = ["README.md"] }
+# applied from a linked git worktree, link into the main checkout instead so the link survives
+# removing the worktree (2026.11.14; symlink/symlink-each; the source must exist in the main checkout)
+"~/.config/mise/config.toml" = { source = "mise.global.toml", main_checkout = true }
 "~/.netrc" = { source = "netrc.tera", mode = "template", permissions = "0600" }
 "~/.ssh" = { permissions = "0700" }   # manage only the mode, not the contents
 # seed once, then leave it to the user (2026.10.22); an existing file is never touched

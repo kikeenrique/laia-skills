@@ -42,6 +42,7 @@ Implementation notes:
 - `BackendExecEnv` returns env vars such as PATH entries for the installed tool.
 - Optional hooks: `BackendListTools` (`hooks/backend_list_tools.lua`, a small `{tools = {{name, description}}}` catalog surfaced in `mise search`, completion, and the `mise use` selector), `BackendSearchTools` (per-query search of a large catalog via `ctx.query`), and `BackendUninstall` (`hooks/backend_uninstall.lua`, cleanup outside `install_path` on uninstall/upgrade/prune; an error keeps the install).
 - Shelling out: prefer `cmd.exec` (captured, never blocks parallel installs; accepts `{ timeout = 30 }` in seconds and raises on expiry). `os.execute` streams output and `cmd.stream` also connects stdin for interactive children; both hold mise's terminal lock.
+- Files and checksums (2026.11.14): use `file.move`, `file.mkdir(path)` (like `mkdir -p`), and `file.remove(path[, { recursive = true }])` (never follows symlinks) instead of shelling out to `mv`/`mkdir`/`rm`. The `checksum` module hashes a file you name: `checksum.verify(archive, "sha256:" .. expected)` raises on a mismatch, `checksum.digest(path[, "sha512"])` returns lowercase hex (sha256, sha512, sha1, md5). It does not fetch or parse checksum files — get the digest with `http` yourself; `BackendInstall` must verify downloads this way.
 - Use the official template when creating a new repository.
 
 ## Tool Plugins

@@ -35,6 +35,8 @@ To manage these snippets declaratively as part of machine setup, use `[bootstrap
 
 `mise completion` supports nushell since 2026.10.20 (fish 4.9.3+ loads mise's completions itself). In an activated shell, `mise shell --unset --all` (2026.10.22) clears every `mise shell` override at once.
 
+To register `packslip:` tools' completions, `mise activate zsh` runs `compinit -i` itself when `compdef` is not defined yet. With a plugin manager that defers `compinit` (zinit, …), set `packslip.compinit = false` (`MISE_PACKSLIP_COMPINIT`, 2026.11.14) so mise waits for a later prompt where `compdef` exists instead.
+
 ## Shims
 
 Shims are small executables under the mise shims directory, commonly `~/.local/share/mise/shims`. They route commands through mise so the correct tool version is selected.

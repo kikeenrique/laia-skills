@@ -59,6 +59,7 @@ mise run build
 mise r test
 mise run --all              # interactive selector across the whole monorepo
 mise run --multi            # checklist picker (2026.11.6): Space checks, / filters, Enter runs them as with :::
+mise run --no-global        # picker without global-config/~/.config/mise/tasks tasks; --global lists only them (2026.11.14, also with --all/--multi)
 mise tasks
 mise tasks -a               # --all (2026.10.15); `mise tasks list` is an alias for ls
 mise tasks deps --compact
@@ -258,6 +259,16 @@ ports.db = { auto = true, base = 5432 }    # STACK_DB_PORT
 
 [env]
 DB_PORT = "{{ env.STACK_DB_PORT }}"
+```
+
+A daemon the proxy does not serve (`proxy = false`, no `port`, or a hostname collision) can declare its address with `url` (2026.11.14, pitchfork 2.36.0+), a template seeing only `port`, `ports`, and `name`; mise exports it as `<NAME>_URL`:
+
+```toml
+[daemons.cache]
+run = "exec redis-server --port $PORT"
+port = 6380
+proxy = false
+url = "redis://127.0.0.1:{{ port }}/0"   # exports CACHE_URL
 ```
 
 `--quiet`/`--silent` on `mise daemons start` or `mise run` hide a daemon's startup log lines (2026.11.7).

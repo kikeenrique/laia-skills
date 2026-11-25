@@ -89,6 +89,8 @@ Enabling `cache` is a correctness assertion: identical key material must yield e
 
 On Linux, `cache = { enabled = true, audit = true }` uses `strace` to report undeclared reads/writes; it is advisory and needs `mise run --force` because cached tasks do not execute.
 
+Since 2026.11.14 `cache = { enabled = true, sandbox = true }` enforces the declaration on Linux: the task runs in a sandbox derived from it (reads limited to `sources`, the defining config files, cached dependencies' outputs, and system paths; writes to its output directories plus a private `TMPDIR`; env limited to essentials, task `env`, `cache.env`, `global_env`, `pass_through_env`; no network). Undeclared access fails (`Permission denied`) instead of being cached. Outputs need a directory of their own (not shared with sources or the config file), or the task fails before starting. Widen with `allow_read`/`allow_write` (task keys or `--allow-read`/`--allow-write`; the paths, not contents, join the key) — tools mise did not install (e.g. `~/.cargo`) need an `allow_read`. `--task-cache off` does not disable it; on macOS and Windows mise warns and runs unsandboxed.
+
 ## Workspace Project Graph
 
 mise can infer a provider-neutral project graph from ecosystem workspace metadata (node/pnpm/yarn/bun, cargo, uv, go, and since 2026.10.12 gradle). This is separate from `[monorepo].config_roots`: a project needs no `mise.toml` to appear in the graph.
