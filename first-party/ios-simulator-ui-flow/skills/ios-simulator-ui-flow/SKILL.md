@@ -5,7 +5,7 @@ description: "Autonomous iOS Simulator UI verification flow for iOS apps. Use wh
 
 # iOS Simulator UI Verification Flow
 
-Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified against AXe `v2.1.1` (released 2026-11-19) and keeps the workflow command-oriented: use project-native build commands, `xcrun simctl` for lifecycle, and AXe for accessibility-tree inspection, input, screenshots, and video.
+Build, deploy, drive, and verify an iOS app in Simulator. This skill is verified against AXe `v2.2.0` (released 2026-11-25) and keeps the workflow command-oriented: use project-native build commands, `xcrun simctl` for lifecycle, and AXe for accessibility-tree inspection, input, screenshots, and video.
 
 ## Principles
 
@@ -281,7 +281,7 @@ axe key-combo --modifiers 227 --key 4 --udid "$UDID"  # Cmd+A
 axe button home --udid "$UDID"
 ```
 
-Use `--stdin` or `--file` for text with shell-sensitive characters. Since AXe `v2.1`, `type` (including batch steps and agent mode) types on the simulator's own hardware keyboard layout (German, French, British, …), so pass the text as it should read; a character that layout has no key for fails with `invalidArguments` before anything is typed. `--layout <name>` names a layout and `--layout us` sends US key positions as before (AXe `v2.0` always used US positions). If text arrives as other characters, the app was already running when the keyboard layout changed: relaunch it. `printf '%s' 'text' | axe clipboard copy --stdin --udid "$UDID"` stages text on the simulator clipboard instead (it does not paste).
+Use `--stdin` or `--file` for text with shell-sensitive characters. Since AXe `v2.1`, `type` (including batch steps and agent mode) types on the simulator's own hardware keyboard layout (German, French, British, …), so pass the text as it should read; a character that layout has no key for fails with `invalidArguments` before anything is typed. `--layout <name>` names a layout and `--layout us` sends US key positions as before (AXe `v2.0` always used US positions). If text arrives as other characters, the app was already running when the keyboard layout changed: relaunch it. Since `v2.2`, plain `type` returns as soon as the keys are sent; long text (a few hundred characters) can still be arriving, so let the screen settle before checking the field (agent `type` waits for it). `printf '%s' 'text' | axe clipboard copy --stdin --udid "$UDID"` stages text on the simulator clipboard instead (it does not paste).
 
 Credentials: type only test-account credentials the user gave you for this purpose, never real ones. Don't put a password in a command line, where it lands in the process list, shell history, and the transcript: write it to an untracked file under `tmp/` and use `axe type --file`, then delete the file when the flow is done.
 
@@ -350,7 +350,7 @@ For existing apps, grow accessibility coverage as part of the verification work.
 - **Empty or tiny accessibility tree**: The app may still be launching, crashed, be gated by a modal/onboarding view, or be showing the home screen. Check logs, screenshots, and `describe-ui`.
 - **Empty tree or "invalid or invisible due to a fullscreen dialog" right after `simctl boot`**: For roughly 10–25 seconds after boot, AXe cannot reach the accessibility bridge yet, and no dialog is involved. Wait and retry `describe-ui` until it returns a tree before looking for a modal.
 - **Element not found**: Refresh `describe-ui`, confirm the identifier/label exists, scroll if the row is virtualized, or add a stable accessibility identifier to the app.
-- **Tap dispatch succeeds but state does not change**: Add `--wait-timeout`, `--post-delay`, or a batch `sleep`; confirm the target with `describe-ui --point`; use physical tap style for switch/toggle edge cases.
+- **Tap dispatch succeeds but state does not change**: Add `--wait-timeout`, `--post-delay`, or a batch `sleep`; confirm the target with `describe-ui --point`; use physical tap style for switch/toggle edge cases. If a row is one Button whose real action sits on a small button at one edge, a centre tap lands on empty space: use `--semantic-press` (see [references/axe-2.md](references/axe-2.md)).
 - **Coordinate taps miss**: Use logical points from `describe-ui`, not raw screenshot pixels.
 - **Xcode 27: input reports success but nothing happens**: Check Device Hub **Resize Mode**. With it enabled, taps and drags are acknowledged and then silently dropped. Disable it for UI automation.
 - **Drag reported success but the view did not move**: Check Device Hub **Resize Mode** first, then fall back to `axe swipe` or `axe touch` sequences and verify again with `describe-ui`.
@@ -360,13 +360,13 @@ For existing apps, grow accessibility coverage as part of the verification work.
 - **Accessibility query fails transiently**: AXe restarts `testmanagerd` and retries once, and `describe-ui --point` retries transient fallback results with backoff. Re-run once before treating it as an app bug.
 - **Slider or picker is flaky**: Prefer `axe slider` for sliders. For wheel-style controls, drive with gestures or drag and verify with `describe-ui`.
 - **Build output is noisy or missing errors**: Make sure stderr is captured with `2>&1` and the command is piped through `xcsift -f toon`.
-- **AXe breaks after an Xcode update**: AXe depends on Xcode-version-specific simulator internals. `v2.0` supports Xcode 26 (Indigo transport) and Xcode 27 (Device Hub / DTUHID transport); anything outside that contract is unsupported. Recheck the installed AXe release, the upstream release notes, and https://axe-cli.com/docs before assuming the app is broken.
+- **AXe breaks after an Xcode update**: AXe depends on Xcode-version-specific simulator internals. `v2.0` supports Xcode 26 (Indigo transport) and Xcode 27 (Device Hub / DTUHID transport); anything outside that contract is unsupported. Before `v2.2`, a Mac with only Xcode 26 failed agent mode, `displays`, `--input-mode selected`, and multi-touch gestures with `observationFailed`, `readFailed`, or `inputUnavailable`: upgrade AXe. Recheck the installed AXe release, the upstream release notes, and https://axe-cli.com/docs before assuming the app is broken.
 
 ## Exit Checklist
 
 Before reporting success:
 
-- The AXe upstream version used for guidance is known. Current target: `v2.1.1`.
+- The AXe upstream version used for guidance is known. Current target: `v2.2.0`.
 - Every AXe simulator-interaction command includes `--udid "$UDID"`.
 - Selector taps are preferred over coordinates where possible.
 - Sliders use `axe slider --value 0-100`.

@@ -1,6 +1,6 @@
 # AXe 2.x Features
 
-Features added in AXe `v2.0` and `v2.1` that the main flow routes here. For full option lists, run `axe <command> --help` or use the `axe` skill.
+Features added in AXe `v2.0`, `v2.1`, and `v2.2` that the main flow routes here. For full option lists, run `axe <command> --help` or use the `axe` skill.
 
 ## Agent Mode
 
@@ -20,6 +20,20 @@ axe batch --agent --udid "$UDID" --steps-json '{"snapshotID":"<SNAPSHOT_ID>","st
 - Selectors work in agent mode too (`--label 'Save' --element-type Button`), plus `--label-contains` and `--label-regex`, for controls that move.
 - `batch --agent` takes 1–8 `tap`/`type` steps from one snapshot; only the last step may leave the screen.
 - Results are JSON by default; `--output text` prints them compactly. `AXE_TIMING=1` prints a phase table to stderr.
+- Agent `type` waits for the text and returns the screen with it. It checks the field's focus before the first key, after Return, Tab, a shortcut or a delay, and every 16th key otherwise (`v2.2`), so if focus moves mid-text it stops within 16 keys: check what the field holds in the returned capture.
+
+### A Tap That Does Nothing: Semantic Press (v2.2)
+
+A tap is a real touch at the control's centre. When a row is one Button with its real action on a small button at one edge (a contact row with "Call"), the tap succeeds and the screen stays unchanged. Only then, press the control through accessibility, as VoiceOver does:
+
+```bash
+axe tap --agent --semantic-press --view navigation --udid "$UDID" --snapshot-id "$SNAPSHOT_ID" --ref e12
+axe tap --semantic-press --id "contact_row" --udid "$UDID"
+```
+
+- Simulator only; takes one `--ref` (with its snapshot) or an exact `--id`, and the control needs a unique accessibility ID (`pressNeedsID` otherwise) and a native Button or CheckBox role. It sends no touch. Not a batch step.
+- `buttonPressAccepted` means the app took the press, not that anything happened: check the returned capture (agent replies carry the action kind `press` and the receipt's `targetRole`).
+- Never press first: a press can run an action no finger could reach, so it can hide a real hit-target bug.
 
 ### Web Pages (v2.1)
 
@@ -84,5 +98,5 @@ axe settings status-bar clear --udid "$UDID"
 - `--input-mode selected` with `--screen-id` and `--screen-uuid` (from `displays`) refuses to act if another screen becomes active.
 - `axe shutdown --udid "$UDID"` shuts down exactly one simulator.
 - `axe doctor --udid "$UDID"` checks that the target is ready.
-- `axe mirror --udid "$UDID"` (v2.1, Apple silicon, macOS 14.5+) streams a simulator live to the AXe Mirror app on an iPhone or iPad, which sends touches back; pair the device first with `axe mirror pair`. It runs until Ctrl+C and is for a person watching, not for this flow; use the `axe` skill for details.
+- `axe remote` (Apple silicon, macOS 14.5+) connects the AXe Mirror app on a paired iPhone or iPad to this Mac: `axe remote pair` once, then `axe remote` lets the app open, boot, or create simulators, `axe remote mirror --udid "$UDID"` hosts one simulator, and `axe remote build` / `publish` offer an Ad Hoc build to install on the device. It runs until Ctrl+C and is for a person, not for this flow; use the `axe` skill for details. Since `v2.2` it replaces `axe mirror` (the old commands still run; `axe mirror viewers` is now `axe remote devices`).
 - AXe also drives paired physical iPhones and iPads by hardware UDID (`axe list-devices`); this flow targets simulators, so use the `axe` skill for devices.
